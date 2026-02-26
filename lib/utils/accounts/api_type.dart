@@ -95,6 +95,10 @@ abstract final class ApiType {
       Api.pugvUrl,
       Api.tvPlayUrl,
     },
+    // reply
+    AccountType.reply: {
+      Api.replyAdd,
+    },
   };
 
   static const loginApi = {

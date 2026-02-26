@@ -585,12 +585,15 @@ abstract final class VideoHttp {
         'at_name_to_mid': jsonEncode(atNameToMid), // {"name":uid}
       if (pictures != null) 'pictures': jsonEncode(pictures),
       if (syncToDynamic) 'sync_to_dynamic': 1,
-      'csrf': Accounts.main.csrf,
+      'csrf': Accounts.reply.csrf,
     };
     final res = await Request().post(
       Api.replyAdd,
       data: data,
-      options: Options(contentType: Headers.formUrlEncodedContentType),
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': Accounts.reply},
+      ),
     );
     if (res.data['code'] == 0) {
       return Success(res.data['data']);
