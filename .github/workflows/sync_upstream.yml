@@ -32,29 +32,31 @@ jobs:
       - name: Update upstream branch
         id: update
         run: |
-          UPSTREAM_BRANCH=$(git remote show upstream | grep 'HEAD branch' | awk '{print $NF}')
+          # 用 ls-remote 获取上游默认分支名（避免 git remote show 解析失败）
+          UPSTREAM_BRANCH=$(git ls-remote --symref upstream HEAD \
+            | head -1 | sed 's|ref: refs/heads/||' | awk '{print $1}')
           echo "Upstream default branch: $UPSTREAM_BRANCH"
 
-          # 切到 upstream 分支（不存在则新建）
+          # 记录当前 origin/upstream 的提交（用于判断是否有变更）
           if git ls-remote --exit-code --heads origin upstream > /dev/null 2>&1; then
-            git checkout upstream
+            BEFORE=$(git rev-parse origin/upstream)
           else
-            git checkout -b upstream
+            BEFORE=""
           fi
 
-          # 强制对齐到上游内容
-          git reset --hard upstream/$UPSTREAM_BRANCH
+          # -B：若本地分支已存在则强制重置，不存在则新建；不会出现 detached HEAD
+          git checkout -B upstream upstream/$UPSTREAM_BRANCH
 
-          # 判断是否有变更
-          if git ls-remote --exit-code --heads origin upstream > /dev/null 2>&1 && \
-             git diff origin/upstream --quiet; then
+          AFTER=$(git rev-parse HEAD)
+          git push origin upstream --force
+
+          # 比较前后提交判断是否有实际变更
+          if [ "$BEFORE" = "$AFTER" ]; then
             echo "No changes detected, skipping PR."
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
             echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
-
-          git push origin upstream --force
 
       - name: Create or reuse Pull Request
         if: steps.update.outputs.has_changes == 'true'
