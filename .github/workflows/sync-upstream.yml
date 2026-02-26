@@ -1,0 +1,71 @@
+name: Weekly Sync from PiliPlus
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # every Sunday at midnight UTC
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          repository: bggRGjQaUbCoE/PiliPlus
+          path: upstream
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Copy files from source
+        run: |
+          # remove everything except .git so that deletions propagate
+          shopt -s dotglob
+          rsync -a --delete upstream/ ./
+
+      - name: Configure Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create or update branch
+        run: |
+          # always create/reset the upstream branch
+          git checkout -B upstream
+          git add .
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Sync from PiliPlus: $(date -u +"%Y-%m-%d")"
+          fi
+          git push --force --set-upstream origin upstream
+
+      - name: Create pull request
+        id: pr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Sync from PiliPlus"
+          title: "Sync from PiliPlus"
+          body: |
+            This PR copies the contents of [bggRGjQaUbCoE/PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus)
+            into the `upstream` branch. It is generated weekly by a workflow.
+          base: main
+          head: upstream
+          labels: sync
+
+      - name: Attempt auto-merge
+        if: steps.pr.outputs.pull-request-number != ''
+        uses: peter-evans/merge-pull-request@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-number: ${{ steps.pr.outputs.pull-request-number }}
+          merge-method: squash
+          auto-merge: true
+          allow-no-review: true
