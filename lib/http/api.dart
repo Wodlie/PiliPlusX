@@ -182,6 +182,9 @@ abstract final class Api {
   // https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/comment/action.md
   static const String replyAdd = '/x/v2/reply/add';
 
+  // 举报评论
+  static const String replyReport = '/x/v2/reply/report';
+
   // 删除评论
   // https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/comment/action.md
   static const String replyDel = '/x/v2/reply/del';

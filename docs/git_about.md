@@ -1,5 +1,5 @@
 ### 上游配置
-- origin : https://github.com/cnctem/PiliPlusX.git
+- origin : https://github.com/Wodlie/PiliPlusX.git
 - upstream : https://github.com/bggRGjQaUbCoE/PiliPlus.git
 - gucooing : https://github.com/gucooing/PiliPlus.git
 - qinshah : https://github.com/qinshah/PiliPlus.git

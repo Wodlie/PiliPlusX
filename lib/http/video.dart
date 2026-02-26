@@ -613,9 +613,12 @@ abstract final class VideoHttp {
         'type': type, //type.index
         'oid': oid,
         'rpid': rpid,
-        'csrf': Accounts.main.csrf,
+        'csrf': Accounts.reply.csrf,
       },
-      options: Options(contentType: Headers.formUrlEncodedContentType),
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': Accounts.reply},
+      ),
     );
     if (res.data['code'] == 0) {
       return const Success(null);

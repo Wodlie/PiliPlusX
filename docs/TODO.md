@@ -113,10 +113,10 @@
 
 - [ ] 播放页双指双击可以切换弹幕开关
 - [ ] 当播放视频时候界面处于长按倍速状态，上下滑动即可动态倍速（设置项）-ywt
-- [ ] 鼠标右键事件 -[Issue3](https://github.com/cnctem/PiliPlusX/issues/3)
+- [ ] 鼠标右键事件 -[Issue3](https://github.com/Wodlie/PiliPlusX/issues/3)
 - [ ] 看一下api仓库，搜索 图文 接口 -ywt
-- [ ] 应用内小窗口，实现参考 [pilipro](https://github.com/naaammme/pilipro) （设置项）-[Issue9](https://github.com/cnctem/PiliPlusX/issues/9)
+- [ ] 应用内小窗口，实现参考 [pilipro](https://github.com/naaammme/pilipro) （设置项）-[Issue9](https://github.com/Wodlie/PiliPlusX/issues/9)
 - [ ] 弹窗快捷键：y绑定确定，n取消
 - [ ] 高画质无限试用 -Air
 
-**欢迎在 [Issues](https://github.com/cnctem/PiliPlusX/issues) 提交建议和问题反馈**
+**欢迎在 [Issues](https://github.com/Wodlie/PiliPlusX/issues) 提交建议和问题反馈**

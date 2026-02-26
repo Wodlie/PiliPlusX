@@ -98,6 +98,12 @@ abstract final class ApiType {
     // reply
     AccountType.reply: {
       Api.replyAdd,
+      Api.replyDel,
+      Api.likeReply,
+      Api.hateReply,
+      Api.replyTop,
+      Api.replyReport,
+      Api.replySubjectModify,
     },
   };
 
