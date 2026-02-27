@@ -839,7 +839,7 @@ class ReplyItemGrpc extends StatelessWidget {
     required bool isSubReply,
   }) {
     late String message = item.content.message;
-    final ownerMid = Int64(Accounts.main.mid);
+    final ownerMid = Int64(Accounts.reply.mid);
     final theme = Theme.of(context);
     final errorColor = theme.colorScheme.error;
     final style = theme.textTheme.titleSmall;
