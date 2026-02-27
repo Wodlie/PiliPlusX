@@ -221,6 +221,14 @@ List<SettingsModel> get extraSettings => [
       ReplyGrpc.enableFilter = value.pattern.isNotEmpty;
     },
   ),
+  NormalModel(
+    title: '评论用户等级过滤',
+    leading: const Icon(Icons.person_off_outlined),
+    getSubtitle: () => ReplyGrpc.minLevelForReply == 0
+        ? '不过滤'
+        : '屏蔽低于 lv${ReplyGrpc.minLevelForReply} 的评论',
+    onTap: _showReplyMinLevelDialog,
+  ),
   getBanWordModel(
     title: '动态关键词过滤',
     key: SettingBoxKey.banWordForDyn,
@@ -1433,4 +1441,26 @@ void _showCacheDialog(BuildContext context, VoidCallback setState) {
       ],
     ),
   );
+}
+
+Future<void> _showReplyMinLevelDialog(
+  BuildContext context,
+  VoidCallback setState,
+) async {
+  final result = await showDialog<int>(
+    context: context,
+    builder: (context) => SelectDialog<int>(
+      title: '评论用户等级过滤',
+      value: ReplyGrpc.minLevelForReply,
+      values: List.generate(
+        7, // lv0..lv6
+        (i) => (i, i == 0 ? 'lv0（不过滤）' : 'lv$i'),
+      ),
+    ),
+  );
+  if (result != null) {
+    ReplyGrpc.minLevelForReply = result;
+    await GStorage.setting.put(SettingBoxKey.minLevelForReply, result);
+    setState();
+  }
 }

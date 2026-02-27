@@ -9,6 +9,7 @@ import 'package:fixnum/fixnum.dart';
 
 abstract final class ReplyGrpc {
   static bool antiGoodsReply = Pref.antiGoodsReply;
+  static int minLevelForReply = Pref.minLevelForReply;
   static RegExp replyRegExp = RegExp(
     Pref.banWordForReply,
     caseSensitive: false,
@@ -38,7 +39,9 @@ abstract final class ReplyGrpc {
 
   static bool needRemoveGrpc(ReplyInfo reply) {
     return (enableFilter && replyRegExp.hasMatch(reply.content.message)) ||
-        (antiGoodsReply && needRemoveGoodGrpc(reply));
+        (antiGoodsReply && needRemoveGoodGrpc(reply)) ||
+        (minLevelForReply > 0 &&
+            reply.member.level.toInt() < minLevelForReply);
   }
 
   static Future<LoadingState<MainListReply>> mainList({
