@@ -23,74 +23,54 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          echo "TODAY=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
       - name: Fetch upstream
         run: |
           git remote add upstream https://github.com/bggRGjQaUbCoE/PiliPlus.git
           git fetch upstream
 
-      - name: Update upstream branch
-        id: update
+      - name: Merge upstream changes
+        id: merge
         run: |
           # 用 ls-remote 获取上游默认分支名（避免 git remote show 解析失败）
           UPSTREAM_BRANCH=$(git ls-remote --symref upstream HEAD \
             | head -1 | sed 's|ref: refs/heads/||' | awk '{print $1}')
           echo "Upstream default branch: $UPSTREAM_BRANCH"
 
-          # 记录当前 origin/upstream 的提交（用于判断是否有变更）
-          if git ls-remote --exit-code --heads origin upstream > /dev/null 2>&1; then
-            BEFORE=$(git rev-parse origin/upstream)
+          # 尝试 no-commit 合并，检测是否有实际变更
+          if git merge --no-commit --no-ff upstream/$UPSTREAM_BRANCH; then
+            if git diff --cached --quiet; then
+              echo "No changes detected, skipping PR."
+              echo "has_changes=false" >> $GITHUB_OUTPUT
+              git merge --abort 2>/dev/null || true
+            else
+              echo "has_changes=true" >> $GITHUB_OUTPUT
+            fi
           else
-            BEFORE=""
-          fi
-
-          # -B：若本地分支已存在则强制重置，不存在则新建；不会出现 detached HEAD
-          git checkout -B upstream upstream/$UPSTREAM_BRANCH
-
-          AFTER=$(git rev-parse HEAD)
-          git push origin upstream --force
-
-          # 比较前后提交判断是否有实际变更
-          if [ "$BEFORE" = "$AFTER" ]; then
-            echo "No changes detected, skipping PR."
+            echo "Merge conflicts detected, skipping PR."
             echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
+            git merge --abort
           fi
 
-      - name: Create or reuse Pull Request
-        if: steps.update.outputs.has_changes == 'true'
+      - name: Create Pull Request
+        if: steps.merge.outputs.has_changes == 'true'
         id: pr
-        env:
-          GH_TOKEN: ${{ secrets.PAT }}
-        run: |
-          PR_NUMBER=$(gh pr list \
-            --head upstream \
-            --base main \
-            --state open \
-            --json number \
-            --jq '.[0].number')
-
-          if [ -z "$PR_NUMBER" ]; then
-            PR_URL=$(gh pr create \
-              --title "chore: sync upstream $(date +'%Y-%m-%d')" \
-              --body "由 GitHub Actions 自动同步自 [bggRGjQaUbCoE/PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus)。" \
-              --head upstream \
-              --base main)
-            PR_NUMBER=$(basename "$PR_URL")
-            echo "Created PR #$PR_NUMBER"
-          else
-            echo "Existing PR #$PR_NUMBER"
-          fi
-
-          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.PAT }}
+          commit-message: "chore: sync upstream"
+          branch: sync/upstream
+          title: "chore: sync upstream ${{ env.TODAY }}"
+          body: "由 GitHub Actions 自动同步自 [bggRGjQaUbCoE/PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus)。"
+          base: main
 
       - name: Auto-merge Pull Request
-        if: steps.pr.outputs.pr_number != ''
+        if: steps.pr.outputs.pull-request-number != ''
         env:
           GH_TOKEN: ${{ secrets.PAT }}
         run: |
-          PR_NUMBER="${{ steps.pr.outputs.pr_number }}"
+          PR_NUMBER="${{ steps.pr.outputs.pull-request-number }}"
 
           # 优先尝试启用自动合并（需仓库开启 Allow auto-merge）
           if gh pr merge "$PR_NUMBER" --auto --merge 2>/dev/null; then

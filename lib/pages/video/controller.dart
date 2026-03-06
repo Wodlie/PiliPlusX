@@ -34,8 +34,10 @@ import 'package:PiliPlus/models_new/video/video_detail/data.dart';
 import 'package:PiliPlus/models_new/video/video_detail/episode.dart' as ugc;
 import 'package:PiliPlus/models_new/video/video_detail/page.dart';
 import 'package:PiliPlus/models_new/video/video_pbp/data.dart';
+import 'package:PiliPlus/models_new/video/video_play_info/interaction.dart';
 import 'package:PiliPlus/models_new/video/video_play_info/subtitle.dart';
 import 'package:PiliPlus/models_new/video/video_stein_edgeinfo/data.dart';
+import 'package:PiliPlus/models_new/video/video_stein_edgeinfo/story_list.dart';
 import 'package:PiliPlus/pages/audio/view.dart';
 import 'package:PiliPlus/pages/common/publish/publish_route.dart';
 import 'package:PiliPlus/pages/search/widgets/search_text.dart';
@@ -1045,7 +1047,13 @@ class VideoDetailController extends GetxController
   EdgeInfoData? steinEdgeInfo;
   late final RxBool showSteinEdgeInfo = false.obs;
 
-  Future<void> getSteinEdgeInfo([int? edgeId]) async {
+  // 互动视频历史节点（服务器返回的上次观看位置）
+  HistoryNode? _steinHistoryNode;
+
+  // 用于通知 view 显示进度恢复对话框
+  late final Rx<HistoryNode?> steinResumeNode = Rx<HistoryNode?>(null);
+
+  Future<void> getSteinEdgeInfo([int? edgeId, bool checkResume = false]) async {
     steinEdgeInfo = null;
     try {
       final res = await Request().get(
@@ -1058,6 +1066,10 @@ class VideoDetailController extends GetxController
       );
       if (res.data['code'] == 0) {
         steinEdgeInfo = EdgeInfoData.fromJson(res.data['data']);
+        // 首次加载时检查是否有历史进度可以恢复
+        if (checkResume) {
+          _checkSteinResume();
+        }
       } else {
         if (kDebugMode) {
           debugPrint('getSteinEdgeInfo error: ${res.data['message']}');
@@ -1065,6 +1077,50 @@ class VideoDetailController extends GetxController
       }
     } catch (e) {
       if (kDebugMode) debugPrint('getSteinEdgeInfo: $e');
+    }
+  }
+
+  /// 检查互动视频是否需要恢复历史进度
+  void _checkSteinResume() {
+    try {
+      final historyNode = _steinHistoryNode;
+      if (historyNode == null || historyNode.cid == null) return;
+      final storyList = steinEdgeInfo?.storyList;
+      if (storyList == null || storyList.isEmpty) return;
+      // 若故事列表只有1个条目且是起点，说明没有历史进度可恢复
+      if (storyList.length == 1 &&
+          (storyList.first.isCurrent == 1) &&
+          storyList.first.cid == cid.value) return;
+      // 若 historyNode.cid 与当前 cid 相同，且故事列表长度为1，则不需要恢复
+      if (historyNode.cid == cid.value && storyList.length <= 1) return;
+      // 发出恢复信号
+      steinResumeNode.value = historyNode;
+    } catch (e) {
+      if (kDebugMode) debugPrint('_checkSteinResume: $e');
+    }
+  }
+
+  /// 跳转至互动视频故事列表中的某个节点
+  Future<void> goToSteinStoryNode(StoryList storyNode) async {
+    try {
+      final ugcIntroCtr = Get.find<UgcIntroController>(tag: heroTag);
+      final targetCid = storyNode.cid;
+      if (targetCid == null) return;
+      await ugcIntroCtr.onChangeEpisode(
+        Part(cid: targetCid),
+        isStein: true,
+      );
+      if (storyNode.edgeId != null) {
+        await getSteinEdgeInfo(storyNode.edgeId);
+      }
+      // 若有记录的播放光标位置则跳转（单位为毫秒）
+      final cursor = storyNode.cursor;
+      if (cursor != null && cursor > 0) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        plPlayerController.seek(Duration(milliseconds: cursor));
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('goToSteinStoryNode: $e');
     }
   }
 
@@ -1089,7 +1145,15 @@ class VideoDetailController extends GetxController
           final introCtr = Get.find<UgcIntroController>(tag: heroTag);
           if (introCtr.videoDetail.value.rights?.isSteinGate == 1) {
             graphVersion = response.interaction?.graphVersion;
-            getSteinEdgeInfo();
+            // 保存服务器返回的历史观看节点，用于判断是否需要恢复进度
+            final historyNode = response.interaction?.historyNode;
+            if (historyNode?.cid != null &&
+                historyNode!.cid != cid.value) {
+              _steinHistoryNode = historyNode;
+              getSteinEdgeInfo(null, true); // checkResume = true
+            } else {
+              getSteinEdgeInfo();
+            }
           }
         } catch (e) {
           if (kDebugMode) debugPrint('handle stein: $e');
@@ -1251,6 +1315,8 @@ class VideoDetailController extends GetxController
       // interactive video
       if (!isStein) {
         graphVersion = null;
+        _steinHistoryNode = null;
+        steinResumeNode.value = null;
       }
       steinEdgeInfo = null;
       showSteinEdgeInfo.value = false;
