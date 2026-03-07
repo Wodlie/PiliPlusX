@@ -1117,7 +1117,7 @@ class VideoDetailController extends GetxController
       final cursor = storyNode.cursor;
       if (cursor != null && cursor > 0) {
         await Future.delayed(const Duration(milliseconds: 500));
-        plPlayerController.seek(Duration(milliseconds: cursor));
+        plPlayerController.seekTo(Duration(milliseconds: cursor));
       }
     } catch (e) {
       if (kDebugMode) debugPrint('goToSteinStoryNode: $e');
