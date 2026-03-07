@@ -50,7 +50,7 @@ abstract final class ReplyGrpc {
     required Mode mode,
     required String? offset,
     required Int64? cursorNext,
-    int _autoLoadDepth = 0,
+    int autoLoadDepth = 0,
   }) async {
     final res = await GrpcReq.request(
       GrpcUrl.mainList,
@@ -89,7 +89,7 @@ abstract final class ReplyGrpc {
       // Limit consecutive auto-loads to avoid excessive API calls.
       if (response.replies.isEmpty &&
           !response.cursor.isEnd &&
-          _autoLoadDepth < 5 &&
+          autoLoadDepth < 5 &&
           response.hasPaginationReply() &&
           response.paginationReply.nextOffset.isNotEmpty) {
         final nextRes = await mainList(
@@ -98,9 +98,9 @@ abstract final class ReplyGrpc {
           mode: mode,
           offset: response.paginationReply.nextOffset,
           cursorNext: response.cursor.next,
-          _autoLoadDepth: _autoLoadDepth + 1,
+          autoLoadDepth: autoLoadDepth + 1,
         );
-        if (nextRes case Success(:final nextResponse)) {
+        if (nextRes case Success(response: final nextResponse)) {
           // Update cursor/pagination to reflect the furthest page fetched,
           // so subsequent loads continue from the correct position.
           response.cursor = nextResponse.cursor;
