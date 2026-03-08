@@ -275,15 +275,20 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       SmartDialog.showToast('暂无互动历史记录');
       return;
     }
-    final theme = Theme.of(context);
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) {
-        return Column(
+    final isFullScreen = plPlayerController?.isFullScreen.value ?? false;
+
+    Widget buildSheetContent(BuildContext ctx) {
+      final theme = Theme.of(ctx);
+      return Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: isFullScreen
+              ? null
+              : const BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -295,8 +300,10 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                   ),
                   const Spacer(),
                   IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                     icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(ctx).pop(),
+                    onPressed: Get.back,
                   ),
                 ],
               ),
@@ -329,7 +336,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                       ),
                     ),
                     onTap: () {
-                      Navigator.of(ctx).pop();
+                      Get.back();
                       videoDetailController.goToSteinStoryNode(node);
                     },
                   );
@@ -337,9 +344,44 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
               ),
             ),
           ],
-        );
-      },
-    );
+        ),
+      );
+    }
+
+    if (isFullScreen || videoDetailController.showVideoSheet) {
+      PageUtils.showVideoBottomSheet(
+        context,
+        isFullScreen: () => isFullScreen,
+        child: videoDetailController.plPlayerController.darkVideoPage
+            ? Theme(
+                data: themeData,
+                child: Builder(
+                  builder: (ctx) => Material(
+                    color: Colors.transparent,
+                    child: buildSheetContent(ctx),
+                  ),
+                ),
+              )
+            : Builder(
+                builder: (ctx) => Material(
+                  color: Colors.transparent,
+                  child: buildSheetContent(ctx),
+                ),
+              ),
+      );
+    } else {
+      videoDetailController.childKey.currentState?.showBottomSheet(
+        backgroundColor: Colors.transparent,
+        constraints: const BoxConstraints(),
+        (ctx) => Padding(
+          padding: EdgeInsets.only(top: ctx.mediaQueryPadding.top),
+          child: Material(
+            color: Colors.transparent,
+            child: buildSheetContent(ctx),
+          ),
+        ),
+      );
+    }
   }
 
   // 播放器状态监听
@@ -1521,7 +1563,110 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                       ),
                     ),
               showEpisodes: showEpisodes,
+              showStein: _showSteinHistorySheet,
               showViewPoints: showViewPoints,
+              interactiveChild: Obx(
+                () {
+                  if (videoDetailController.showSteinEdgeInfo.value) {
+                    try {
+                      return Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            left: 16,
+                            right: 16,
+                            bottom: plPlayerController?.showControls.value == true
+                                ? 75
+                                : 16,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Wrap(
+                                spacing: 25,
+                                runSpacing: 10,
+                                children: videoDetailController
+                                    .steinEdgeInfo!
+                                    .edges!
+                                    .questions!
+                                    .first
+                                    .choices!
+                                    .map((item) {
+                                      return FilledButton.tonal(
+                                        style: FilledButton.styleFrom(
+                                          shape: const RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.all(
+                                              Radius.circular(6),
+                                            ),
+                                          ),
+                                          backgroundColor: themeData
+                                              .colorScheme
+                                              .secondaryContainer
+                                              .withValues(alpha: 0.8),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 15,
+                                            vertical: 10,
+                                          ),
+                                          visualDensity: VisualDensity.compact,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        onPressed: () {
+                                          ugcIntroController.onChangeEpisode(
+                                            item,
+                                            isStein: true,
+                                          );
+                                          videoDetailController.getSteinEdgeInfo(
+                                            item.id,
+                                          );
+                                        },
+                                        child: Text(item.option!),
+                                      );
+                                    })
+                                    .toList(),
+                              ),
+                              if ((videoDetailController
+                                          .steinEdgeInfo
+                                          ?.storyList
+                                          ?.length ??
+                                      0) >
+                                  1)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: TextButton.icon(
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: themeData
+                                          .colorScheme
+                                          .onSecondaryContainer,
+                                      backgroundColor: themeData
+                                          .colorScheme
+                                          .secondaryContainer
+                                          .withValues(alpha: 0.7),
+                                      visualDensity: VisualDensity.compact,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                    ),
+                                    onPressed: _showSteinHistorySheet,
+                                    icon: const Icon(Icons.history_rounded, size: 18),
+                                    label: const Text('进度回溯'),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    } catch (e) {
+                      if (kDebugMode) debugPrint('build stein edges: $e');
+                      return const SizedBox.shrink();
+                    }
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
             ),
     ),
   );
@@ -1807,108 +1952,6 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
         //     },
         //     child: const Text('index'),
         //   ),
-        // ),
-        Obx(
-          () {
-            if (videoDetailController.showSteinEdgeInfo.value) {
-              try {
-                return Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: 16,
-                      right: 16,
-                      bottom: plPlayerController?.showControls.value == true
-                          ? 75
-                          : 16,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Wrap(
-                          spacing: 25,
-                          runSpacing: 10,
-                          children: videoDetailController
-                              .steinEdgeInfo!
-                              .edges!
-                              .questions!
-                              .first
-                              .choices!
-                              .map((item) {
-                                return FilledButton.tonal(
-                                  style: FilledButton.styleFrom(
-                                    shape: const RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.all(
-                                        Radius.circular(6),
-                                      ),
-                                    ),
-                                    backgroundColor: themeData
-                                        .colorScheme
-                                        .secondaryContainer
-                                        .withValues(alpha: 0.8),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 15,
-                                      vertical: 10,
-                                    ),
-                                    visualDensity: VisualDensity.compact,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  onPressed: () {
-                                    ugcIntroController.onChangeEpisode(
-                                      item,
-                                      isStein: true,
-                                    );
-                                    videoDetailController.getSteinEdgeInfo(
-                                      item.id,
-                                    );
-                                  },
-                                  child: Text(item.option!),
-                                );
-                              })
-                              .toList(),
-                        ),
-                        if ((videoDetailController
-                                    .steinEdgeInfo
-                                    ?.storyList
-                                    ?.length ??
-                                0) >
-                            1)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: TextButton.icon(
-                              style: TextButton.styleFrom(
-                                foregroundColor: themeData
-                                    .colorScheme
-                                    .onSecondaryContainer,
-                                backgroundColor: themeData
-                                    .colorScheme
-                                    .secondaryContainer
-                                    .withValues(alpha: 0.7),
-                                visualDensity: VisualDensity.compact,
-                                tapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                              ),
-                              onPressed: _showSteinHistorySheet,
-                              icon: const Icon(Icons.history_rounded, size: 18),
-                              label: const Text('进度回溯'),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              } catch (e) {
-                if (kDebugMode) debugPrint('build stein edges: $e');
-                return const SizedBox.shrink();
-              }
-            }
-            return const SizedBox.shrink();
-          },
         ),
       ],
     );
