@@ -1057,21 +1057,32 @@ class VideoDetailController extends GetxController
   void recordCurrentSteinNode() {
     final storyList = steinEdgeInfo?.storyList;
     if (storyList == null || storyList.isEmpty) return;
-    final current =
-        storyList.where((e) => e.isCurrent == 1).firstOrNull ?? storyList.last;
+    // 优先按当前播放的 cid 匹配，而非服务器的 isCurrent 标记
+    final current = storyList.where((e) => e.cid == cid.value).firstOrNull
+        ?? storyList.where((e) => e.isCurrent == 1).firstOrNull
+        ?? storyList.last;
     if (current.cid != null) {
-      _localSteinHistory.add(current);
+      // 避免重复添加相同节点
+      if (_localSteinHistory.isEmpty ||
+          _localSteinHistory.last.cid != current.cid) {
+        _localSteinHistory.add(current);
+      }
     }
   }
 
-  /// 合并本地历史栈与服务端数据，始终反映用户实际选择路径
+  /// 合并本地历史栈与当前播放节点，始终反映用户实际选择路径
   List<StoryList> get steinHistory {
-    if (_localSteinHistory.isEmpty) {
-      return steinEdgeInfo?.storyList ?? [];
-    }
     final storyList = steinEdgeInfo?.storyList;
-    final current = storyList?.where((e) => e.isCurrent == 1).firstOrNull
-        ?? storyList?.lastOrNull;
+    // 从最新 edgeInfo 中获取当前节点（按 cid 匹配）
+    final current = storyList?.where((e) => e.cid == cid.value).firstOrNull
+        ?? storyList?.where((e) => e.isCurrent == 1).firstOrNull;
+
+    if (_localSteinHistory.isEmpty) {
+      // 若无本地历史，仅返回当前节点（如果存在）
+      return current != null ? [current] : [];
+    }
+
+    // 若当前节点与本地历史末尾不同，则追加当前节点
     if (current != null && current.cid != _localSteinHistory.last.cid) {
       return [..._localSteinHistory, current];
     }
@@ -1134,13 +1145,17 @@ class VideoDetailController extends GetxController
       final ugcIntroCtr = Get.find<UgcIntroController>(tag: heroTag);
       final targetCid = storyNode.cid;
       if (targetCid == null) return;
-      // 回溯时截断本地历史到目标节点（保留目标之前的记录）
+      // 回溯时截断本地历史：保留目标节点之前的记录（不含目标节点本身）
       final idx = _localSteinHistory.indexWhere(
         (n) => n.cid == storyNode.cid &&
             (n.nodeId == storyNode.nodeId || storyNode.nodeId == null),
       );
       if (idx != -1) {
+        // 保留 [0, idx) 的记录，移除 idx 及之后的所有记录
         _localSteinHistory.removeRange(idx, _localSteinHistory.length);
+      } else {
+        // 若目标不在历史中（如首次加载恢复），清空历史
+        _localSteinHistory.clear();
       }
       await ugcIntroCtr.onChangeEpisode(
         Part(cid: targetCid),
