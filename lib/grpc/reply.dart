@@ -50,6 +50,7 @@ abstract final class ReplyGrpc {
     required Mode mode,
     required String? offset,
     required Int64? cursorNext,
+    int autoLoadDepth = 0,
   }) async {
     final res = await GrpcReq.request(
       GrpcUrl.mainList,
@@ -80,6 +81,32 @@ abstract final class ReplyGrpc {
           }
           return hasMatch;
         });
+      }
+
+      // When all replies on this page were filtered out but the server
+      // indicates more pages exist, automatically load the next page so
+      // the user is not stuck with an empty comment section.
+      // Limit consecutive auto-loads to avoid excessive API calls.
+      if (response.replies.isEmpty &&
+          !response.cursor.isEnd &&
+          autoLoadDepth < 5 &&
+          response.hasPaginationReply() &&
+          response.paginationReply.nextOffset.isNotEmpty) {
+        final nextRes = await mainList(
+          type: type,
+          oid: oid,
+          mode: mode,
+          offset: response.paginationReply.nextOffset,
+          cursorNext: response.cursor.next,
+          autoLoadDepth: autoLoadDepth + 1,
+        );
+        if (nextRes case Success(response: final nextResponse)) {
+          // Update cursor/pagination to reflect the furthest page fetched,
+          // so subsequent loads continue from the correct position.
+          response.cursor = nextResponse.cursor;
+          response.paginationReply = nextResponse.paginationReply;
+          response.replies.addAll(nextResponse.replies);
+        }
       }
     }
     return res;
