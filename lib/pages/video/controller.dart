@@ -1050,6 +1050,34 @@ class VideoDetailController extends GetxController
   // 互动视频历史节点（服务器返回的上次观看位置）
   HistoryNode? _steinHistoryNode;
 
+  // 本地维护的互动视频选项历史栈（每次选择时追加当前节点）
+  final List<StoryList> _localSteinHistory = [];
+
+  /// 记录当前节点到本地历史栈，在用户点击选项前调用
+  void recordCurrentSteinNode() {
+    final storyList = steinEdgeInfo?.storyList;
+    if (storyList == null || storyList.isEmpty) return;
+    final current =
+        storyList.where((e) => e.isCurrent == 1).firstOrNull ?? storyList.last;
+    if (current.cid != null) {
+      _localSteinHistory.add(current);
+    }
+  }
+
+  /// 合并本地历史栈与服务端数据，始终反映用户实际选择路径
+  List<StoryList> get steinHistory {
+    if (_localSteinHistory.isEmpty) {
+      return steinEdgeInfo?.storyList ?? [];
+    }
+    final storyList = steinEdgeInfo?.storyList;
+    final current = storyList?.where((e) => e.isCurrent == 1).firstOrNull
+        ?? storyList?.lastOrNull;
+    if (current != null && current.cid != _localSteinHistory.last.cid) {
+      return [..._localSteinHistory, current];
+    }
+    return List.unmodifiable(_localSteinHistory);
+  }
+
   // 用于通知 view 显示进度恢复对话框
   late final Rx<HistoryNode?> steinResumeNode = Rx<HistoryNode?>(null);
 
@@ -1106,6 +1134,14 @@ class VideoDetailController extends GetxController
       final ugcIntroCtr = Get.find<UgcIntroController>(tag: heroTag);
       final targetCid = storyNode.cid;
       if (targetCid == null) return;
+      // 回溯时截断本地历史到目标节点（保留目标之前的记录）
+      final idx = _localSteinHistory.indexWhere(
+        (n) => n.cid == storyNode.cid &&
+            (n.nodeId == storyNode.nodeId || storyNode.nodeId == null),
+      );
+      if (idx != -1) {
+        _localSteinHistory.removeRange(idx, _localSteinHistory.length);
+      }
       await ugcIntroCtr.onChangeEpisode(
         Part(cid: targetCid),
         isStein: true,
@@ -1317,6 +1353,7 @@ class VideoDetailController extends GetxController
         graphVersion = null;
         _steinHistoryNode = null;
         steinResumeNode.value = null;
+        _localSteinHistory.clear();
       }
       steinEdgeInfo = null;
       showSteinEdgeInfo.value = false;

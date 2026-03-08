@@ -270,8 +270,8 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
 
   // 互动视频：显示故事节点历史面板（进度回溯）
   void _showSteinHistorySheet() {
-    final storyList = videoDetailController.steinEdgeInfo?.storyList;
-    if (storyList == null || storyList.isEmpty) {
+    final storyList = videoDetailController.steinHistory;
+    if (storyList.isEmpty) {
       SmartDialog.showToast('暂无互动历史记录');
       return;
     }
@@ -1612,6 +1612,8 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                                               MaterialTapTargetSize.shrinkWrap,
                                         ),
                                         onPressed: () {
+                                          videoDetailController
+                                              .recordCurrentSteinNode();
                                           ugcIntroController.onChangeEpisode(
                                             item,
                                             isStein: true,
@@ -1625,12 +1627,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                                     })
                                     .toList(),
                               ),
-                              if ((videoDetailController
-                                          .steinEdgeInfo
-                                          ?.storyList
-                                          ?.length ??
-                                      0) >
-                                  1)
+                              if (videoDetailController.steinHistory.length > 1)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 6),
                                   child: TextButton.icon(
