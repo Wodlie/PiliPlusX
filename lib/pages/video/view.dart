@@ -374,7 +374,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
         backgroundColor: Colors.transparent,
         constraints: const BoxConstraints(),
         (ctx) => Padding(
-          padding: EdgeInsets.only(top: ctx.mediaQueryPadding.top),
+          padding: EdgeInsets.only(top: MediaQuery.paddingOf(ctx).top),
           child: Material(
             color: Colors.transparent,
             child: buildSheetContent(ctx),
@@ -1952,7 +1952,6 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
         //     },
         //     child: const Text('index'),
         //   ),
-        ),
       ],
     );
   }
