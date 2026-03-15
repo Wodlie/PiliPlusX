@@ -316,7 +316,8 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                 itemCount: storyList.length,
                 itemBuilder: (_, i) {
                   final node = storyList[i];
-                  final isCurrent = node.isCurrent == 1;
+                  // 当前节点始终是 steinHistory 列表的最后一个元素
+                  final isCurrent = i == storyList.length - 1;
                   return ListTile(
                     leading: Icon(
                       isCurrent

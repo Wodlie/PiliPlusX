@@ -1053,37 +1053,60 @@ class VideoDetailController extends GetxController
   // 本地维护的互动视频选项历史栈（每次选择时追加当前节点）
   final List<StoryList> _localSteinHistory = [];
 
+  // 当前互动节点（优先使用 nodeId/edgeId 标识，避免同 cid 分支混淆）
+  StoryList? _currentSteinNode;
+
+  bool _isSameSteinNode(StoryList a, StoryList b) {
+    if (a.nodeId != null && b.nodeId != null) return a.nodeId == b.nodeId;
+    if (a.edgeId != null && b.edgeId != null) return a.edgeId == b.edgeId;
+    if (a.cid != null && b.cid != null) return a.cid == b.cid;
+    return false;
+  }
+
+  StoryList? _findCurrentSteinNode([int? requestedEdgeId]) {
+    final edgeInfo = steinEdgeInfo;
+    final storyList = edgeInfo?.storyList;
+    if (requestedEdgeId != null) {
+      // 先在 storyList 中查找
+      if (storyList != null && storyList.isNotEmpty) {
+        final byEdge =
+            storyList.where((e) => e.edgeId == requestedEdgeId).firstOrNull;
+        if (byEdge != null) return byEdge;
+      }
+      // 如果找不到，从 steinEdgeInfo 顶层字段创建（API 的 story_list 可能只有起点）
+      if (edgeInfo != null && edgeInfo.edgeId == requestedEdgeId) {
+        return StoryList(
+          edgeId: edgeInfo.edgeId,
+          title: edgeInfo.title,
+          cid: edgeInfo.preload?.video?.firstOrNull?.cid ?? cid.value,
+          isCurrent: 1,
+        );
+      }
+    }
+    if (storyList == null || storyList.isEmpty) return null;
+    return storyList.where((e) => e.isCurrent == 1).firstOrNull ?? storyList.last;
+  }
+
   /// 记录当前节点到本地历史栈，在用户点击选项前调用
   void recordCurrentSteinNode() {
-    final storyList = steinEdgeInfo?.storyList;
-    if (storyList == null || storyList.isEmpty) return;
-    // 优先按当前播放的 cid 匹配，而非服务器的 isCurrent 标记
-    final current = storyList.where((e) => e.cid == cid.value).firstOrNull
-        ?? storyList.where((e) => e.isCurrent == 1).firstOrNull
-        ?? storyList.last;
-    if (current.cid != null) {
-      // 避免重复添加相同节点
-      if (_localSteinHistory.isEmpty ||
-          _localSteinHistory.last.cid != current.cid) {
-        _localSteinHistory.add(current);
-      }
+    final current = _currentSteinNode ?? _findCurrentSteinNode();
+    if (current == null) return;
+    if (_localSteinHistory.isEmpty ||
+        !_isSameSteinNode(_localSteinHistory.last, current)) {
+      _localSteinHistory.add(current);
     }
   }
 
   /// 合并本地历史栈与当前播放节点，始终反映用户实际选择路径
   List<StoryList> get steinHistory {
-    final storyList = steinEdgeInfo?.storyList;
-    // 从最新 edgeInfo 中获取当前节点（按 cid 匹配）
-    final current = storyList?.where((e) => e.cid == cid.value).firstOrNull
-        ?? storyList?.where((e) => e.isCurrent == 1).firstOrNull;
+    final current = _currentSteinNode ?? _findCurrentSteinNode();
 
     if (_localSteinHistory.isEmpty) {
-      // 若无本地历史，仅返回当前节点（如果存在）
-      return current != null ? [current] : [];
+      if (current != null) return [current];
+      return steinEdgeInfo?.storyList ?? [];
     }
 
-    // 若当前节点与本地历史末尾不同，则追加当前节点
-    if (current != null && current.cid != _localSteinHistory.last.cid) {
+    if (current != null && !_isSameSteinNode(_localSteinHistory.last, current)) {
       return [..._localSteinHistory, current];
     }
     return List.unmodifiable(_localSteinHistory);
@@ -1105,6 +1128,7 @@ class VideoDetailController extends GetxController
       );
       if (res.data['code'] == 0) {
         steinEdgeInfo = EdgeInfoData.fromJson(res.data['data']);
+        _currentSteinNode = _findCurrentSteinNode(edgeId);
         // 首次加载时检查是否有历史进度可以恢复
         if (checkResume) {
           _checkSteinResume();
@@ -1147,8 +1171,7 @@ class VideoDetailController extends GetxController
       if (targetCid == null) return;
       // 回溯时截断本地历史：保留目标节点之前的记录（不含目标节点本身）
       final idx = _localSteinHistory.indexWhere(
-        (n) => n.cid == storyNode.cid &&
-            (n.nodeId == storyNode.nodeId || storyNode.nodeId == null),
+        (n) => _isSameSteinNode(n, storyNode),
       );
       if (idx != -1) {
         // 保留 [0, idx) 的记录，移除 idx 及之后的所有记录
@@ -1157,6 +1180,7 @@ class VideoDetailController extends GetxController
         // 若目标不在历史中（如首次加载恢复），清空历史
         _localSteinHistory.clear();
       }
+      _currentSteinNode = storyNode;
       await ugcIntroCtr.onChangeEpisode(
         Part(cid: targetCid),
         isStein: true,
@@ -1164,11 +1188,18 @@ class VideoDetailController extends GetxController
       if (storyNode.edgeId != null) {
         await getSteinEdgeInfo(storyNode.edgeId);
       }
-      // 若有记录的播放光标位置则跳转（单位为毫秒）
+      // 若有记录的播放光标位置则跳转；无 cursor 时回退到 startPos
       final cursor = storyNode.cursor;
+      final startPos = storyNode.startPos;
+      int? seekMs;
       if (cursor != null && cursor > 0) {
+        seekMs = cursor;
+      } else if (startPos != null && startPos > 0) {
+        seekMs = startPos < 10000 ? startPos * 1000 : startPos;
+      }
+      if (seekMs != null && seekMs > 0) {
         await Future.delayed(const Duration(milliseconds: 500));
-        plPlayerController.seekTo(Duration(milliseconds: cursor));
+        plPlayerController.seekTo(Duration(milliseconds: seekMs));
       }
     } catch (e) {
       if (kDebugMode) debugPrint('goToSteinStoryNode: $e');
@@ -1369,6 +1400,7 @@ class VideoDetailController extends GetxController
         _steinHistoryNode = null;
         steinResumeNode.value = null;
         _localSteinHistory.clear();
+        _currentSteinNode = null;
       }
       steinEdgeInfo = null;
       showSteinEdgeInfo.value = false;
