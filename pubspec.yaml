@@ -218,7 +218,7 @@ dependencies:
   file_picker:
     git:
       url: https://github.com/bggRGjQaUbCoE/flutter_file_picker.git
-      ref: v10.3.10
+      ref: mod
   super_sliver_list:
     git:
       url: https://github.com/bggRGjQaUbCoE/super_sliver_list.git

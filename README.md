@@ -287,6 +287,7 @@
 - 在此致敬上游作者：[bggRGjQaUbCoE/PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus)
 - 在此致敬上游作者：[gucooing/PiliPlus](https://github.com/gucooing/PiliPlus)
 - 在此致敬上游作者：[chenx-dust/PiliPlus](https://github.com/chenx-dust/PiliPlus)
+- 在此致敬上游作者：[cnctem/PiliPlusX](https://github.com/cnctem/PiliPlusX)
 - 致谢鸿蒙版上游 [qinshah/PiliPlus](https://github.com/qinshah/PiliPlus)
 - 鸿蒙适配[致谢](https://github.com/Wodlie/PiliPlusX/tree/ohos?tab=readme-ov-file#感谢)
 
