@@ -48,8 +48,8 @@ jobs:
               echo "has_changes=true" >> $GITHUB_OUTPUT
             fi
           else
-            echo "Merge conflicts detected, skipping PR."
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "Merge conflicts detected, need PR."
+            echo "has_changes=true" >> $GITHUB_OUTPUT
             git merge --abort
           fi
 
