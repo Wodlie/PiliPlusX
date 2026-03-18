@@ -162,7 +162,7 @@ class _UpPanelState extends State<UpPanel> {
           width: 38,
           height: 38,
           cacheWidth: 38.cacheSize(context),
-          'assets/images/logo/logo.png',
+          'assets/images/logo/logo_X.png',
         ),
       );
     } else {

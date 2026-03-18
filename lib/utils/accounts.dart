@@ -20,6 +20,13 @@ abstract final class Accounts {
     }
     return heartbeat;
   }
+  static Account get reply {
+    final reply = accountMode[AccountType.reply.index];
+    if (reply is AnonymousAccount) {
+      return Accounts.main;
+    }
+    return reply;
+  }
   // static set main(Account account) => set(AccountType.main, account);
 
   static Future<void> init() async {

@@ -147,7 +147,7 @@ dependencies:
   #     ref: master
   canvas_danmaku:
     git:
-      url: https://github.com/bggRGjQaUbCoE/canvas_danmaku.git
+      url: https://github.com/cnctem/canvas_danmaku.git
       ref: main
   # 状态栏图标控制
   # status_bar_control: ^3.2.1
@@ -218,7 +218,7 @@ dependencies:
   file_picker:
     git:
       url: https://github.com/bggRGjQaUbCoE/flutter_file_picker.git
-      ref: v10.3.10
+      ref: mod
   super_sliver_list:
     git:
       url: https://github.com/bggRGjQaUbCoE/super_sliver_list.git
@@ -359,6 +359,9 @@ flutter:
     - family: custom_icon
       fonts:
         - asset: assets/fonts/custom_icon.ttf
+    - family: HarmonyOS_Sans
+      fonts:
+        - asset: assets/fonts/HarmonyOS_SansSC_Regular.ttf
   #   - family: Jura-Bold
   #     fonts:
   #       - asset: assets/fonts/Jura-Bold.ttf

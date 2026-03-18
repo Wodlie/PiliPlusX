@@ -121,10 +121,8 @@ abstract final class Pref {
     }
     return SegmentType.values
         .map(
-          (item) => Pair(
-            first: item,
-            second: SkipType.values[list[item.index]],
-          ),
+          (item) =>
+              Pair(first: item, second: SkipType.values[list[item.index]]),
         )
         .toList();
   }
@@ -134,13 +132,11 @@ abstract final class Pref {
     if (list == null || list.length != SegmentType.values.length) {
       return SegmentType.values.map((i) => i.color).toList();
     }
-    return SegmentType.values.map(
-      (item) {
-        final String e = list[item.index];
-        final color = e.isNotEmpty ? int.tryParse('FF$e', radix: 16) : null;
-        return color != null ? Color(color) : item.color;
-      },
-    ).toList();
+    return SegmentType.values.map((item) {
+      final String e = list[item.index];
+      final color = e.isNotEmpty ? int.tryParse('FF$e', radix: 16) : null;
+      return color != null ? Color(color) : item.color;
+    }).toList();
   }
 
   static bool get feedBackEnable =>
@@ -189,6 +185,12 @@ abstract final class Pref {
         SettingBoxKey.upPanelPosition,
         defaultValue: UpPanelPosition.leftFixed.index,
       )];
+
+  static bool get showHomeRefreshFab =>
+      _setting.get(SettingBoxKey.showHomeRefreshFab, defaultValue: false);
+
+  static bool get showDynamicsRefreshFab =>
+      _setting.get(SettingBoxKey.showDynamicsRefreshFab, defaultValue: false);
 
   static FullScreenMode get fullScreenMode =>
       FullScreenMode.values[_setting.get(
@@ -271,6 +273,9 @@ abstract final class Pref {
 
   static String get banWordForReply =>
       _setting.get(SettingBoxKey.banWordForReply, defaultValue: '');
+
+  static int get minLevelForReply =>
+      _setting.get(SettingBoxKey.minLevelForReply, defaultValue: 0);
 
   static String get banWordForZone =>
       _setting.get(SettingBoxKey.banWordForZone, defaultValue: '');
@@ -555,6 +560,9 @@ abstract final class Pref {
     defaultValue: LiveQuality.superHD.code,
   );
 
+  static bool get useSystemFont =>
+      _setting.get(SettingBoxKey.useSystemFont, defaultValue: false);
+
   static int get appFontWeight =>
       _setting.get(SettingBoxKey.appFontWeight, defaultValue: -1);
 
@@ -564,8 +572,17 @@ abstract final class Pref {
   static int get fastForBackwardDuration =>
       _setting.get(SettingBoxKey.fastForBackwardDuration, defaultValue: 10);
 
+  static int get fastForBackwardDuration_ =>
+      _setting.get(SettingBoxKey.fastForBackwardDuration_, defaultValue: 10);
+
   static bool get recordSearchHistory =>
       _setting.get(SettingBoxKey.recordSearchHistory, defaultValue: true);
+
+  static bool get clipboardSearchIncognito =>
+      _setting.get(SettingBoxKey.clipboardSearchIncognito, defaultValue: false);
+
+  static bool get showClipboardSearch =>
+      _setting.get(SettingBoxKey.showClipboardSearch, defaultValue: true);
 
   static String get webdavUri =>
       _setting.get(SettingBoxKey.webdavUri, defaultValue: '');
@@ -584,6 +601,9 @@ abstract final class Pref {
 
   static num get maxCacheSize =>
       _setting.get(SettingBoxKey.maxCacheSize) ?? pow(1024, 3);
+
+  static String get apiHKUrl =>
+      _setting.get(SettingBoxKey.apiHKUrl, defaultValue: '');
 
   static bool get optTabletNav =>
       _setting.get(SettingBoxKey.optTabletNav, defaultValue: true);
@@ -646,7 +666,7 @@ abstract final class Pref {
       _setting.get(SettingBoxKey.enableAutoExit, defaultValue: true);
 
   static bool get autoPlayEnable =>
-      _setting.get(SettingBoxKey.autoPlayEnable, defaultValue: false);
+      _setting.get(SettingBoxKey.autoPlayEnable, defaultValue: true);
 
   static bool get pipNoDanmaku =>
       _setting.get(SettingBoxKey.pipNoDanmaku, defaultValue: false);
@@ -657,8 +677,10 @@ abstract final class Pref {
   static double get defaultTextScale =>
       _setting.get(SettingBoxKey.defaultTextScale, defaultValue: 1.0);
 
-  static double get uiScale =>
-      _setting.get(SettingBoxKey.uiScale, defaultValue: 1.0);
+  static double get uiScale {
+    final double scale = _setting.get(SettingBoxKey.uiScale, defaultValue: 1.0);
+    return scale.clamp(0.5, 3.0);
+  }
 
   static bool get dynamicsWaterfallFlow =>
       _setting.get(SettingBoxKey.dynamicsWaterfallFlow, defaultValue: true);
@@ -679,11 +701,20 @@ abstract final class Pref {
         defaultValue: BarHideType.sync.index,
       )];
 
+  static bool get enableScrollThreshold =>
+      _setting.get(SettingBoxKey.enableScrollThreshold, defaultValue: true);
+
+  static double get scrollThreshold =>
+      _setting.get(SettingBoxKey.scrollThreshold, defaultValue: 50.0);
+
   static bool get enableSearchWord =>
       _setting.get(SettingBoxKey.enableSearchWord, defaultValue: false);
 
   static bool get useSideBar =>
       _setting.get(SettingBoxKey.useSideBar, defaultValue: false);
+
+  static bool get hideStatusBar =>
+      _setting.get(SettingBoxKey.hideStatusBar, defaultValue: false);
 
   static bool get dynamicsShowAllFollowedUp => _setting.get(
     SettingBoxKey.dynamicsShowAllFollowedUp,
@@ -698,6 +729,9 @@ abstract final class Pref {
 
   static bool get enableQuickFav =>
       _setting.get(SettingBoxKey.enableQuickFav, defaultValue: false);
+
+  static bool get enableQuickShare =>
+      _setting.get(SettingBoxKey.enableQuickShare, defaultValue: false);
 
   static bool get p1080 =>
       _setting.get(SettingBoxKey.p1080, defaultValue: true);
@@ -740,7 +774,7 @@ abstract final class Pref {
       )];
 
   static bool get enableQuickDouble =>
-      _setting.get(SettingBoxKey.enableQuickDouble, defaultValue: true);
+      _setting.get(SettingBoxKey.enableQuickDouble, defaultValue: false);
 
   static bool get fullScreenGestureReverse =>
       _setting.get(SettingBoxKey.fullScreenGestureReverse, defaultValue: false);
@@ -820,6 +854,12 @@ abstract final class Pref {
   static bool get defaultShowComment =>
       _setting.get(SettingBoxKey.defaultShowComment, defaultValue: false);
 
+  static bool get defaultShowWatchLater =>
+      _setting.get(SettingBoxKey.defaultShowWatchLater, defaultValue: false);
+
+  static bool get defaultAddWatchLater =>
+      _setting.get(SettingBoxKey.defaultAddWatchLater, defaultValue: false);
+
   static bool get enableTrending =>
       _setting.get(SettingBoxKey.enableHotKey, defaultValue: true);
 
@@ -851,6 +891,8 @@ abstract final class Pref {
       _localCache.get(LocalCacheKey.historyPause, defaultValue: false);
 
   static int? get quickFavId => _setting.get(SettingBoxKey.quickFavId);
+
+  static int? get quickShareId => _setting.get(SettingBoxKey.quickShareId);
 
   static bool get tempPlayerConf =>
       _setting.get(SettingBoxKey.tempPlayerConf, defaultValue: false);
@@ -896,7 +938,14 @@ abstract final class Pref {
   static Size get windowSize {
     final List<double>? size = (_setting.get(SettingBoxKey.windowSize) as List?)
         ?.fromCast<double>();
-    return size == null ? const Size(1180.0, 720.0) : Size(size[0], size[1]);
+    if (size != null && size.length >= 2) {
+      final width = size[0];
+      final height = size[1];
+      if (width >= 300 && height >= 300) {
+        return Size(width, height);
+      }
+    }
+    return const Size(1180.0, 720.0);
   }
 
   static List<double>? get windowPosition =>
@@ -938,6 +987,11 @@ abstract final class Pref {
       _setting.get(SettingBoxKey.setSystemBrightness, defaultValue: false);
 
   static String? get downloadPath => _setting.get(SettingBoxKey.downloadPath);
+
+  static String? get saveImgPath => _setting.get(SettingBoxKey.saveImgPath);
+
+  static String? get saveScreenshotPath =>
+      _setting.get(SettingBoxKey.saveScreenshotPath);
 
   static String? get liveCdnUrl => _setting.get(SettingBoxKey.liveCdnUrl);
 

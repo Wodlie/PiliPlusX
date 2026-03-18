@@ -287,10 +287,7 @@ class RefreshIndicatorState extends State<RefreshIndicator>
     } else {
       // Respect the alpha of the given color.
       _valueColor = _positionController.drive(
-        ColorTween(
-          begin: color.withValues(alpha: 0),
-          end: color,
-        ).chain(
+        ColorTween(begin: color.withValues(alpha: 0), end: color).chain(
           CurveTween(curve: const Interval(0.0, 1.0 / _kDragSizeFactorLimit)),
         ),
       );
@@ -381,9 +378,7 @@ class RefreshIndicatorState extends State<RefreshIndicator>
   }
 
   void _checkDragOffset(double containerExtent) {
-    assert(
-      _status == RefreshIndicatorStatus.drag,
-    );
+    assert(_status == RefreshIndicatorStatus.drag);
     double newValue =
         _dragOffset! / (containerExtent * kDragContainerExtentPercentage);
     _positionController.value = clampDouble(
@@ -585,10 +580,7 @@ Widget refreshIndicator({
 }
 
 class RefreshScrollBehavior extends CustomScrollBehavior {
-  const RefreshScrollBehavior(
-    super.dragDevices, {
-    required this.scrollPhysics,
-  });
+  const RefreshScrollBehavior(super.dragDevices, {required this.scrollPhysics});
 
   final RefreshScrollPhysics scrollPhysics;
 
