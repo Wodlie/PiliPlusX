@@ -1,6 +1,5 @@
-import 'package:PiliPlus/common/style.dart';
+import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
-import 'package:PiliPlus/common/widgets/flutter/layout_builder.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/progress_bar/video_progress_indicator.dart';
 import 'package:PiliPlus/common/widgets/select_mask.dart';
@@ -14,7 +13,7 @@ import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
-import 'package:flutter/material.dart' hide LayoutBuilder;
+import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -39,6 +38,10 @@ class HistoryItem extends StatelessWidget {
     String bvid = item.history.bvid ?? IdUtils.av2bv(aid);
     final business = item.history.business;
     final enableMultiSelect = ctr.enableMultiSelect.value;
+    final resumeProgress = switch (item.progress) {
+      final int progress when progress > 0 => progress * 1000,
+      _ => null,
+    };
 
     final onLongPress = enableMultiSelect
         ? null
@@ -69,13 +72,17 @@ class HistoryItem extends StatelessWidget {
                     SmartDialog.showToast('直播未开播');
                   }
                 } else if (business == 'pgc') {
-                  PageUtils.viewPgc(epId: item.history.epid);
+                  PageUtils.viewPgc(
+                    epId: item.history.epid,
+                    progress: resumeProgress,
+                  );
                 } else if (business == 'cheese') {
                   if (item.uri?.isNotEmpty == true) {
                     PageUtils.viewPgcFromUri(
                       item.uri!,
                       isPgc: false,
                       aid: item.history.oid,
+                      progress: resumeProgress,
                     );
                   }
                 } else {
@@ -93,6 +100,7 @@ class HistoryItem extends StatelessWidget {
                       cid: cid,
                       cover: item.cover,
                       title: item.title,
+                      progress: resumeProgress,
                     );
                   }
                 }
@@ -104,14 +112,14 @@ class HistoryItem extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: Style.safeSpace,
+                horizontal: StyleString.safeSpace,
                 vertical: 5,
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AspectRatio(
-                    aspectRatio: Style.aspectRatio,
+                    aspectRatio: StyleString.aspectRatio,
                     child: LayoutBuilder(
                       builder: (context, boxConstraints) {
                         double maxWidth = boxConstraints.maxWidth;
