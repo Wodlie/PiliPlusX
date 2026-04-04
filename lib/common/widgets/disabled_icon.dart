@@ -3,18 +3,16 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-class DisabledIcon<T extends Widget> extends SingleChildRenderObjectWidget {
+class DisabledIcon extends SingleChildRenderObjectWidget {
   const DisabledIcon({
     super.key,
-    required T child,
+    required Widget super.child,
     this.disable = false,
     this.color,
     this.iconSize,
-    double? lineLengthScale,
-    StrokeCap? strokeCap,
-  }) : lineLengthScale = lineLengthScale ?? 0.9,
-       strokeCap = strokeCap ?? StrokeCap.butt,
-       super(child: child);
+    this.lineLengthScale = 0.9,
+    this.strokeCap = .butt,
+  });
 
   final bool disable;
   final Color? color;
@@ -22,20 +20,16 @@ class DisabledIcon<T extends Widget> extends SingleChildRenderObjectWidget {
   final StrokeCap strokeCap;
   final double lineLengthScale;
 
+  Icon? get _icon => child is Icon ? child as Icon : null;
+
   @override
   RenderObject createRenderObject(BuildContext context) {
     late final iconTheme = IconTheme.of(context);
+    final icon = _icon;
     return RenderMaskedIcon(
       disable: disable,
-      iconSize:
-          iconSize ??
-          (child is Icon ? (child as Icon).size : null) ??
-          iconTheme.size ??
-          24.0,
-      color:
-          color ??
-          (child is Icon ? (child as Icon).color : null) ??
-          iconTheme.color!,
+      iconSize: iconSize ?? icon?.size ?? iconTheme.size ?? 24.0,
+      color: color ?? icon?.color ?? iconTheme.color!,
       strokeCap: strokeCap,
       lineLengthScale: lineLengthScale,
     );
@@ -44,17 +38,11 @@ class DisabledIcon<T extends Widget> extends SingleChildRenderObjectWidget {
   @override
   void updateRenderObject(BuildContext context, RenderMaskedIcon renderObject) {
     late final iconTheme = IconTheme.of(context);
+    final icon = _icon;
     renderObject
       ..disable = disable
-      ..iconSize =
-          iconSize ??
-          (child is Icon ? (child as Icon?)?.size : null) ??
-          iconTheme.size ??
-          24.0
-      ..color =
-          color ??
-          (child is Icon ? (child as Icon?)?.color : null) ??
-          iconTheme.color!
+      ..iconSize = iconSize ?? icon?.size ?? iconTheme.size ?? 24.0
+      ..color = color ?? icon?.color ?? iconTheme.color!
       ..strokeCap = strokeCap
       ..lineLengthScale = lineLengthScale;
   }
@@ -121,6 +109,7 @@ class RenderMaskedIcon extends RenderProxyBox {
 
     final canvas = context.canvas;
 
+    var rectOffset = offset;
     Size size = this.size;
     final exceedWidth = size.width > _iconSize;
     final exceedHeight = size.height > _iconSize;
@@ -128,14 +117,14 @@ class RenderMaskedIcon extends RenderProxyBox {
       final dx = exceedWidth ? (size.width - _iconSize) / 2.0 : 0.0;
       final dy = exceedHeight ? (size.height - _iconSize) / 2.0 : 0.0;
       size = Size.square(_iconSize);
-      offset = Offset(dx, dy);
+      rectOffset += Offset(dx, dy);
     } else if (size.width < _iconSize && size.height < _iconSize) {
       size = Size.square(_iconSize);
     }
 
     final strokeWidth = size.width / 12;
 
-    var rect = offset & size;
+    var rect = rectOffset & size;
 
     final sqrt2Width = strokeWidth * sqrt2; // rotate pi / 4
 
@@ -155,7 +144,7 @@ class RenderMaskedIcon extends RenderProxyBox {
     canvas
       ..save()
       ..clipPath(path, doAntiAlias: false);
-    super.paint(context, .zero);
+    super.paint(context, offset);
 
     canvas.restore();
 
@@ -174,7 +163,4 @@ class RenderMaskedIcon extends RenderProxyBox {
       linePaint,
     );
   }
-
-  @override
-  bool get isRepaintBoundary => true;
 }

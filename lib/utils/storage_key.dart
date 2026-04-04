@@ -105,7 +105,8 @@ abstract final class SettingBoxKey {
       preInitPlayer = 'preInitPlayer',
       mainTabBarView = 'mainTabBarView',
       searchSuggestion = 'searchSuggestion',
-      showDynDecorate = 'showDynDecorate',
+      showDecorate = 'showDynDecorate',
+      showMedal = 'showMedal',
       enableLivePhoto = 'enableLivePhoto',
       showSeekPreview = 'showSeekPreview',
       showDmChart = 'showDmChart',
@@ -235,8 +236,7 @@ abstract final class SettingBoxKey {
       useSystemFont = 'useSystemFont',
       hideTopBar = 'hideSearchBar',
       hideBottomBar = 'hideTabBar',
-      scrollThreshold = 'scrollThreshold',
-      enableScrollThreshold = 'enableScrollThreshold',
+      barHideType = 'barHideType',
       tabBarSort = 'tabBarSort',
       dynamicBadgeMode = 'dynamicBadgeMode',
       msgBadgeMode = 'msgBadgeMode',
@@ -244,7 +244,8 @@ abstract final class SettingBoxKey {
       navBarSort = 'navBarSort',
       tempPlayerConf = 'tempPlayerConf',
       reduceLuxColor = 'reduceLuxColor',
-      liveCdnUrl = 'liveCdnUrl';
+      liveCdnUrl = 'liveCdnUrl',
+      saveReply = 'saveReply';
 }
 
 abstract final class LocalCacheKey {

@@ -151,5 +151,5 @@ pili_release.json
 
 dist
 
-test.dart
+test*.dart
 AGENTS.md

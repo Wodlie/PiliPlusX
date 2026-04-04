@@ -17,18 +17,17 @@
 
 import 'dart:math' as math;
 
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/widgets/gesture/horizontal_drag_gesture_recognizer.dart'
+    show touchSlopH;
 import 'package:PiliPlus/common/widgets/gesture/image_horizontal_drag_gesture_recognizer.dart';
-import 'package:PiliPlus/common/widgets/gesture/image_tap_gesture_recognizer.dart';
+import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart' show FrictionSimulation;
+import 'package:flutter/scheduler.dart' show SchedulerBinding;
 import 'package:flutter/services.dart' show HardwareKeyboard;
-import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_navigation/src/extension_navigation.dart'
-    show GetNavigation;
 
 ///
 /// created by dom on 2026/02/14
@@ -39,13 +38,13 @@ class Viewer extends StatefulWidget {
     super.key,
     required this.minScale,
     required this.maxScale,
+    this.isLongPic = false,
     required this.containerSize,
     required this.childSize,
-    required this.isAnimating,
     required this.onDragStart,
     required this.onDragUpdate,
     required this.onDragEnd,
-    required this.tapGestureRecognizer,
+    required this.doubleTapGestureRecognizer,
     required this.horizontalDragGestureRecognizer,
     required this.onChangePage,
     required this.child,
@@ -53,17 +52,17 @@ class Viewer extends StatefulWidget {
 
   final double minScale;
   final double maxScale;
+  final bool isLongPic;
   final Size containerSize;
   final Size childSize;
   final Widget child;
 
-  final ValueGetter<bool> isAnimating;
   final ValueChanged<ScaleStartDetails>? onDragStart;
   final ValueChanged<ScaleUpdateDetails>? onDragUpdate;
   final ValueChanged<ScaleEndDetails>? onDragEnd;
   final ValueChanged<int>? onChangePage;
 
-  final ImageTapGestureRecognizer tapGestureRecognizer;
+  final DoubleTapGestureRecognizer doubleTapGestureRecognizer;
   final ImageHorizontalDragGestureRecognizer horizontalDragGestureRecognizer;
 
   @override
@@ -71,43 +70,54 @@ class Viewer extends StatefulWidget {
 }
 
 class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
-  static const double _interactionEndFrictionCoefficient = 0.0001; // 0.0000135
   static const double _scaleFactor = kDefaultMouseScrollToScaleFactor;
 
   _GestureType? _gestureType;
 
-  late double _scale;
+  final Matrix4 _matrix = Matrix4.identity();
+
+  late double __scale;
+  double get _scale => __scale;
+  set _scale(double value) {
+    __scale = value;
+    _matrix[0] = _matrix[5] = _matrix[10] = value;
+  }
+
+  late Offset __position;
+  Offset get _position => __position;
+  set _position(Offset value) {
+    __position = value;
+    _matrix
+      ..[12] = value.dx
+      ..[13] = value.dy;
+  }
+
+  Offset? _scalePos;
   double? _scaleStart;
-  late Offset _position;
   Offset? _referenceFocalPoint;
 
   late Size _imageSize;
 
-  late final ImageTapGestureRecognizer _tapGestureRecognizer;
+  late final DoubleTapGestureRecognizer _doubleTapGestureRecognizer;
   late final ImageHorizontalDragGestureRecognizer
   _horizontalDragGestureRecognizer;
   late final ScaleGestureRecognizer _scaleGestureRecognizer;
-  late final DoubleTapGestureRecognizer _doubleTapGestureRecognizer;
 
   Offset? _downPos;
-  AnimationController? _animationController;
-  AnimationController get _effectiveAnimationController =>
-      _animationController ??= AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 300),
-      )..addListener(_listener);
-  late final _tween = Matrix4Tween();
-  late final _animatable = _tween.chain(CurveTween(curve: Curves.easeOut));
+  late final AnimationController _animationController;
+
+  late double _scaleFrom, _scaleTo;
+  late Offset _positionFrom, _positionTo;
 
   void _listener() {
-    final storage = _animatable.evaluate(_effectiveAnimationController);
-    _scale = storage[0];
-    _position = Offset(storage[12], storage[13]);
+    final t = Curves.easeOut.transform(_animationController.value);
+    _scale = t.lerp(_scaleFrom, _scaleTo);
+    _position = Offset.lerp(_positionFrom, _positionTo, t)!;
     setState(() {});
   }
 
   void _reset() {
-    _scale = 1.0;
+    _scale = widget.minScale;
     _position = .zero;
   }
 
@@ -118,21 +128,15 @@ class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
       widget.childSize,
       widget.containerSize,
     ).destination;
-    // if (_imageSize.height / _imageSize.width > StyleString.imgMaxRatio) {
-    //   _imageSize = applyBoxFit(
-    //     .fitWidth,
-    //     widget.childSize,
-    //     widget.containerSize,
-    //   ).destination;
-    // final containerWidth = widget.containerSize.width;
-    // final containerHeight = widget.containerSize.height;
-    // _scale = containerWidth / _imageSize.width;
-    // final imageHeight = _imageSize.height * _scale;
-    // _position = Offset(
-    //   (1 - _scale) * containerWidth / 2,
-    //   (imageHeight - _scale * containerHeight) / 2,
-    // );
-    // }
+    if (widget.isLongPic) {
+      final containerWidth = widget.containerSize.width;
+      final containerHeight = widget.containerSize.height;
+      final imageHeight = _imageSize.height * _scale;
+      _position = Offset(
+        (1 - _scale) * containerWidth / 2,
+        (imageHeight - _scale * containerHeight) / 2,
+      );
+    }
   }
 
   @override
@@ -140,20 +144,20 @@ class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
     super.initState();
     _initSize();
 
-    _tapGestureRecognizer = widget.tapGestureRecognizer;
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    )..addListener(_listener);
+
+    _doubleTapGestureRecognizer = widget.doubleTapGestureRecognizer;
     _horizontalDragGestureRecognizer = widget.horizontalDragGestureRecognizer;
 
-    final gestureSettings = MediaQuery.maybeGestureSettingsOf(Get.context!);
     _scaleGestureRecognizer = ScaleGestureRecognizer(debugOwner: this)
       ..dragStartBehavior = .start
       ..onStart = _onScaleStart
       ..onUpdate = _onScaleUpdate
       ..onEnd = _onScaleEnd
-      ..gestureSettings = gestureSettings;
-    _doubleTapGestureRecognizer = DoubleTapGestureRecognizer(debugOwner: this)
-      ..onDoubleTapDown = _onDoubleTapDown
-      ..onDoubleTap = _onDoubleTap
-      ..gestureSettings = gestureSettings;
+      ..gestureSettings = DeviceGestureSettings(touchSlop: touchSlopH);
   }
 
   @override
@@ -167,12 +171,11 @@ class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
+    _stopFling();
     _animationController
-      ?..removeListener(_listener)
+      ..removeListener(_listener)
       ..dispose();
-    _animationController = null;
     _scaleGestureRecognizer.dispose();
-    _doubleTapGestureRecognizer.dispose();
     super.dispose();
   }
 
@@ -182,24 +185,29 @@ class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
 
   Offset _clampPosition(Offset offset, double scale) {
     final containerSize = widget.containerSize;
-    final containerWidth = containerSize.width;
-    final containerHeight = containerSize.height;
     final imageWidth = _imageSize.width * scale;
     final imageHeight = _imageSize.height * scale;
 
-    final dx = (1 - scale) * containerWidth / 2;
-    final dxOffset = (imageWidth - containerWidth) / 2;
+    final center = containerSize * (1 - scale) / 2;
 
-    final dy = (1 - scale) * containerHeight / 2;
-    final dyOffset = (imageHeight - containerHeight) / 2;
+    final dxOffset = (imageWidth - containerSize.width) / 2;
+    final dyOffset = (imageHeight - containerSize.height) / 2;
 
     return Offset(
-      imageWidth > containerWidth
-          ? clampDouble(offset.dx, dx - dxOffset, dx + dxOffset)
-          : dx,
-      imageHeight > containerHeight
-          ? clampDouble(offset.dy, dy - dyOffset, dy + dyOffset)
-          : dy,
+      imageWidth > containerSize.width
+          ? clampDouble(
+              offset.dx,
+              center.width - dxOffset,
+              center.width + dxOffset,
+            )
+          : center.width,
+      imageHeight > containerSize.height
+          ? clampDouble(
+              offset.dy,
+              center.height - dyOffset,
+              center.height + dyOffset,
+            )
+          : center.height,
     );
   }
 
@@ -215,6 +223,8 @@ class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
   }
 
   void _onDoubleTap() {
+    if (!mounted) return;
+    if (_animationController.isAnimating) return;
     EasyThrottle.throttle(
       'VIEWER_TAP',
       const Duration(milliseconds: 555),
@@ -223,44 +233,71 @@ class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
   }
 
   void _handleDoubleTap() {
-    final Matrix4 begin;
-    final Matrix4 end;
-    if (_scale == 1.0) {
-      final imageWidth = _imageSize.width;
-      final imageHeight = _imageSize.height;
-      final isLongPic = imageHeight / imageWidth >= StyleString.imgMaxRatio;
-      double scale = widget.maxScale * 0.6;
-      if (isLongPic) {
-        scale = widget.containerSize.width / _imageSize.width;
-      } else {
-        scale = widget.maxScale * 0.6;
+    if (!mounted) return;
+    if (_animationController.isAnimating) return;
+    _stopFling();
+    _scaleFrom = _scale;
+    _positionFrom = _position;
+
+    double endScale;
+    if (_scale == widget.minScale) {
+      endScale = widget.maxScale * 0.6;
+      if (endScale <= widget.minScale) {
+        endScale = widget.maxScale;
       }
-      if (scale <= widget.minScale) {
-        scale = widget.maxScale;
-      }
-      begin = Matrix4.identity();
-      final position = _clampPosition(_downPos! * (1 - scale), scale);
-      end = Matrix4.identity()
-        ..translateByDouble(position.dx, position.dy, 0.0, 1.0)
-        ..scaleByDouble(scale, scale, scale, 1.0);
     } else {
-      begin = Matrix4.identity()
-        ..translateByDouble(_position.dx, _position.dy, 0.0, 1.0)
-        ..scaleByDouble(_scale, _scale, _scale, 1.0);
-      end = Matrix4.identity();
+      endScale = widget.minScale;
     }
-    _tween
-      ..begin = begin
-      ..end = end;
-    _effectiveAnimationController
+    final position = _clampPosition(
+      Offset.lerp(_downPos!, _position, endScale / _scale)!,
+      endScale,
+    );
+
+    _scaleTo = endScale;
+    _positionTo = position;
+
+    _animationController
       ..duration = const Duration(milliseconds: 300)
       ..forward(from: 0);
   }
 
+  static bool _calc(Offset initialPosition, Offset lastPosition) {
+    final offset = lastPosition - initialPosition;
+    return offset.dy.abs() > offset.dx.abs();
+  }
+
   void _onScaleStart(ScaleStartDetails details) {
-    if (widget.isAnimating() || (details.pointerCount < 2 && _scale == 1.0)) {
-      widget.onDragStart?.call(details);
-      return;
+    _stopFling();
+
+    if (_animationController.isAnimating) {
+      _animationController.stop();
+    }
+
+    if (details.pointerCount == 1) {
+      if (widget.isLongPic) {
+        final imageHeight = _scale * _imageSize.height;
+        final containerHeight = widget.containerSize.height;
+        if (_scalePos != null && _calc(_scalePos!, details.focalPoint)) {
+          final bool drag;
+          if (details.focalPoint.dy > _scalePos!.dy) {
+            drag = _position.dy.equals(
+              (imageHeight - _scale * containerHeight) / 2,
+              1e-6,
+            );
+          } else {
+            drag = _position.dy.equals(containerHeight - imageHeight, 1e-6);
+          }
+          if (drag) {
+            _gestureType = .drag;
+            widget.onDragStart?.call(details);
+            return;
+          }
+        }
+      } else if (_scale == widget.minScale) {
+        _gestureType = .drag;
+        widget.onDragStart?.call(details);
+        return;
+      }
     }
 
     _scaleStart = _scale;
@@ -268,7 +305,7 @@ class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
   }
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
-    if (widget.isAnimating() || (details.pointerCount < 2 && _scale == 1.0)) {
+    if (_gestureType == .drag) {
       widget.onDragUpdate?.call(details);
       return;
     }
@@ -296,88 +333,149 @@ class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
     }
   }
 
-  /// ref [InteractiveViewer]
-  void _onScaleEnd(ScaleEndDetails details) {
-    if (widget.isAnimating() || (details.pointerCount < 2 && _scale == 1.0)) {
-      widget.onDragEnd?.call(details);
+  /// ref https://github.com/ahnaineh/custom_interactive_viewer
+  int? _flingFrameCallbackId;
+  Simulation? _flingSimulation;
+  Duration? _flingStartTime;
+  double _lastFlingElapsedSeconds = 0.0;
+  Offset _flingDirection = Offset.zero;
+
+  /// Calculate appropriate friction based on velocity magnitude
+  double _calculateDynamicFriction(double velocityMagnitude) {
+    // Use higher friction for faster flicks
+    // These values can be tuned for the feel you want
+    if (velocityMagnitude > 5000) {
+      return 0.03; // Higher friction for very fast flicks
+    } else if (velocityMagnitude > 3000) {
+      return 0.02; // Medium friction for moderate flicks
+    } else {
+      return 0.01; // Lower friction for gentle movements
+    }
+  }
+
+  void _startFling(Velocity velocity) {
+    _stopFling();
+
+    final double velocityMagnitude = velocity.pixelsPerSecond.distance;
+    final double frictionCoefficient = _calculateDynamicFriction(
+      velocityMagnitude,
+    );
+
+    _flingSimulation = FrictionSimulation(
+      frictionCoefficient,
+      0.0,
+      velocityMagnitude,
+    );
+
+    _flingDirection = velocityMagnitude > 0
+        ? velocity.pixelsPerSecond / velocityMagnitude
+        : Offset.zero;
+
+    _flingStartTime = null;
+    _lastFlingElapsedSeconds = 0.0;
+    _scheduleFlingFrame();
+  }
+
+  void _scheduleFlingFrame() {
+    _flingFrameCallbackId = SchedulerBinding.instance.scheduleFrameCallback(
+      _handleFlingFrame,
+    );
+  }
+
+  void _handleFlingFrame(Duration timeStamp) {
+    if (_flingSimulation == null) return;
+
+    _flingStartTime ??= timeStamp;
+    final double elapsedSeconds =
+        (timeStamp - _flingStartTime!).inMicroseconds / 1e6;
+
+    final double distance = _flingSimulation!.x(elapsedSeconds);
+    final double prevDistance = _flingSimulation!.x(_lastFlingElapsedSeconds);
+    final double delta = distance - prevDistance;
+    _lastFlingElapsedSeconds = elapsedSeconds;
+
+    if ((prevDistance != 0.0 && delta.abs() < 0.1) ||
+        _flingSimulation!.isDone(elapsedSeconds)) {
+      _stopFling();
       return;
     }
 
+    final Offset movement = _flingDirection * delta;
+    _position = _clampPosition(_position + movement, _scale);
+    setState(() {});
+
+    if (_flingSimulation!.isDone(elapsedSeconds)) {
+      _stopFling();
+    } else {
+      _scheduleFlingFrame();
+    }
+  }
+
+  void _stopFling() {
+    if (_flingFrameCallbackId != null) {
+      SchedulerBinding.instance.cancelFrameCallbackWithId(
+        _flingFrameCallbackId!,
+      );
+      _flingFrameCallbackId = null;
+    }
+    _flingStartTime = null;
+    _lastFlingElapsedSeconds = 0.0;
+    _flingSimulation = null;
+  }
+
+  /// ref [InteractiveViewer]
+  void _onScaleEnd(ScaleEndDetails details) {
     switch (_gestureType) {
       case _GestureType.pan:
-        if (details.velocity.pixelsPerSecond.distance < kMinFlingVelocity) {
-          return;
+        final double velocityMagnitude =
+            details.velocity.pixelsPerSecond.distance;
+        if (velocityMagnitude >= 200.0) {
+          _startFling(details.velocity);
         }
-        final FrictionSimulation frictionSimulationX = FrictionSimulation(
-          _interactionEndFrictionCoefficient,
-          _position.dx,
-          details.velocity.pixelsPerSecond.dx,
-        );
-        final FrictionSimulation frictionSimulationY = FrictionSimulation(
-          _interactionEndFrictionCoefficient,
-          _position.dy,
-          details.velocity.pixelsPerSecond.dy,
-        );
-        final double tFinal = _getFinalTime(
-          details.velocity.pixelsPerSecond.distance,
-          _interactionEndFrictionCoefficient,
-        );
-        final position = _clampPosition(
-          Offset(frictionSimulationX.finalX, frictionSimulationY.finalX),
-          _scale,
-        );
-        _tween
-          ..begin = (Matrix4.identity()
-            ..translateByDouble(_position.dx, _position.dy, 0.0, 1.0)
-            ..scaleByDouble(_scale, _scale, _scale, 1.0))
-          ..end = (Matrix4.identity()
-            ..translateByDouble(position.dx, position.dy, 0.0, 1.0)
-            ..scaleByDouble(_scale, _scale, _scale, 1.0));
-        _effectiveAnimationController
-          ..duration = Duration(milliseconds: (tFinal * 1000).round())
-          ..forward(from: 0);
+
       case _GestureType.scale:
-      // if (details.scaleVelocity.abs() < 0.1) {
-      //   return;
-      // }
-      // final double scale = _scale;
-      // final FrictionSimulation frictionSimulation = FrictionSimulation(
-      //   _interactionEndFrictionCoefficient * _scaleFactor,
-      //   scale,
-      //   details.scaleVelocity / 10,
-      // );
-      // final double tFinal = _getFinalTime(
-      //   details.scaleVelocity.abs(),
-      //   _interactionEndFrictionCoefficient,
-      //   effectivelyMotionless: 0.1,
-      // );
-      // _scaleAnimation = _scaleController.drive(
-      //   Tween<double>(
-      //     begin: scale,
-      //     end: frictionSimulation.x(tFinal),
-      //   ).chain(CurveTween(curve: Curves.decelerate)),
-      // )..addListener(_handleScaleAnimation);
-      // _effectiveAnimationController
-      //   ..duration = Duration(milliseconds: (tFinal * 1000).round())
-      //   ..forward(from: 0);
+        // if (details.scaleVelocity.abs() < 0.1) {
+        //   return;
+        // }
+        // final double scale = _scale;
+        // final FrictionSimulation frictionSimulation = FrictionSimulation(
+        //   _interactionEndFrictionCoefficient * _scaleFactor,
+        //   scale,
+        //   details.scaleVelocity / 10,
+        // );
+        // final double tFinal = _getFinalTime(
+        //   details.scaleVelocity.abs(),
+        //   _interactionEndFrictionCoefficient,
+        //   effectivelyMotionless: 0.1,
+        // );
+        // _scaleAnimation = _scaleController.drive(
+        //   Tween<double>(
+        //     begin: scale,
+        //     end: frictionSimulation.x(tFinal),
+        //   ).chain(CurveTween(curve: Curves.decelerate)),
+        // )..addListener(_handleScaleAnimation);
+        // _animationController
+        //   ..duration = Duration(milliseconds: (tFinal * 1000).round())
+        //   ..forward(from: 0);
+        break;
+      case _GestureType.drag:
+        widget.onDragEnd?.call(details);
       case null:
     }
+    _scalePos = null;
     _gestureType = null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final matrix = Matrix4.identity()
-      ..translateByDouble(_position.dx, _position.dy, 0.0, 1.0)
-      ..scaleByDouble(_scale, _scale, _scale, 1.0);
     return Listener(
       behavior: .opaque,
       onPointerDown: _onPointerDown,
       onPointerPanZoomStart: _onPointerPanZoomStart,
       onPointerSignal: _onPointerSignal,
-      child: ClipRRect(
+      child: ClipRect(
         child: Transform(
-          transform: matrix,
+          transform: _matrix,
           child: widget.child,
         ),
       ),
@@ -385,11 +483,14 @@ class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
   }
 
   void _onPointerDown(PointerDownEvent event) {
-    _tapGestureRecognizer.addPointer(event);
-    _doubleTapGestureRecognizer.addPointer(event);
-    _horizontalDragGestureRecognizer
-      ..isBoundaryAllowed = _isBoundaryAllowed
-      ..addPointer(event);
+    _scalePos = event.position;
+    _doubleTapGestureRecognizer
+      ..onDoubleTapDown = _onDoubleTapDown
+      ..onDoubleTap = _onDoubleTap;
+    _horizontalDragGestureRecognizer.addPointer(
+      event,
+      isPointerAllowed: _isAtEdge(event.localPosition),
+    );
     _scaleGestureRecognizer.addPointer(event);
   }
 
@@ -397,25 +498,28 @@ class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
     _scaleGestureRecognizer.addPointerPanZoom(event);
   }
 
-  bool _isBoundaryAllowed(Offset? initialPosition, OffsetPair lastPosition) {
-    if (initialPosition == null) {
-      return true;
-    }
-    if (_scale <= 1.0) {
+  bool _isAtEdge(Offset position) {
+    if (_scale <= widget.minScale) {
+      _horizontalDragGestureRecognizer.setAtBothEdges();
       return true;
     }
     final containerWidth = widget.containerSize.width;
     final imageWidth = _imageSize.width * _scale;
     if (imageWidth <= containerWidth) {
+      _horizontalDragGestureRecognizer.setAtBothEdges();
       return true;
     }
     final dx = (1 - _scale) * containerWidth / 2;
     final dxOffset = (imageWidth - containerWidth) / 2;
-    if (initialPosition.dx < lastPosition.global.dx) {
-      return _position.dx == dx + dxOffset;
-    } else {
-      return _position.dx == dx - dxOffset;
+    if (_position.dx.equals(dx + dxOffset, 1e-6)) {
+      _horizontalDragGestureRecognizer.isAtLeftEdge = true;
+      return true;
     }
+    if (_position.dx.equals(dx - dxOffset, 1e-6)) {
+      _horizontalDragGestureRecognizer.isAtRightEdge = true;
+      return true;
+    }
+    return false;
   }
 
   void _onPointerSignal(PointerSignalEvent event) {
@@ -425,6 +529,7 @@ class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
         widget.onChangePage!.call(event.scrollDelta.dy < 0 ? -1 : 1);
         return;
       }
+      _stopFling();
       final double scaleChange = math.exp(-event.scrollDelta.dy / _scaleFactor);
       final Offset local = event.localPosition;
       final Offset focalPointScene = _toScene(local);
@@ -440,12 +545,4 @@ class _ViewerState extends State<Viewer> with SingleTickerProviderStateMixin {
   }
 }
 
-enum _GestureType { pan, scale }
-
-double _getFinalTime(
-  double velocity,
-  double drag, {
-  double effectivelyMotionless = 10,
-}) {
-  return math.log(effectivelyMotionless / velocity) / math.log(drag / 100);
-}
+enum _GestureType { pan, scale, drag }

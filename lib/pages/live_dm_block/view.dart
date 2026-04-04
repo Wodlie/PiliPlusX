@@ -1,8 +1,9 @@
-import 'package:PiliPlus/common/widgets/custom_sliver_persistent_header_delegate.dart';
 import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
+import 'package:PiliPlus/common/widgets/flutter/layout_builder.dart';
 import 'package:PiliPlus/common/widgets/keep_alive_wrapper.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/loading_widget.dart';
 import 'package:PiliPlus/common/widgets/scroll_physics.dart';
+import 'package:PiliPlus/common/widgets/sliver/sliver_pinned_header.dart';
 import 'package:PiliPlus/models/common/live/live_dm_silent_type.dart';
 import 'package:PiliPlus/models_new/live/live_dm_block/shield_user_list.dart';
 import 'package:PiliPlus/pages/live_dm_block/controller.dart';
@@ -10,8 +11,8 @@ import 'package:PiliPlus/pages/search/widgets/search_text.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart' hide LayoutBuilder;
+import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:get/get.dart';
 
 class LiveDmBlockPage extends StatefulWidget {
@@ -46,12 +47,10 @@ class _LiveDmBlockPageState extends State<LiveDmBlockPage> {
       controller: _controller.tabController,
       children: [
         KeepAliveWrapper(
-          builder: (context) =>
-              Obx(() => _buildKeyword(_controller.keywordList)),
+          child: Obx(() => _buildKeyword(_controller.keywordList)),
         ),
         KeepAliveWrapper(
-          builder: (context) =>
-              Obx(() => _buildKeyword(_controller.shieldUserList)),
+          child: Obx(() => _buildKeyword(_controller.shieldUserList)),
         ),
       ],
     );
@@ -102,13 +101,7 @@ class _LiveDmBlockPageState extends State<LiveDmBlockPage> {
                               ExtendedNestedScrollView.sliverOverlapAbsorberHandleFor(
                                 context,
                               ),
-                          sliver: SliverPersistentHeader(
-                            pinned: true,
-                            delegate: CustomSliverPersistentHeaderDelegate(
-                              extent: 48,
-                              child: tabBar,
-                            ),
-                          ),
+                          sliver: SliverPinnedHeader(child: tabBar),
                         ),
                       ];
                     },
@@ -164,7 +157,7 @@ class _LiveDmBlockPageState extends State<LiveDmBlockPage> {
 
   Widget _buildKeyword(List list) {
     if (list.isEmpty) {
-      return scrollErrorWidget();
+      return scrollableError;
     }
     return SingleChildScrollView(
       padding: EdgeInsets.only(
@@ -183,7 +176,7 @@ class _LiveDmBlockPageState extends State<LiveDmBlockPage> {
               text: item is ShieldUserList ? item.uname! : item as String,
               onTap: (value) => showConfirmDialog(
                 context: context,
-                title: '确定删除该规则？',
+                title: const Text('确定删除该规则？'),
                 onConfirm: () => _controller.onRemove(e.$1, item),
               ),
             );
@@ -355,7 +348,7 @@ class _LiveDmBlockPageState extends State<LiveDmBlockPage> {
     String value = '';
     showConfirmDialog(
       context: context,
-      title: '${isKeyword ? '关键词' : '用户'}屏蔽',
+      title: Text('${isKeyword ? '关键词' : '用户'}屏蔽'),
       content: TextFormField(
         autofocus: true,
         initialValue: value,

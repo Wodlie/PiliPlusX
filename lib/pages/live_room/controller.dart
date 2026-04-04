@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:PiliPlus/common/widgets/dialog/report.dart';
 import 'package:PiliPlus/common/widgets/flutter/text_field/controller.dart';
-import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/live.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/video.dart';
@@ -13,6 +12,7 @@ import 'package:PiliPlus/models/model_owner.dart';
 import 'package:PiliPlus/models_new/live/live_danmaku/danmaku_msg.dart';
 import 'package:PiliPlus/models_new/live/live_danmaku/live_emote.dart';
 import 'package:PiliPlus/models_new/live/live_dm_info/data.dart';
+import 'package:PiliPlus/models_new/live/live_medal_wall/uinfo_medal.dart';
 import 'package:PiliPlus/models_new/live/live_room_info_h5/data.dart';
 import 'package:PiliPlus/models_new/live/live_room_play_info/codec.dart';
 import 'package:PiliPlus/models_new/live/live_superchat/item.dart';
@@ -31,6 +31,7 @@ import 'package:PiliPlus/utils/danmaku_utils.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
+import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -38,8 +39,8 @@ import 'package:PiliPlus/utils/utils.dart';
 import 'package:PiliPlus/utils/video_utils.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:easy_debounce/easy_throttle.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 
@@ -182,12 +183,12 @@ class LiveRoomController extends GetxController {
   void onInit() {
     super.onInit();
     scrollController = ScrollController()..addListener(listener);
-    final account = Accounts.heartbeat;
+    final account = Accounts.main;
     isLogin = account.isLogin;
     mid = account.mid;
-    queryLiveUrl();
+    queryLiveUrl(autoFullScreenFlag: true);
     queryLiveInfoH5();
-    if (isLogin && !Pref.historyPause) {
+    if (Accounts.heartbeat.isLogin && !Pref.historyPause) {
       VideoHttp.roomEntryAction(roomId: roomId);
     }
     if (showSuperChat) {
@@ -195,28 +196,23 @@ class LiveRoomController extends GetxController {
     }
   }
 
-  Future<void>? playerInit({bool autoplay = true}) {
+  Future<void>? playerInit({
+    bool autoplay = true,
+    bool autoFullScreenFlag = false,
+  }) {
     if (videoUrl == null) {
       return null;
     }
     return plPlayerController.setDataSource(
-      DataSource(
-        videoSource: videoUrl,
-        audioSource: null,
-        type: DataSourceType.network,
-        httpHeaders: {
-          'user-agent':
-              'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_3_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15',
-          'referer': HttpString.baseUrl,
-        },
-      ),
+      NetworkSource(videoSource: videoUrl!, audioSource: null),
       isLive: true,
       autoplay: autoplay,
       isVertical: isPortrait.value,
+      autoFullScreenFlag: autoFullScreenFlag,
     );
   }
 
-  Future<void> queryLiveUrl() async {
+  Future<void> queryLiveUrl({bool autoFullScreenFlag = false}) async {
     currentQn ??= await Utils.isWiFi
         ? Pref.liveQuality
         : Pref.liveQualityCellular;
@@ -255,7 +251,7 @@ class LiveRoomController extends GetxController {
       currentQnDesc.value =
           LiveQuality.fromCode(currentQn)?.desc ?? currentQn.toString();
       videoUrl = VideoUtils.getLiveCdnUrl(item);
-      await playerInit();
+      await playerInit(autoFullScreenFlag: autoFullScreenFlag);
       isLoaded.value = true;
     } else {
       _showDialog(res.toString());
@@ -342,6 +338,10 @@ class LiveRoomController extends GetxController {
         messages.addAll(response);
         scrollToBottom();
       }
+    } else {
+      if (kDebugMode) {
+        Utils.reportError(res.toString());
+      }
     }
   }
 
@@ -379,9 +379,9 @@ class LiveRoomController extends GetxController {
 
   void listener() {
     final userScrollDirection = scrollController.position.userScrollDirection;
-    if (userScrollDirection == ScrollDirection.forward) {
+    if (userScrollDirection == .forward) {
       disableAutoScroll.value = true;
-    } else if (userScrollDirection == ScrollDirection.reverse) {
+    } else if (userScrollDirection == .reverse) {
       final pos = scrollController.position;
       if (pos.maxScrollExtent - pos.pixels <= 100) {
         disableAutoScroll.value = false;
@@ -428,7 +428,7 @@ class LiveRoomController extends GetxController {
         LiveMessageStream(
             streamToken: info.token!,
             roomId: roomId,
-            uid: mid,
+            uid: Accounts.heartbeat.mid,
             servers: info.hostList!
                 .map((host) => 'wss://${host.host}:${host.wssPort}/sub')
                 .toList(),
@@ -438,16 +438,18 @@ class LiveRoomController extends GetxController {
   }
 
   void addDm(dynamic msg, [DanmakuContentItem<DanmakuExtra>? item]) {
-    messages.add(msg);
-
     if (plPlayerController.showDanmaku) {
       if (item != null) {
         danmakuController?.addDanmaku(item);
       }
       if (autoScroll && !disableAutoScroll.value) {
+        messages.add(msg);
         scrollToBottom();
+        return;
       }
     }
+
+    messages.addOnly(msg);
   }
 
   @pragma('vm:notify-debugger-on-exception')
@@ -488,7 +490,6 @@ class LiveRoomController extends GetxController {
           addDm(
             DanmakuMsg(
               name: name,
-              uid: uid,
               text: msg,
               emots: (extra['emots'] as Map<String, dynamic>?)?.map(
                 (k, v) => MapEntry(k, BaseEmote.fromJson(v)),
@@ -496,6 +497,9 @@ class LiveRoomController extends GetxController {
               uemote: uemote,
               extra: liveExtra,
               reply: reply,
+              medalInfo: !GlobalData().showMedal || user['medal'] == null
+                  ? null
+                  : UinfoMedal.fromJson(user['medal']),
             ),
             DanmakuContentItem(
               msg,
@@ -519,27 +523,27 @@ class LiveRoomController extends GetxController {
           }
           addDm(item);
           break;
-        case 'SUPER_CHAT_MESSAGE_DELETE' when showSuperChat:
-          if (obj['roomid'] == roomId) {
-            final ids = obj['data']?['ids'] as List?;
-            if (ids != null && ids.isNotEmpty) {
-              if (superChatType == .valid) {
-                superChatMsg.removeWhere((e) => ids.contains(e.id));
-              } else {
-                bool? refresh;
-                for (final id in ids) {
-                  if (superChatMsg.firstWhereOrNull((e) => e.id == id)
-                      case final item?) {
-                    item.deleted = true;
-                    refresh ??= true;
-                  }
-                }
-                if (refresh ?? false) {
-                  superChatMsg.refresh();
-                }
-              }
-            }
-          }
+        // case 'SUPER_CHAT_MESSAGE_DELETE' when showSuperChat:
+        //   if (obj['roomid'] == roomId) {
+        //     final ids = obj['data']?['ids'] as List?;
+        //     if (ids != null && ids.isNotEmpty) {
+        //       if (superChatType == .valid) {
+        //         superChatMsg.removeWhere((e) => ids.contains(e.id));
+        //       } else {
+        //         bool? refresh;
+        //         for (final id in ids) {
+        //           if (superChatMsg.firstWhereOrNull((e) => e.id == id)
+        //               case final item?) {
+        //             item.deleted = true;
+        //             refresh ??= true;
+        //           }
+        //         }
+        //         if (refresh ?? false) {
+        //           superChatMsg.refresh();
+        //         }
+        //       }
+        //     }
+        //   }
         case 'WATCHED_CHANGE':
           watchedShow.value = obj['data']['text_large'];
           break;
@@ -550,7 +554,11 @@ class LiveRoomController extends GetxController {
           title.value = obj['data']['title'];
           break;
       }
-    } catch (_) {}
+    } catch (e, s) {
+      if (kDebugMode) {
+        Utils.reportError(e, s);
+      }
+    }
   }
 
   final RxInt likeClickTime = 0.obs;
@@ -574,7 +582,7 @@ class LiveRoomController extends GetxController {
   }
 
   Future<void> onLike() async {
-    if (!Accounts.main.isLogin) {
+    if (!isLogin) {
       likeClickTime.value = 0;
       return;
     }
@@ -593,7 +601,7 @@ class LiveRoomController extends GetxController {
   }
 
   void onSendDanmaku([bool fromEmote = false]) {
-    if (!Accounts.main.isLogin) {
+    if (!isLogin) {
       SmartDialog.showToast('账号未登录');
       return;
     }
@@ -623,7 +631,7 @@ class LiveRoomController extends GetxController {
   }
 
   void reportSC(SuperChatItem item) {
-    if (!Accounts.main.isLogin) {
+    if (!isLogin) {
       SmartDialog.showToast('账号未登录');
       return;
     }

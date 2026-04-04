@@ -31,7 +31,8 @@ abstract final class ApiType {
       Api.onlineTotal,
       Api.dynamicDetail,
       Api.aiConclusion,
-      Api.getSeasonDetailApi,
+      Api.seasonArchives,
+      Api.seriesArchives,
       Api.liveRoomDmToken,
       Api.liveRoomDmPrefetch,
       Api.superChatMsg,
@@ -94,6 +95,7 @@ abstract final class ApiType {
       Api.pgcUrl,
       Api.pugvUrl,
       Api.tvPlayUrl,
+      Api.videoshot,
     },
     // reply
     AccountType.reply: {

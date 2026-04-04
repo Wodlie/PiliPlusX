@@ -12,9 +12,9 @@ import 'package:PiliPlus/grpc/bilibili/app/listener/v1.pb.dart'
         ListOrder,
         DashItem,
         ResponseUrl;
+import 'package:PiliPlus/http/browser_ua.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/http/ua_type.dart';
 import 'package:PiliPlus/pages/common/common_intro_controller.dart'
     show FavMixin;
 import 'package:PiliPlus/pages/dynamics_repost/view.dart';
@@ -59,8 +59,9 @@ class AudioController extends GetxController
   @override
   late final bool isUgc = itemType == 1;
 
-  final Rx<DetailItem?> audioItem = Rx<DetailItem?>(null);
+  final audioItem = Rxn<DetailItem>();
 
+  bool _hasInit = false;
   @override
   Player? player;
   late int cacheAudioQa;
@@ -71,7 +72,7 @@ class AudioController extends GetxController
 
   late final AnimationController animController;
 
-  Set<StreamSubscription>? _subscriptions;
+  List<StreamSubscription>? _subscriptions;
 
   int? index;
   List<DetailItem>? playlist;
@@ -118,11 +119,7 @@ class AudioController extends GetxController
     final hasAudioUrl = audioUrl != null;
     if (hasAudioUrl) {
       _querySponsorBlock();
-      _onOpenMedia(
-        audioUrl,
-        ua: UaType.pc.ua,
-        referer: HttpString.baseUrl,
-      );
+      _onOpenMedia(audioUrl, ua: BrowserUa.pc, referer: HttpString.baseUrl);
     }
     Utils.isWiFi.then((isWiFi) {
       cacheAudioQa = isWiFi ? Pref.defaultAudioQa : Pref.defaultAudioQaCellular;
@@ -155,7 +152,7 @@ class AudioController extends GetxController
     return player?.play();
   }
 
-  Future<void>? onPause() async {
+  Future<void>? onPause() {
     return player?.pause();
   }
 
@@ -277,29 +274,35 @@ class AudioController extends GetxController
     }
   }
 
-  void _onOpenMedia(
+  Future<void> _onOpenMedia(
     String url, {
-    String? referer,
     String ua = Constants.userAgentApp,
-  }) {
-    _initPlayerIfNeeded();
-    player!.open(
-      Media(
-        url,
-        start: _start,
-        httpHeaders: {
-          'user-agent': ua,
-          'referer': ?referer,
-        },
-      ),
-    );
+    String? referer,
+  }) async {
+    await _initPlayerIfNeeded();
+    player
+      ?..setMediaHeader(
+        userAgent: ua,
+        // mpv cannot clear referer option
+        headers: {'Referer': ?referer},
+      )
+      ..open(Media(url, start: _start));
     _start = null;
   }
 
-  void _initPlayerIfNeeded() {
-    player ??= Player();
-    _subscriptions ??= {
-      player!.stream.position.listen((position) {
+  Future<void> _initPlayerIfNeeded() async {
+    if (_hasInit) return;
+    _hasInit = true;
+    assert(player == null, _subscriptions = null);
+    player = await Player.create();
+    if (isClosed) {
+      player!.dispose();
+      player = null;
+      return;
+    }
+    final stream = player!.stream;
+    _subscriptions = [
+      stream.position.listen((position) {
         if (isDragging) return;
         if (position.inSeconds != this.position.value.inSeconds) {
           this.position.value = position;
@@ -307,11 +310,9 @@ class AudioController extends GetxController
           videoPlayerServiceHandler?.onPositionChange(position);
         }
       }),
-      player!.stream.duration.listen((duration) {
-        this.duration.value = duration;
-      }),
-      player!.stream.playing.listen((playing) {
-        PlayerStatus playerStatus;
+      stream.duration.listen(duration.call),
+      stream.playing.listen((playing) {
+        final PlayerStatus playerStatus;
         if (playing) {
           animController.forward();
           playerStatus = PlayerStatus.playing;
@@ -321,7 +322,7 @@ class AudioController extends GetxController
         }
         videoPlayerServiceHandler?.onStatusChange(playerStatus, false, false);
       }),
-      player!.stream.completed.listen((completed) {
+      stream.completed.listen((completed) {
         _videoDetailController?.playedTime = duration.value;
         videoPlayerServiceHandler?.onStatusChange(
           PlayerStatus.completed,
@@ -339,14 +340,14 @@ class AudioController extends GetxController
                 playNext(nextPart: true);
                 break;
               case PlayRepeat.singleCycle:
-                _replay();
+                onPlay();
                 break;
               case PlayRepeat.listCycle:
                 if (!playNext(nextPart: true)) {
                   if (index != null && index != 0 && playlist != null) {
                     playIndex(0);
                   } else {
-                    _replay();
+                    onPlay();
                   }
                 }
                 break;
@@ -356,11 +357,7 @@ class AudioController extends GetxController
           }
         }
       }),
-    };
-  }
-
-  void _replay() {
-    player?.seek(Duration.zero).whenComplete(player!.play);
+    ];
   }
 
   @override
@@ -778,6 +775,7 @@ class AudioController extends GetxController
       ..onSeek = null
       ..onVideoDetailDispose(hashCode.toString());
     _subscriptions?.forEach((e) => e.cancel());
+    _subscriptions?.clear();
     _subscriptions = null;
     player?.dispose();
     player = null;

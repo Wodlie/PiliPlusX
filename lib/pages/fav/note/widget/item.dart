@@ -1,11 +1,12 @@
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/style.dart';
+import 'package:PiliPlus/common/widgets/flutter/layout_builder.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/select_mask.dart';
 import 'package:PiliPlus/models_new/fav/fav_note/list.dart';
 import 'package:PiliPlus/pages/fav/note/controller.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide LayoutBuilder;
 
 class FavNoteItem extends StatelessWidget {
   const FavNoteItem({
@@ -48,7 +49,7 @@ class FavNoteItem extends StatelessWidget {
         onSecondaryTap: PlatformUtils.isMobile ? null : onLongPress,
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: StyleString.safeSpace,
+            horizontal: Style.safeSpace,
             vertical: 5,
           ),
           child: Row(
@@ -57,7 +58,7 @@ class FavNoteItem extends StatelessWidget {
             children: [
               if (item.pic?.isNotEmpty == true)
                 AspectRatio(
-                  aspectRatio: StyleString.aspectRatio,
+                  aspectRatio: Style.aspectRatio,
                   child: LayoutBuilder(
                     builder: (context, boxConstraints) {
                       return Stack(

@@ -33,6 +33,7 @@ import 'package:PiliPlus/pages/video/introduction/ugc/widgets/action_item.dart';
 import 'package:PiliPlus/pages/video/introduction/ugc/widgets/menu_row.dart';
 import 'package:PiliPlus/pages/video/widgets/header_mixin.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
+import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
 import 'package:PiliPlus/services/service_locator.dart';
@@ -63,7 +64,7 @@ import 'package:flutter/material.dart' hide showBottomSheet;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -466,14 +467,15 @@ class HeaderControlState extends State<HeaderControl>
                     final value = plPlayerController.superResolutionType.value;
                     return (value, value.label);
                   },
-                  itemBuilder: (_) => enumItemBuilder<SuperResolutionType>(
+                  itemBuilder: (_) => enumItemBuilder(
                     SuperResolutionType.values,
                   ),
                   onSelected: (value, setState) {
                     plPlayerController.setShader(value);
                     setState();
                   },
-                  descPosType: .title,
+                  descFontSize: 12,
+                  descPosType: .subtitle,
                 ),
                 if (!isFileSource)
                   ListTile(
@@ -543,7 +545,9 @@ class HeaderControlState extends State<HeaderControl>
                           );
                         },
                       ),
-                      if ((isFileSource && plPlayerController.mediaType != 1) ||
+                      if ((isFileSource &&
+                              !(plPlayerController.dataSource as FileSource)
+                                  .isMp4) ||
                           (!isFileSource &&
                               videoDetailCtr.audioUrl?.isNotEmpty == true))
                         Obx(
@@ -562,15 +566,18 @@ class HeaderControlState extends State<HeaderControl>
                             );
                           },
                         ),
-                      Obx(
-                        () => ActionRowLineItem(
-                          iconData: Icons.play_circle_outline,
-                          onTap: plPlayerController.setContinuePlayInBackground,
-                          text: " 后台播放 ",
-                          selectStatus:
-                              plPlayerController.continuePlayInBackground.value,
+                      if (PlatformUtils.isMobile)
+                        Obx(
+                          () => ActionRowLineItem(
+                            iconData: Icons.play_circle_outline,
+                            onTap:
+                                plPlayerController.setContinuePlayInBackground,
+                            text: " 后台播放 ",
+                            selectStatus: plPlayerController
+                                .continuePlayInBackground
+                                .value,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -616,18 +623,21 @@ class HeaderControlState extends State<HeaderControl>
                     ),
                   ),
                 ],
-                ListTile(
+                PopupListTile(
                   dense: true,
-                  onTap: () {
-                    Get.back();
-                    showSetRepeat();
-                  },
                   leading: const Icon(Icons.repeat, size: 20),
-                  title: const Text('播放顺序', style: titleStyle),
-                  subtitle: Text(
-                    plPlayerController.playRepeat.label,
-                    style: subTitleStyle,
-                  ),
+                  title: const Text('播放顺序'),
+                  value: () {
+                    final value = plPlayerController.playRepeat;
+                    return (value, value.label);
+                  },
+                  itemBuilder: (_) => enumItemBuilder(PlayRepeat.values),
+                  onSelected: (value, setState) {
+                    plPlayerController.setPlayRepeat(value);
+                    setState();
+                  },
+                  descPosType: .subtitle,
+                  descFontSize: 12,
                 ),
                 ListTile(
                   dense: true,
@@ -661,7 +671,7 @@ class HeaderControlState extends State<HeaderControl>
                   onTap: () async {
                     Get.back();
                     try {
-                      final result = await FilePicker.platform.pickFiles();
+                      final result = await FilePicker.pickFiles();
                       if (result != null) {
                         final file = result.files.single;
                         final path = file.path;
@@ -752,19 +762,16 @@ class HeaderControlState extends State<HeaderControl>
     );
   }
 
-  static Future<void> showPlayerInfo(
+  static void showPlayerInfo(
     BuildContext context, {
     required PlPlayerController plPlayerController,
-  }) async {
+  }) {
     final player = plPlayerController.videoPlayerController;
     if (player == null) {
       SmartDialog.showToast('播放器未初始化');
       return;
     }
-    final hwdec = await player.platform!.getProperty(
-      'hwdec-current',
-    );
-    if (!context.mounted) return;
+    final hwdec = player.getProperty('hwdec-current');
     showDialog(
       context: context,
       builder: (context) {
@@ -855,16 +862,6 @@ class HeaderControlState extends State<HeaderControl>
                       title: const Text("rate"),
                       subtitle: Text(state.rate.toString()),
                       onTap: () => Utils.copyText('rate\n${state.rate}'),
-                    ),
-                    ListTile(
-                      dense: true,
-                      title: const Text("AudioBitrate"),
-                      subtitle: Text(
-                        state.audioBitrate.toString(),
-                      ),
-                      onTap: () => Utils.copyText(
-                        'AudioBitrate\n${state.audioBitrate}',
-                      ),
                     ),
                     ListTile(
                       dense: true,
@@ -1679,58 +1676,6 @@ class HeaderControlState extends State<HeaderControl>
                   icon: const Icon(CustomIcons.player_dm_tip_back),
                 ),
             ],
-          ),
-        );
-      },
-    );
-  }
-
-  /// 播放顺序
-  void showSetRepeat() {
-    showBottomSheet(
-      (context, setState) {
-        final theme = Theme.of(context);
-        return Padding(
-          padding: const EdgeInsets.all(12),
-          child: Material(
-            clipBehavior: Clip.hardEdge,
-            color: theme.colorScheme.surface,
-            borderRadius: const BorderRadius.all(Radius.circular(12)),
-            child: CustomScrollView(
-              slivers: [
-                const SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 45,
-                    child: Center(
-                      child: Text('选择播放顺序', style: titleStyle),
-                    ),
-                  ),
-                ),
-                SliverList.builder(
-                  itemCount: PlayRepeat.values.length,
-                  itemBuilder: (context, index) {
-                    final i = PlayRepeat.values[index];
-                    return ListTile(
-                      dense: true,
-                      onTap: () {
-                        Get.back();
-                        plPlayerController.setPlayRepeat(i);
-                      },
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                      ),
-                      title: Text(i.label),
-                      trailing: plPlayerController.playRepeat == i
-                          ? Icon(
-                              Icons.done,
-                              color: theme.colorScheme.primary,
-                            )
-                          : null,
-                    );
-                  },
-                ),
-              ],
-            ),
           ),
         );
       },

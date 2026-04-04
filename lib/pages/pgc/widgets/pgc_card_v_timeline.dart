@@ -1,12 +1,13 @@
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
+import 'package:PiliPlus/common/widgets/flutter/layout_builder.dart';
 import 'package:PiliPlus/common/widgets/image/image_save.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/models/common/badge_type.dart';
 import 'package:PiliPlus/models_new/pgc/pgc_timeline/episode.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide LayoutBuilder;
 
 // 视频卡片 - 垂直布局
 class PgcCardVTimeline extends StatelessWidget {
@@ -24,9 +25,9 @@ class PgcCardVTimeline extends StatelessWidget {
       cover: item.cover,
     );
     return Card(
-      shape: const RoundedRectangleBorder(borderRadius: StyleString.mdRadius),
+      shape: const RoundedRectangleBorder(borderRadius: Style.mdRadius),
       child: InkWell(
-        borderRadius: StyleString.mdRadius,
+        borderRadius: Style.mdRadius,
         onLongPress: onLongPress,
         onSecondaryTap: PlatformUtils.isMobile ? null : onLongPress,
         onTap: () =>

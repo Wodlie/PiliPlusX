@@ -8,6 +8,8 @@ import 'package:PiliPlus/models_new/live/live_second_list/data.dart';
 import 'package:PiliPlus/models_new/live/live_second_list/tag.dart';
 import 'package:PiliPlus/pages/common/common_list_controller.dart';
 import 'package:PiliPlus/services/account_service.dart';
+import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
+import 'package:flutter/widgets.dart' show ScrollController;
 import 'package:get/get.dart';
 
 class LiveController extends CommonListController with AccountMixin {
@@ -31,6 +33,10 @@ class LiveController extends CommonListController with AccountMixin {
 
   final Rx<Pair<LiveCardList?, LiveCardList?>> topState =
       Pair<LiveCardList?, LiveCardList?>(first: null, second: null).obs;
+
+  final followController = ScrollController();
+
+  bool showFirstFrame = false;
 
   @override
   void checkIsEnd(int length) {
@@ -87,9 +93,10 @@ class LiveController extends CommonListController with AccountMixin {
     page = 1;
     isEnd = false;
     if (areaIndex.value != 0) {
-      queryTop();
+      queryTop().whenComplete(followController.jumpToTop);
+      return queryData();
     }
-    return queryData();
+    return queryData().whenComplete(followController.jumpToTop);
   }
 
   Future<void> queryTop() async {
@@ -143,4 +150,10 @@ class LiveController extends CommonListController with AccountMixin {
 
   @override
   void onChangeAccount(bool isLogin) => onReload();
+
+  @override
+  void onClose() {
+    followController.dispose();
+    super.onClose();
+  }
 }

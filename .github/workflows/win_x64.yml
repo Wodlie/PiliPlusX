@@ -26,10 +26,9 @@ jobs:
           channel: stable
           flutter-version-file: pubspec.yaml
 
-      - name: apply modal barrier patch
-        working-directory: ${{ env.FLUTTER_ROOT }}
-        run: git apply $env:GITHUB_WORKSPACE\lib\scripts\modal-barrier-patch.diff || true
+      - name: Apply Patch
         shell: pwsh
+        run: lib/scripts/patch.ps1 windows
         continue-on-error: true
 
       - name: Add fastforge and Inno Setup
@@ -75,13 +74,15 @@ jobs:
             PiliPlusX-Win-Setup/PiliPlusX_windows_*.exe
 
       - name: Upload windows file release
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
-          name: Windows-file-x64-release
+          archive: true
+          name: PiliPlus_windows_${{env.version}}_x64_portable
           path: Release
 
       - name: Upload windows setup release
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
+          archive: false
           name: Windows-setup-x64-release
           path: PiliPlusX-Win-Setup

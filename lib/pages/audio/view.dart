@@ -1,10 +1,12 @@
 import 'dart:math' show min;
 
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/assets.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/button/icon_button.dart';
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/gesture/tap_gesture_recognizer.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
+import 'package:PiliPlus/common/widgets/image_viewer/hero.dart';
 import 'package:PiliPlus/common/widgets/progress_bar/audio_video_progress_bar.dart';
 import 'package:PiliPlus/common/widgets/progress_bar/segment_progress_bar.dart';
 import 'package:PiliPlus/grpc/bilibili/app/listener/v1.pb.dart';
@@ -200,6 +202,186 @@ class _AudioPageState extends State<AudioPage> {
         builder: (context) {
           final theme = Theme.of(context);
           final colorScheme = theme.colorScheme;
+          Widget child = CustomScrollView(
+            controller: scrollController,
+            physics: _controller.reachStart
+                ? null
+                : const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.paddingOf(context).bottom + 100,
+                ),
+                sliver: SliverList.builder(
+                  itemCount: playlist.length,
+                  itemBuilder: (_, index) {
+                    if (index == playlist.length - 1) {
+                      _controller.loadNext(context);
+                    }
+                    final isCurr = index == _controller.index;
+                    final item = playlist[index];
+                    if (item.parts.length > 1) {
+                      final subId = _controller.subId.firstOrNull;
+                      return ExpansionTile(
+                        dense: true,
+                        minTileHeight: 45,
+                        initiallyExpanded: isCurr,
+                        collapsedIconColor: isCurr ? colorScheme.primary : null,
+                        iconColor: isCurr ? null : colorScheme.onSurfaceVariant,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: Text(
+                          item.arc.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: isCurr
+                              ? TextStyle(
+                                  fontSize: 14,
+                                  color: colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                )
+                              : const TextStyle(fontSize: 14),
+                        ),
+                        trailing: isCurr
+                            ? null
+                            : iconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  if (index < _controller.index!) {
+                                    _controller.index -= 1;
+                                  }
+                                  playlist.removeAt(index);
+                                  (context as Element).markNeedsBuild();
+                                },
+                                iconColor: colorScheme.outline,
+                                size: 28,
+                                iconSize: 18,
+                              ),
+                        children: item.parts.map((e) {
+                          final isCurr = e.subId == subId;
+                          return ListTile(
+                            dense: true,
+                            minTileHeight: 45,
+                            contentPadding: const EdgeInsetsDirectional.only(
+                              start: 56.0,
+                              end: 24.0,
+                            ),
+                            onTap: () {
+                              Get.back();
+                              if (!isCurr) {
+                                _controller.playIndex(
+                                  index,
+                                  subId: [e.subId],
+                                );
+                              }
+                            },
+                            title: Text.rich(
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: isCurr
+                                  ? TextStyle(
+                                      fontSize: 14,
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                    )
+                                  : TextStyle(
+                                      fontSize: 14,
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                              TextSpan(
+                                children: [
+                                  if (isCurr) ...[
+                                    WidgetSpan(
+                                      alignment: .bottom,
+                                      child: Image.asset(
+                                        Assets.livingChart,
+                                        width: 16,
+                                        height: 16,
+                                        cacheWidth: 16.cacheSize(
+                                          context,
+                                        ),
+                                        color: colorScheme.primary,
+                                      ),
+                                    ),
+                                    const TextSpan(text: '  '),
+                                  ],
+                                  TextSpan(text: e.title),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    }
+                    return ListTile(
+                      dense: true,
+                      minTileHeight: 45,
+                      onTap: () {
+                        Get.back();
+                        if (!isCurr) {
+                          _controller.playIndex(index);
+                        }
+                      },
+                      title: Text.rich(
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: isCurr
+                            ? TextStyle(
+                                fontSize: 14,
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              )
+                            : const TextStyle(fontSize: 14),
+                        TextSpan(
+                          children: [
+                            if (isCurr) ...[
+                              WidgetSpan(
+                                alignment: .bottom,
+                                child: Image.asset(
+                                  Assets.livingChart,
+                                  width: 16,
+                                  height: 16,
+                                  cacheWidth: 16.cacheSize(
+                                    context,
+                                  ),
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                              const TextSpan(text: '  '),
+                            ],
+                            TextSpan(
+                              text: item.arc.title,
+                            ),
+                          ],
+                        ),
+                      ),
+                      trailing: isCurr
+                          ? null
+                          : iconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                if (index < _controller.index!) {
+                                  _controller.index -= 1;
+                                }
+                                playlist.removeAt(index);
+                                (context as Element).markNeedsBuild();
+                              },
+                              iconColor: colorScheme.outline,
+                              size: 28,
+                              iconSize: 18,
+                            ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+          if (!_controller.reachStart) {
+            child = refreshIndicator(
+              onRefresh: () => _controller.loadPrev(context),
+              isClampingScrollPhysics: true,
+              child: child,
+            );
+          }
           return FractionallySizedBox(
             heightFactor:
                 PlatformUtils.isMobile && !context.mediaQuerySize.isPortrait
@@ -210,7 +392,7 @@ class _AudioPageState extends State<AudioPage> {
               children: [
                 InkWell(
                   onTap: Get.back,
-                  borderRadius: StyleString.bottomSheetRadius,
+                  borderRadius: Style.bottomSheetRadius,
                   child: SizedBox(
                     height: 35,
                     child: Center(
@@ -219,9 +401,7 @@ class _AudioPageState extends State<AudioPage> {
                         height: 3,
                         decoration: BoxDecoration(
                           color: colorScheme.outline,
-                          borderRadius: const BorderRadius.all(
-                            Radius.circular(3),
-                          ),
+                          borderRadius: const .all(.circular(3)),
                         ),
                       ),
                     ),
@@ -231,199 +411,8 @@ class _AudioPageState extends State<AudioPage> {
                   child: Material(
                     type: MaterialType.transparency,
                     child: Theme(
-                      data: theme.copyWith(
-                        dividerColor: Colors.transparent,
-                      ),
-                      child: refreshIndicator(
-                        onRefresh: () => _controller.loadPrev(context),
-                        child: CustomScrollView(
-                          controller: scrollController,
-                          physics: _controller.reachStart
-                              ? const ClampingScrollPhysics()
-                              : const AlwaysScrollableScrollPhysics(
-                                  parent: ClampingScrollPhysics(),
-                                ),
-                          slivers: [
-                            SliverPadding(
-                              padding: EdgeInsets.only(
-                                bottom:
-                                    MediaQuery.paddingOf(context).bottom + 100,
-                              ),
-                              sliver: SliverList.builder(
-                                itemCount: playlist.length,
-                                itemBuilder: (_, index) {
-                                  if (index == playlist.length - 1) {
-                                    _controller.loadNext(context);
-                                  }
-                                  final isCurr = index == _controller.index;
-                                  final item = playlist[index];
-                                  if (item.parts.length > 1) {
-                                    final subId = _controller.subId.firstOrNull;
-                                    return ExpansionTile(
-                                      dense: true,
-                                      minTileHeight: 45,
-                                      initiallyExpanded: isCurr,
-                                      collapsedIconColor: isCurr
-                                          ? colorScheme.primary
-                                          : null,
-                                      iconColor: isCurr
-                                          ? null
-                                          : colorScheme.onSurfaceVariant,
-                                      controlAffinity:
-                                          ListTileControlAffinity.leading,
-                                      title: Text(
-                                        item.arc.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: isCurr
-                                            ? TextStyle(
-                                                fontSize: 14,
-                                                color: colorScheme.primary,
-                                                fontWeight: FontWeight.bold,
-                                              )
-                                            : const TextStyle(fontSize: 14),
-                                      ),
-                                      trailing: isCurr
-                                          ? null
-                                          : iconButton(
-                                              icon: const Icon(Icons.clear),
-                                              onPressed: () {
-                                                if (index <
-                                                    _controller.index!) {
-                                                  _controller.index -= 1;
-                                                }
-                                                playlist.removeAt(index);
-                                                (context as Element)
-                                                    .markNeedsBuild();
-                                              },
-                                              iconColor: colorScheme.outline,
-                                              size: 28,
-                                              iconSize: 18,
-                                            ),
-                                      children: item.parts.map((e) {
-                                        final isCurr = e.subId == subId;
-                                        return ListTile(
-                                          dense: true,
-                                          minTileHeight: 45,
-                                          contentPadding:
-                                              const EdgeInsetsDirectional.only(
-                                                start: 56.0,
-                                                end: 24.0,
-                                              ),
-                                          onTap: () {
-                                            Get.back();
-                                            if (!isCurr) {
-                                              _controller.playIndex(
-                                                index,
-                                                subId: [e.subId],
-                                              );
-                                            }
-                                          },
-                                          title: Text.rich(
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: isCurr
-                                                ? TextStyle(
-                                                    fontSize: 14,
-                                                    color: colorScheme.primary,
-                                                    fontWeight: FontWeight.bold,
-                                                  )
-                                                : TextStyle(
-                                                    fontSize: 14,
-                                                    color: colorScheme
-                                                        .onSurfaceVariant,
-                                                  ),
-                                            TextSpan(
-                                              children: [
-                                                if (isCurr) ...[
-                                                  WidgetSpan(
-                                                    alignment: .bottom,
-                                                    child: Image.asset(
-                                                      'assets/images/live.gif',
-                                                      width: 16,
-                                                      height: 16,
-                                                      cacheWidth: 16.cacheSize(
-                                                        context,
-                                                      ),
-                                                      color:
-                                                          colorScheme.primary,
-                                                    ),
-                                                  ),
-                                                  const TextSpan(text: '  '),
-                                                ],
-                                                TextSpan(text: e.title),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    );
-                                  }
-                                  return ListTile(
-                                    dense: true,
-                                    minTileHeight: 45,
-                                    onTap: () {
-                                      Get.back();
-                                      if (!isCurr) {
-                                        _controller.playIndex(index);
-                                      }
-                                    },
-                                    title: Text.rich(
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: isCurr
-                                          ? TextStyle(
-                                              fontSize: 14,
-                                              color: colorScheme.primary,
-                                              fontWeight: FontWeight.bold,
-                                            )
-                                          : const TextStyle(fontSize: 14),
-                                      TextSpan(
-                                        children: [
-                                          if (isCurr) ...[
-                                            WidgetSpan(
-                                              alignment: .bottom,
-                                              child: Image.asset(
-                                                'assets/images/live.gif',
-                                                width: 16,
-                                                height: 16,
-                                                cacheWidth: 16.cacheSize(
-                                                  context,
-                                                ),
-                                                color: colorScheme.primary,
-                                              ),
-                                            ),
-                                            const TextSpan(text: '  '),
-                                          ],
-                                          TextSpan(
-                                            text: item.arc.title,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    trailing: isCurr
-                                        ? null
-                                        : iconButton(
-                                            icon: const Icon(Icons.clear),
-                                            onPressed: () {
-                                              if (index < _controller.index!) {
-                                                _controller.index -= 1;
-                                              }
-                                              playlist.removeAt(index);
-                                              (context as Element)
-                                                  .markNeedsBuild();
-                                            },
-                                            iconColor: colorScheme.outline,
-                                            size: 28,
-                                            iconSize: 18,
-                                          ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      data: theme.copyWith(dividerColor: Colors.transparent),
+                      child: child,
                     ),
                   ),
                 ),
@@ -472,7 +461,7 @@ class _AudioPageState extends State<AudioPage> {
           children: [
             InkWell(
               onTap: Get.back,
-              borderRadius: StyleString.bottomSheetRadius,
+              borderRadius: Style.bottomSheetRadius,
               child: SizedBox(
                 height: 35,
                 child: Center(
@@ -607,7 +596,7 @@ class _AudioPageState extends State<AudioPage> {
             children: [
               InkWell(
                 onTap: Get.back,
-                borderRadius: StyleString.bottomSheetRadius,
+                borderRadius: Style.bottomSheetRadius,
                 child: SizedBox(
                   height: 35,
                   child: Center(
@@ -756,7 +745,7 @@ class _AudioPageState extends State<AudioPage> {
 
   void _onSeek(Duration value) {
     _controller
-      ..player?.platform?.seek(value)
+      ..player?.seek(value)
       ..isDragging = false;
   }
 
@@ -799,7 +788,7 @@ class _AudioPageState extends State<AudioPage> {
                     segments: _controller.segmentProgressList,
                   );
                 }
-                return const SizedBox();
+                return const SizedBox.shrink();
               },
             ),
           ),
@@ -906,7 +895,7 @@ class _AudioPageState extends State<AudioPage> {
                         onTap: () => PageUtils.imageView(
                           imgList: [SourceModel(url: cover)],
                         ),
-                        child: Hero(
+                        child: fromHero(
                           tag: cover,
                           child: NetworkImgLayer(
                             src: cover,

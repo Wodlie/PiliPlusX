@@ -1,5 +1,5 @@
-import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/skeleton/space_opus.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
 import 'package:PiliPlus/http/loading_state.dart';
@@ -51,8 +51,8 @@ class _MemberShopState extends State<MemberShop>
           SliverPadding(
             padding: EdgeInsets.only(
               top: 12,
-              left: StyleString.safeSpace,
-              right: StyleString.safeSpace,
+              left: Style.safeSpace,
+              right: Style.safeSpace,
               bottom: MediaQuery.viewPaddingOf(context).bottom + 100,
             ),
             sliver: Obx(() => _buildBody(_controller.loadingState.value)),
@@ -65,13 +65,10 @@ class _MemberShopState extends State<MemberShop>
   @override
   bool get wantKeepAlive => true;
 
-  late double _maxWidth;
-
   late final gridDelegate = SliverWaterfallFlowDelegateWithMaxCrossAxisExtent(
     maxCrossAxisExtent: Grid.smallCardWidth,
-    mainAxisSpacing: StyleString.safeSpace,
-    crossAxisSpacing: StyleString.safeSpace,
-    afterCalc: (value) => _maxWidth = value,
+    mainAxisSpacing: Style.safeSpace,
+    crossAxisSpacing: Style.safeSpace,
   );
 
   Widget _buildBody(LoadingState<List<SpaceShopItem>?> loadingState) {
@@ -92,10 +89,7 @@ class _MemberShopState extends State<MemberShop>
           gridDelegate: gridDelegate,
           delegate: SliverChildBuilderDelegate(
             (_, index) {
-              return MemberShopItem(
-                item: response[index],
-                maxWidth: _maxWidth,
-              );
+              return MemberShopItem(item: response[index]);
             },
             childCount: response.length,
           ),

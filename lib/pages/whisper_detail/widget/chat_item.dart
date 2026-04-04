@@ -1,10 +1,13 @@
 import 'dart:convert';
-import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
+import 'package:PiliPlus/common/widgets/flutter/layout_builder.dart';
 import 'package:PiliPlus/common/widgets/gesture/tap_gesture_recognizer.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
+import 'package:PiliPlus/common/widgets/image_viewer/hero.dart';
 import 'package:PiliPlus/grpc/bilibili/im/interfaces/v1.pb.dart'
     show EmotionInfo;
 import 'package:PiliPlus/grpc/bilibili/im/type.pb.dart' show Msg, MsgType;
@@ -20,7 +23,7 @@ import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide LayoutBuilder;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 
@@ -54,10 +57,10 @@ class ChatItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final msgType = item.msgType;
-    final isRevoke = msgType == MsgType.EN_MSG_TYPE_DRAW_BACK.value; // 撤回消息
-    if (isRevoke) {
-      return const SizedBox.shrink();
-    }
+    // final isRevoke = msgType == MsgType.EN_MSG_TYPE_DRAW_BACK.value; // 撤回消息
+    // if (isRevoke) {
+    //   return const SizedBox.shrink();
+    // }
 
     late final ThemeData theme = Theme.of(context);
     late final Color textColor = isOwner
@@ -396,12 +399,17 @@ class ChatItem extends StatelessWidget {
   }
 
   Widget msgTypeVideoCard_11(ThemeData theme, content, Color textColor) {
+    String? attachMsg;
+    try {
+      attachMsg = content['attach_msg']?['content'];
+    } catch (_) {}
+
     return Center(
       child: Container(
         clipBehavior: Clip.hardEdge,
         constraints: const BoxConstraints(maxWidth: 400.0),
         decoration: BoxDecoration(
-          borderRadius: StyleString.mdRadius,
+          borderRadius: Style.mdRadius,
           color: theme.colorScheme.onInverseSurface,
         ),
         child: LayoutBuilder(
@@ -427,7 +435,7 @@ class ChatItem extends StatelessWidget {
                 }
               },
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Stack(
                     clipBehavior: Clip.none,
@@ -435,8 +443,7 @@ class ChatItem extends StatelessWidget {
                       NetworkImgLayer(
                         type: ImageType.emote,
                         width: constrains.maxWidth,
-                        height:
-                            constrains.maxWidth / StyleString.aspectRatio16x9,
+                        height: constrains.maxWidth / Style.aspectRatio16x9,
                         src: content['cover'],
                       ),
                       PBadge(
@@ -464,6 +471,20 @@ class ChatItem extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (attachMsg?.isNotEmpty ?? false)
+                    Container(
+                      margin: const .fromLTRB(12, 0, 12, 8),
+                      padding: const .symmetric(horizontal: 11, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: const .all(.circular(6)),
+                      ),
+                      child: msgTypeText_1(
+                        theme,
+                        content: content['attach_msg'],
+                        textColor: textColor,
+                      ),
+                    ),
                 ],
               ),
             );
@@ -590,16 +611,24 @@ class ChatItem extends StatelessWidget {
 
   Widget msgTypePic_2(Map content) {
     final url = content['url'];
+    final imgWidth = (content['width'] as num).toDouble();
+    final imgHeight = (content['height'] as num).toDouble();
+    final width = math.min(220.0, imgWidth);
+    final ratio = imgHeight / imgWidth;
+    Widget child = NetworkImgLayer(
+      width: width,
+      height: width * ratio,
+      src: url,
+    );
+    if (ratio <= Style.imgMaxRatio) {
+      child = fromHero(
+        tag: url,
+        child: child,
+      );
+    }
     return GestureDetector(
       onTap: () => PageUtils.imageView(imgList: [SourceModel(url: url)]),
-      child: Hero(
-        tag: url,
-        child: NetworkImgLayer(
-          width: 220,
-          height: 220 * content['height'] / content['width'],
-          src: url,
-        ),
-      ),
+      child: child,
     );
   }
 
@@ -750,9 +779,9 @@ class ChatItem extends StatelessWidget {
     final String? url = content['jump_url'];
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxWidth = max(400.0, constraints.maxWidth);
+        final maxWidth = math.max(400.0, constraints.maxWidth);
         Widget child = ClipRRect(
-          borderRadius: StyleString.mdRadius,
+          borderRadius: Style.mdRadius,
           child: CachedNetworkImage(
             width: maxWidth,
             memCacheWidth: maxWidth.cacheSize(context),
