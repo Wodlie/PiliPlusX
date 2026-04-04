@@ -10,6 +10,8 @@ on:
         paths-ignore:
             - "**.md"
     push:
+        branches:
+            - dev
         tags:
             - 'v*'
             - 'release-*'
@@ -53,7 +55,7 @@ on:
 
 jobs:
     android:
-        if: ${{ github.event_name == 'pull_request' || github.event.inputs.build_android == 'true' || github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ github.event_name == 'pull_request' || github.event.inputs.build_android == 'true' || github.event_name == 'push' }}
         name: Release Android
         runs-on: ubuntu-latest
         permissions: write-all
@@ -151,28 +153,28 @@ jobs:
                   path: PiliPlus_android_*_x86_64.apk
 
     ios:
-        if: ${{ github.event_name == 'pull_request' || github.event.inputs.build_ios == 'true' || github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ github.event_name == 'pull_request' || github.event.inputs.build_ios == 'true' || github.event_name == 'push' }}
         uses: ./.github/workflows/ios.yml
         permissions: write-all
         with:
             tag: ${{ github.event_name == 'push' && github.ref_name || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '') }}
 
     mac:
-        if: ${{ github.event_name == 'pull_request' || github.event.inputs.build_mac == 'true' || github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ github.event_name == 'pull_request' || github.event.inputs.build_mac == 'true' || github.event_name == 'push' }}
         uses: ./.github/workflows/mac.yml
         permissions: write-all
         with:
             tag: ${{ github.event_name == 'push' && github.ref_name || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '') }}
 
     win_x64:
-        if: ${{ github.event_name == 'pull_request' || github.event.inputs.build_win_x64 == 'true' || github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ github.event_name == 'pull_request' || github.event.inputs.build_win_x64 == 'true' || github.event_name == 'push' }}
         uses: ./.github/workflows/win_x64.yml
         permissions: write-all
         with:
             tag: ${{ github.event_name == 'push' && github.ref_name || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '') }}
 
     linux_x64:
-        if: ${{ github.event.inputs.build_linux_x64 == 'true' }}
+        if: ${{ github.event.inputs.build_linux_x64 == 'true' || github.event_name == 'push' }}
         uses: ./.github/workflows/linux_x64.yml
         permissions: write-all
         with:
