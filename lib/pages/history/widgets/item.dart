@@ -37,6 +37,10 @@ class HistoryItem extends StatelessWidget {
     int aid = item.history.oid!;
     String bvid = item.history.bvid ?? IdUtils.av2bv(aid);
     final business = item.history.business;
+    final int? resumeProgress = switch (item.progress) {
+      final int progress when progress > 0 => progress * 1000,
+      _ => null,
+    };
     final enableMultiSelect = ctr.enableMultiSelect.value;
 
     final onLongPress = enableMultiSelect
@@ -68,12 +72,16 @@ class HistoryItem extends StatelessWidget {
                     SmartDialog.showToast('直播未开播');
                   }
                 } else if (business == 'pgc') {
-                  PageUtils.viewPgc(epId: item.history.epid);
+                  PageUtils.viewPgc(
+                    epId: item.history.epid,
+                    progress: resumeProgress,
+                  );
                 } else if (business == 'cheese') {
                   if (item.uri?.isNotEmpty == true) {
                     PageUtils.viewPgcFromUri(
                       item.uri!,
                       isPgc: false,
+                      progress: resumeProgress,
                       aid: item.history.oid,
                     );
                   }
@@ -92,6 +100,7 @@ class HistoryItem extends StatelessWidget {
                       cid: cid,
                       cover: item.cover,
                       title: item.title,
+                      progress: resumeProgress,
                     );
                   }
                 }
