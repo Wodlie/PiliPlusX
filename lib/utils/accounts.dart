@@ -27,6 +27,14 @@ abstract final class Accounts {
     }
     return reply;
   }
+
+  static Account get blacklist {
+    final blacklist = accountMode[AccountType.blacklist.index];
+    if (blacklist is AnonymousAccount) {
+      return Accounts.main;
+    }
+    return blacklist;
+  }
   // static set main(Account account) => set(AccountType.main, account);
 
   static Future<void> init() async {

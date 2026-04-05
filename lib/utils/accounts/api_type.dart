@@ -107,6 +107,10 @@ abstract final class ApiType {
       Api.replyReport,
       Api.replySubjectModify,
     },
+    AccountType.blacklist: {
+      Api.blackLst,
+      Api.relationMod,
+    },
   };
 
   static const loginApi = {

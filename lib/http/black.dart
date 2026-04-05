@@ -1,6 +1,7 @@
 import 'package:PiliPlus/http/api.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
+import 'package:dio/dio.dart';
 import 'package:PiliPlus/models_new/blacklist/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 
@@ -16,8 +17,9 @@ abstract final class BlackHttp {
         'ps': ps,
         're_version': 0,
         'jsonp': 'jsonp',
-        'csrf': Accounts.main.csrf,
+        'csrf': Accounts.blacklist.csrf,
       },
+      options: Options(extra: {'account': Accounts.blacklist}),
     );
     if (res.data['code'] == 0) {
       return Success(BlackListData.fromJson(res.data['data']));

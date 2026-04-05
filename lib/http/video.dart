@@ -51,6 +51,13 @@ abstract final class VideoHttp {
   static RegExp zoneRegExp = RegExp(Pref.banWordForZone, caseSensitive: false);
   static bool enableFilter = zoneRegExp.pattern.isNotEmpty;
 
+  static AccountType _accountTypeForRelationAct(int act) {
+    return switch (act) {
+      5 || 6 => AccountType.blacklist,
+      _ => AccountType.main,
+    };
+  }
+
   // 首页推荐视频
   static Future<LoadingState<List<RcmdVideoItemModel>>> rcmdVideoList({
     required int ps,
@@ -643,6 +650,8 @@ abstract final class VideoHttp {
     required int act,
     required int reSrc,
   }) async {
+    final accountType = _accountTypeForRelationAct(act);
+    final account = Accounts.get(accountType);
     final res = await Request().post(
       Api.relationMod,
       queryParameters: {
@@ -661,10 +670,11 @@ abstract final class VideoHttp {
           "entity_id": mid,
           'fp': BrowserUa.pc,
         }),
-        'csrf': Accounts.main.csrf,
+        'csrf': account.csrf,
       },
       options: Options(
         contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': account},
         headers: {
           'origin': 'https://space.bilibili.com',
           'referer': 'https://space.bilibili.com/$mid/dynamic',
