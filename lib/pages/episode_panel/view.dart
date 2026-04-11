@@ -1,12 +1,14 @@
 import 'dart:math';
 
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/assets.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
 import 'package:PiliPlus/common/widgets/button/icon_button.dart';
 import 'package:PiliPlus/common/widgets/flutter/page/tabs.dart';
 import 'package:PiliPlus/common/widgets/image/image_save.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/keep_alive_wrapper.dart';
+import 'package:PiliPlus/common/widgets/scroll_physics.dart';
 import 'package:PiliPlus/common/widgets/stat/stat.dart';
 import 'package:PiliPlus/http/fav.dart';
 import 'package:PiliPlus/http/loading_state.dart';
@@ -235,6 +237,7 @@ class _EpisodePanelState extends State<EpisodePanel>
     if (_isMulti) {
       return TabBarView<TabBarDragGestureRecognizer>(
         controller: _tabController,
+        physics: clampingScrollPhysics,
         horizontalDragGestureRecognizer: () =>
             TabBarDragGestureRecognizer(isDxAllowed: isDxAllowed),
         children: List.generate(
@@ -277,7 +280,7 @@ class _EpisodePanelState extends State<EpisodePanel>
   ) {
     final isCurrTab = tabIndex == widget.initialTabIndex;
     return KeepAliveWrapper(
-      builder: (context) => CustomScrollView(
+      child: CustomScrollView(
         reverse: _isReversed[tabIndex],
         physics: const AlwaysScrollableScrollPhysics(),
         controller: _itemScrollController[tabIndex],
@@ -458,7 +461,7 @@ class _EpisodePanelState extends State<EpisodePanel>
             onSecondaryTap: PlatformUtils.isMobile ? null : onLongPress,
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: StyleString.safeSpace,
+                horizontal: Style.safeSpace,
                 vertical: 5,
               ),
               child: Row(
@@ -503,7 +506,7 @@ class _EpisodePanelState extends State<EpisodePanel>
                     )
                   else if (isCurrentIndex)
                     Image.asset(
-                      'assets/images/live.png',
+                      Assets.livingStatic,
                       color: primary,
                       height: 12,
                       cacheHeight: 12.cacheSize(context),

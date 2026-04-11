@@ -1,11 +1,12 @@
 import 'package:PiliPlus/common/skeleton/video_reply.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/custom_icon.dart';
-import 'package:PiliPlus/common/widgets/custom_sliver_persistent_header_delegate.dart';
 import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/flutter/selectable_text/selectable_text.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
+import 'package:PiliPlus/common/widgets/sliver/sliver_floating_header.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/image_type.dart';
 import 'package:PiliPlus/models/common/pgc_review_type.dart';
@@ -162,7 +163,7 @@ class _PgcReviewChildPageState extends State<PgcReviewChildPage>
                   Get.back();
                   showConfirmDialog(
                     context: context,
-                    title: '删除短评，同时删除评分？',
+                    title: const Text('删除短评，同时删除评分？'),
                     onConfirm: () => _controller.onDel(index, item.reviewId!),
                   );
                 },
@@ -383,51 +384,43 @@ class _PgcReviewChildPageState extends State<PgcReviewChildPage>
     );
   }
 
-  Widget _buildHeader(ThemeData theme) => SliverPersistentHeader(
-    pinned: false,
-    floating: true,
-    delegate: CustomSliverPersistentHeaderDelegate(
-      extent: 40,
-      bgColor: theme.colorScheme.surface,
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.fromLTRB(12, 0, 6, 0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Obx(
-              () {
-                final count = _controller.count.value;
-                return count == null
-                    ? const SizedBox.shrink()
-                    : Text(
-                        '${NumUtils.numFormat(count)}条点评',
-                        style: const TextStyle(fontSize: 13),
-                      );
-              },
+  Widget _buildHeader(ThemeData theme) => SliverFloatingHeaderWidget(
+    backgroundColor: theme.colorScheme.surface,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(12, 2.5, 6, 2.5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Obx(
+            () {
+              final count = _controller.count.value;
+              return count == null
+                  ? const SizedBox.shrink()
+                  : Text(
+                      '${NumUtils.numFormat(count)}条点评',
+                      style: const TextStyle(fontSize: 13),
+                    );
+            },
+          ),
+          TextButton.icon(
+            style: Style.buttonStyle,
+            onPressed: _controller.queryBySort,
+            icon: Icon(
+              Icons.sort,
+              size: 16,
+              color: theme.colorScheme.secondary,
             ),
-            SizedBox(
-              height: 35,
-              child: TextButton.icon(
-                onPressed: _controller.queryBySort,
-                icon: Icon(
-                  Icons.sort,
-                  size: 16,
+            label: Obx(
+              () => Text(
+                _controller.sortType.value.label,
+                style: TextStyle(
+                  fontSize: 13,
                   color: theme.colorScheme.secondary,
-                ),
-                label: Obx(
-                  () => Text(
-                    _controller.sortType.value.label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: theme.colorScheme.secondary,
-                    ),
-                  ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     ),
   );

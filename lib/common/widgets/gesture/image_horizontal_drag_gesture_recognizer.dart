@@ -1,50 +1,87 @@
+import 'package:PiliPlus/common/widgets/gesture/horizontal_drag_gesture_recognizer.dart';
+import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:flutter/gestures.dart';
 
-typedef IsBoundaryAllowed =
-    bool Function(Offset? initialPosition, OffsetPair lastPosition);
+mixin ImageGestureRecognizerMixin on GestureRecognizer {
+  int? _pointer;
+
+  @override
+  void addPointer(PointerDownEvent event, {bool isPointerAllowed = true}) {
+    if (_pointer == event.pointer) {
+      return;
+    }
+    _pointer = event.pointer;
+    if (isPointerAllowed) {
+      super.addPointer(event);
+    }
+  }
+}
 
 class ImageHorizontalDragGestureRecognizer
-    extends HorizontalDragGestureRecognizer {
+    extends CustomHorizontalDragGestureRecognizer
+    with ImageGestureRecognizerMixin {
   ImageHorizontalDragGestureRecognizer({
     super.debugOwner,
     super.supportedDevices,
     super.allowedButtonsFilter,
   });
 
-  Offset? _initialPosition;
-
-  IsBoundaryAllowed? isBoundaryAllowed;
-
-  int? _pointer;
+  static final double _touchSlop = PlatformUtils.isDesktop
+      ? kPrecisePointerHitSlop
+      : 3.0;
 
   @override
-  void addPointer(PointerDownEvent event) {
-    if (_pointer == event.pointer) {
-      return;
+  DeviceGestureSettings get gestureSettings => _gestureSettings;
+  final _gestureSettings = DeviceGestureSettings(touchSlop: _touchSlop);
+
+  bool isAtLeftEdge = false;
+  bool isAtRightEdge = false;
+
+  void setAtBothEdges() {
+    isAtLeftEdge = isAtRightEdge = true;
+  }
+
+  bool _isEdgeAllowed(double dx) {
+    if ((initialPosition!.dx - dx).abs() < _touchSlop) return true;
+    if (isAtLeftEdge) {
+      if (isAtRightEdge) {
+        return _hasAcceptedOrChecked = true;
+      }
+      _hasAcceptedOrChecked = true;
+      return initialPosition!.dx < dx;
+    } else if (isAtRightEdge) {
+      _hasAcceptedOrChecked = true;
+      return initialPosition!.dx > dx;
     }
-    _pointer = event.pointer;
-    super.addPointer(event);
+    return true;
   }
 
   @override
-  void addAllowedPointer(PointerDownEvent event) {
-    super.addAllowedPointer(event);
-    _initialPosition = event.position;
+  void handleEvent(PointerEvent event) {
+    if (!_hasAcceptedOrChecked &&
+        event is PointerMoveEvent &&
+        _pointer == event.pointer) {
+      if (!_isEdgeAllowed(event.position.dx)) {
+        rejectGesture(event.pointer);
+        return;
+      }
+    }
+    super.handleEvent(event);
+  }
+
+  bool _hasAcceptedOrChecked = false;
+
+  @override
+  void acceptGesture(int pointer) {
+    _hasAcceptedOrChecked = true;
+    super.acceptGesture(pointer);
   }
 
   @override
-  bool hasSufficientGlobalDistanceToAccept(
-    PointerDeviceKind pointerDeviceKind,
-    double? deviceTouchSlop,
-  ) {
-    return globalDistanceMoved.abs() >
-            computeHitSlop(pointerDeviceKind, gestureSettings) &&
-        (isBoundaryAllowed?.call(_initialPosition, lastPosition) ?? true);
-  }
-
-  @override
-  void dispose() {
-    isBoundaryAllowed = null;
-    super.dispose();
+  void stopTrackingPointer(int pointer) {
+    _hasAcceptedOrChecked = false;
+    isAtLeftEdge = false;
+    isAtRightEdge = false;
+    super.stopTrackingPointer(pointer);
   }
 }

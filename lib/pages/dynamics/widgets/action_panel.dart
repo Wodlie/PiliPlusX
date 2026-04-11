@@ -1,10 +1,9 @@
-import 'package:PiliPlus/common/widgets/flutter/dyn/text_button.dart';
 import 'package:PiliPlus/models/dynamics/result.dart';
 import 'package:PiliPlus/pages/dynamics_repost/view.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
-import 'package:flutter/material.dart' hide TextButton;
+import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class ActionPanel extends StatelessWidget {
@@ -32,32 +31,38 @@ class ActionPanel extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
         Expanded(
-          child: TextButton.icon(
-            onPressed: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              useSafeArea: true,
-              builder: (_) => RepostPanel(
-                item: item,
-                onSuccess: () {
-                  int count = forward.count ?? 0;
-                  forward.count = count + 1;
-                  if (context.mounted) {
-                    (context as Element?)?.markNeedsBuild();
-                  }
-                },
-              ),
-            ),
-            icon: Icon(
-              FontAwesomeIcons.shareFromSquare,
-              size: 16,
-              color: outline,
-              semanticLabel: "转发",
-            ),
-            style: btnStyle,
-            label: Text(
-              forward.count != null ? NumUtils.numFormat(forward.count) : '转发',
-            ),
+          child: Builder(
+            builder: (context) {
+              return TextButton.icon(
+                onPressed: () => showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  builder: (_) => RepostPanel(
+                    item: item,
+                    onSuccess: () {
+                      int count = forward.count ?? 0;
+                      forward.count = count + 1;
+                      if (context.mounted) {
+                        (context as Element?)?.markNeedsBuild();
+                      }
+                    },
+                  ),
+                ),
+                icon: Icon(
+                  FontAwesomeIcons.shareFromSquare,
+                  size: 16,
+                  color: outline,
+                  semanticLabel: "转发",
+                ),
+                style: btnStyle,
+                label: Text(
+                  forward.count != null
+                      ? NumUtils.numFormat(forward.count)
+                      : '转发',
+                ),
+              );
+            },
           ),
         ),
         Expanded(
@@ -76,32 +81,40 @@ class ActionPanel extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: TextButton.icon(
-            onPressed: () => RequestUtils.onLikeDynamic(item, () {
-              if (context.mounted) {
-                (context as Element?)?.markNeedsBuild();
-              }
-            }),
-            icon: Icon(
-              like.status!
-                  ? FontAwesomeIcons.solidThumbsUp
-                  : FontAwesomeIcons.thumbsUp,
-              size: 16,
-              color: like.status! ? primary : outline,
-              semanticLabel: like.status! ? "已赞" : "点赞",
-            ),
-            style: btnStyle,
-            label: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              transitionBuilder: (Widget child, Animation<double> animation) {
-                return ScaleTransition(scale: animation, child: child);
-              },
-              child: Text(
-                like.count != null ? NumUtils.numFormat(like.count) : '点赞',
-                key: ValueKey<int?>(like.count),
-                style: TextStyle(color: like.status! ? primary : outline),
-              ),
-            ),
+          child: Builder(
+            builder: (context) {
+              final likeIcon = Icon(
+                like.status!
+                    ? FontAwesomeIcons.solidThumbsUp
+                    : FontAwesomeIcons.thumbsUp,
+                size: 16,
+                color: like.status! ? primary : outline,
+                semanticLabel: like.status! ? "已赞" : "点赞",
+              );
+              return TextButton.icon(
+                onPressed: () => RequestUtils.onLikeDynamic(
+                  item,
+                  likeIcon.color == primary,
+                  () {
+                    if (context.mounted) {
+                      (context as Element?)?.markNeedsBuild();
+                    }
+                  },
+                ),
+                icon: likeIcon,
+                style: btnStyle,
+                label: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  transitionBuilder: (child, animation) =>
+                      ScaleTransition(scale: animation, child: child),
+                  child: Text(
+                    like.count != null ? NumUtils.numFormat(like.count) : '点赞',
+                    key: ValueKey<int?>(like.count),
+                    style: TextStyle(color: like.status! ? primary : outline),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],

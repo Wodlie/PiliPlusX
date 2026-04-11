@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:PiliPlus/common/widgets/button/icon_button.dart';
 import 'package:PiliPlus/common/widgets/scroll_physics.dart';
 import 'package:PiliPlus/http/api.dart';
 import 'package:PiliPlus/http/constants.dart';
@@ -12,6 +13,7 @@ import 'package:PiliPlus/http/user.dart';
 import 'package:PiliPlus/http/video.dart';
 import 'package:PiliPlus/models/common/video/source_type.dart';
 import 'package:PiliPlus/models_new/member_card_info/data.dart';
+import 'package:PiliPlus/models_new/relation/data.dart';
 import 'package:PiliPlus/models_new/video/video_ai_conclusion/model_result.dart';
 import 'package:PiliPlus/models_new/video/video_detail/episode.dart';
 import 'package:PiliPlus/models_new/video/video_detail/page.dart';
@@ -51,7 +53,7 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
   // up主粉丝数
   final Rx<MemberCardInfoData> userStat = MemberCardInfoData().obs;
   // 关注状态 默认未关注
-  late final RxMap followStatus = {}.obs;
+  late final Rx<RelationData> followStatus = Rx(RelationData());
   late final RxMap staffRelations = {}.obs;
 
   // 是否点踩
@@ -89,6 +91,14 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
     queryVideoTags();
     final res = await VideoHttp.videoIntro(bvid: bvid);
     if (res case Success(:final response)) {
+      if (response.redirectUrl != null &&
+          videoDetailCtr.epId == null &&
+          videoDetailCtr.seasonId == null) {
+        if (!isClosed) {
+          PageUtils.viewPgcFromUri(response.redirectUrl!, off: true);
+        }
+        return;
+      }
       videoPlayerServiceHandler?.onVideoDetailChange(
         response,
         cid.value,
@@ -299,8 +309,8 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
   @override
   void actionShareVideo(BuildContext context) {
     final videoDetail = this.videoDetail.value;
-    String videoUrl =
-        '${HttpString.baseUrl}/video/$bvid${videoDetailCtr.playedTimePos}';
+    final playedTimePos = videoDetailCtr.playedTimePos;
+    String videoUrl = '${HttpString.baseUrl}/video/$bvid';
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -319,6 +329,16 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
                 Get.back();
                 Utils.copyText(videoUrl);
               },
+              trailing: playedTimePos.isNotEmpty
+                  ? iconButton(
+                      tooltip: '精确分享',
+                      icon: const Icon(Icons.timer_outlined),
+                      onPressed: () {
+                        Get.back();
+                        Utils.copyText('$videoUrl$playedTimePos');
+                      },
+                    )
+                  : null,
             ),
             ListTile(
               dense: true,
@@ -407,9 +427,9 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
     if (videoDetail.owner == null || videoDetail.staff?.isNotEmpty == true) {
       return;
     }
-    final res = await UserHttp.hasFollow(videoDetail.owner!.mid!);
+    final res = await UserHttp.userRelation(videoDetail.owner!.mid!);
     if (res case Success(:final response)) {
-      if (response['special'] == 1) response['attribute'] = -10;
+      if (response.special == 1) response.attribute = -10;
       followStatus.value = response;
     }
   }
@@ -428,7 +448,7 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
     if (mid == null) {
       return;
     }
-    int attr = followStatus['attribute'] ?? 0;
+    int attr = followStatus.value.attribute ?? 0;
     if (attr == 128) {
       final res = await VideoHttp.relationMod(
         mid: mid,
@@ -436,7 +456,9 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
         reSrc: 11,
       );
       if (res.isSuccess) {
-        followStatus['attribute'] = 0;
+        followStatus
+          ..value.attribute = 0
+          ..refresh();
       }
       return;
     } else {
@@ -444,9 +466,11 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
         context: context,
         mid: mid,
         isFollow: attr != 0,
-        followStatus: followStatus,
+        followStatus: followStatus.value,
         afterMod: (attribute) {
-          followStatus['attribute'] = attribute;
+          followStatus
+            ..value.attribute = attribute
+            ..refresh();
           Future.delayed(const Duration(milliseconds: 500), queryFollowStatus);
         },
       );

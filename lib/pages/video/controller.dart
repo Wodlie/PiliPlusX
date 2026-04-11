@@ -1,17 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' show min;
 import 'dart:ui';
 
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/pair.dart';
 import 'package:PiliPlus/common/widgets/progress_bar/segment_progress_bar.dart';
 import 'package:PiliPlus/grpc/bilibili/app/listener/v1.pbenum.dart'
     show PlaylistSource;
-import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/fav.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/http/ua_type.dart';
 import 'package:PiliPlus/http/user.dart';
 import 'package:PiliPlus/http/video.dart';
 import 'package:PiliPlus/main.dart';
@@ -57,10 +56,12 @@ import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/services/download/download_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
+import 'package:PiliPlus/utils/extension/file_ext.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
+import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -72,8 +73,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:get/get.dart';
-import 'package:hive/hive.dart';
-import 'package:media_kit/media_kit.dart';
+import 'package:hive_ce/hive.dart';
+import 'package:media_kit/media_kit.dart' hide Subtitle;
+import 'package:path/path.dart' as path;
 
 class VideoDetailController extends GetxController
     with GetTickerProviderStateMixin, BlockMixin {
@@ -108,7 +110,7 @@ class VideoDetailController extends GetxController
 
   // 请求返回的视频信息
   late PlayUrlModel data;
-  final Rx<LoadingState> videoState = LoadingState.loading().obs;
+  final RxBool videoState = false.obs;
 
   /// 播放器配置 画质 音质 解码格式
   final Rxn<VideoQuality> currentVideoQa = Rxn<VideoQuality>();
@@ -268,8 +270,6 @@ class VideoDetailController extends GetxController
       }
     }
   }
-
-  bool imageview = false;
 
   final isLoginVideo = Accounts.get(AccountType.video).isLogin;
 
@@ -635,7 +635,6 @@ class VideoDetailController extends GetxController
     _autoPlay.value = true;
     playedTime = plPlayerController.position;
     plPlayerController
-      ..removeListeners()
       ..isBuffering.value = false
       ..buffered.value = Duration.zero;
 
@@ -658,13 +657,15 @@ class VideoDetailController extends GetxController
     playerInit();
   }
 
-  Future<void>? _initPlayerIfNeeded() {
+  Future<void>? _initPlayerIfNeeded(bool autoFullScreenFlag) {
     if (_autoPlay.value ||
         (plPlayerController.preInitPlayer && !plPlayerController.processing) &&
             (isFileSource
                 ? true
                 : videoPlayerKey.currentState?.mounted == true)) {
-      return playerInit();
+      return playerInit(
+        autoFullScreenFlag: autoFullScreenFlag && _autoPlay.value,
+      );
     }
     return null;
   }
@@ -676,28 +677,24 @@ class VideoDetailController extends GetxController
     Duration? duration,
     bool? autoplay,
     Volume? volume,
+    bool autoFullScreenFlag = false,
   }) async {
-    final onlyPlayAudio = plPlayerController.onlyPlayAudio.value;
     Duration? seek = seekToTime ?? defaultST ?? playedTime;
     if (seek == null || seek == Duration.zero) {
       seek = getFirstSegment();
     }
     await plPlayerController.setDataSource(
-      DataSource(
-        videoSource: isFileSource
-            ? null
-            : onlyPlayAudio
-            ? audio ?? audioUrl
-            : video ?? videoUrl,
-        audioSource: isFileSource || onlyPlayAudio ? null : audio ?? audioUrl,
-        type: isFileSource ? DataSourceType.file : DataSourceType.network,
-        httpHeaders: isFileSource
-            ? null
-            : {
-                'user-agent': UaType.pc.ua,
-                'referer': HttpString.baseUrl,
-              },
-      ),
+      isFileSource
+          ? FileSource(
+              dir: args['dirPath'],
+              typeTag: entry.typeTag!,
+              isMp4: entry.mediaType == 1,
+              hasDashAudio: entry.hasDashAudio,
+            )
+          : NetworkSource(
+              videoSource: video ?? videoUrl!,
+              audioSource: audio ?? audioUrl,
+            ),
       seekTo: seek,
       duration:
           duration ??
@@ -714,17 +711,13 @@ class VideoDetailController extends GetxController
       pgcType: isUgc ? null : pgcType,
       videoType: videoType,
       onInit: () {
-        if (videoState.value is! Success) {
-          videoState.value = const Success(null);
-        }
+        videoState.value = true;
         setSubtitle(vttSubtitlesIndex.value);
       },
       width: firstVideo.width,
       height: firstVideo.height,
       volume: volume ?? this.volume,
-      dirPath: isFileSource ? args['dirPath'] : null,
-      typeTag: isFileSource ? entry.typeTag : null,
-      mediaType: isFileSource ? entry.mediaType : null,
+      autoFullScreenFlag: autoFullScreenFlag,
     );
 
     if (isClosed) return;
@@ -766,9 +759,10 @@ class VideoDetailController extends GetxController
   Future<void> queryVideoUrl({
     Duration? defaultST,
     bool fromReset = false,
+    bool autoFullScreenFlag = false,
   }) async {
     if (isFileSource) {
-      return _initPlayerIfNeeded();
+      return _initPlayerIfNeeded(autoFullScreenFlag);
     }
     if (isQuerying) {
       return;
@@ -842,14 +836,14 @@ class VideoDetailController extends GetxController
         setVideoHeight();
         currentDecodeFormats = VideoDecodeFormatType.fromString('avc1');
         currentVideoQa.value = videoQuality;
-        await _initPlayerIfNeeded();
+        await _initPlayerIfNeeded(autoFullScreenFlag);
         isQuerying = false;
         return;
       }
       if (data.dash == null) {
         SmartDialog.showToast('视频资源不存在');
         _autoPlay.value = false;
-        videoState.value = const Error('视频资源不存在');
+        videoState.value = false;
         if (plPlayerController.isFullScreen.value) {
           plPlayerController.toggleFullScreen(false);
         }
@@ -941,10 +935,10 @@ class VideoDetailController extends GetxController
       } else {
         audioUrl = '';
       }
-      await _initPlayerIfNeeded();
+      await _initPlayerIfNeeded(autoFullScreenFlag);
     } else {
       _autoPlay.value = false;
-      videoState.value = result..toast();
+      videoState.value = false;
       if (plPlayerController.isFullScreen.value) {
         plPlayerController.toggleFullScreen(false);
       }
@@ -1015,14 +1009,24 @@ class VideoDetailController extends GetxController
 
     Future<void> setSub(({bool isData, String id}) subtitle) async {
       final sub = subtitles[index - 1];
+
+      String subUri = subtitle.id;
+      File? file;
+      if (subtitle.isData) {
+        subUri = path.join(tmpDirPath, '${cid.value}-${sub.lan}.vtt');
+        file = File(subUri);
+        if (!file.existsSync()) {
+          await file.writeAsString(subtitle.id);
+          if (plPlayerController.videoPlayerController?.disposed == false) {
+            plPlayerController.videoPlayerController!.release.add(file.tryDel);
+          } else {
+            file.tryDel();
+            return;
+          }
+        }
+      }
       await plPlayerController.videoPlayerController?.setSubtitleTrack(
-        SubtitleTrack(
-          subtitle.id,
-          sub.lanDoc,
-          sub.lan,
-          uri: !subtitle.isData,
-          data: subtitle.isData,
-        ),
+        SubtitleTrack(subUri, sub.lanDoc, sub.lan, uri: true),
       );
       vttSubtitlesIndex.value = index;
     }
@@ -1629,7 +1633,7 @@ class VideoDetailController extends GetxController
     showDialog(
       context: Get.context!,
       builder: (context) => AlertDialog(
-        constraints: StyleString.dialogFixedConstraints,
+        constraints: Style.dialogFixedConstraints,
         title: const Text('播放地址'),
         content: Column(
           spacing: 20,

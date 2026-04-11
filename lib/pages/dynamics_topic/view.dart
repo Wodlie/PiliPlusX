@@ -1,10 +1,11 @@
+import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/widgets/custom_icon.dart';
-import 'package:PiliPlus/common/widgets/custom_sliver_persistent_header_delegate.dart';
-import 'package:PiliPlus/common/widgets/dynamic_sliver_appbar_medium.dart';
+import 'package:PiliPlus/common/widgets/dynamic_sliver_app_bar/dynamic_sliver_app_bar.dart';
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
 import 'package:PiliPlus/common/widgets/pair.dart';
+import 'package:PiliPlus/common/widgets/sliver/sliver_pinned_header.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/image_type.dart';
 import 'package:PiliPlus/models_new/dynamic/dyn_topic_feed/item.dart';
@@ -12,6 +13,7 @@ import 'package:PiliPlus/models_new/dynamic/dyn_topic_top/top_details.dart';
 import 'package:PiliPlus/pages/dynamics/widgets/dynamic_panel.dart';
 import 'package:PiliPlus/pages/dynamics_create/view.dart';
 import 'package:PiliPlus/pages/dynamics_topic/controller.dart';
+import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
@@ -78,56 +80,49 @@ class _DynTopicPageState extends State<DynTopicPage> with DynMixin {
             Obx(() {
               final allSortBy = _controller.topicSortByConf.value?.allSortBy;
               if (allSortBy != null && allSortBy.isNotEmpty) {
-                return SliverPersistentHeader(
-                  pinned: true,
-                  delegate: CustomSliverPersistentHeaderDelegate(
-                    extent: 36,
-                    needRebuild: true,
-                    bgColor: theme.colorScheme.surface,
-                    child: Container(
-                      height: 36,
-                      padding: EdgeInsets.only(
-                        left: 12 + padding.left,
-                        top: 6,
-                        bottom: 6,
-                      ),
-                      child: Builder(
-                        builder: (context) {
-                          return ToggleButtons(
-                            fillColor: theme.colorScheme.secondaryContainer,
-                            selectedColor:
-                                theme.colorScheme.onSecondaryContainer,
-                            constraints: const BoxConstraints(
-                              minWidth: 54,
-                              minHeight: 24,
-                            ),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            borderRadius: const .all(.circular(25)),
-                            onPressed: (index) {
-                              _controller.onSort(allSortBy[index].sortBy!);
-                              (context as Element).markNeedsBuild();
-                            },
-                            isSelected: allSortBy
-                                .map((e) => e.sortBy == _controller.sortBy)
-                                .toList(),
-                            children: allSortBy.map((e) {
-                              return Text(
-                                e.sortName!,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  height: 1,
-                                ),
-                                strutStyle: const StrutStyle(
-                                  height: 1,
-                                  leading: 0,
-                                  fontSize: 13,
-                                ),
-                                textScaler: TextScaler.noScaling,
-                              );
-                            }).toList(),
-                          );
-                        },
-                      ),
+                return SliverPinnedHeader(
+                  backgroundColor: theme.colorScheme.surface,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: 12 + padding.left,
+                      top: 6,
+                      bottom: 6,
+                    ),
+                    child: Builder(
+                      builder: (context) {
+                        return ToggleButtons(
+                          fillColor: theme.colorScheme.secondaryContainer,
+                          selectedColor: theme.colorScheme.onSecondaryContainer,
+                          constraints: const BoxConstraints(
+                            minWidth: 54,
+                            minHeight: 24,
+                          ),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          borderRadius: const .all(.circular(25)),
+                          onPressed: (index) {
+                            _controller.onSort(allSortBy[index].sortBy!);
+                            (context as Element).markNeedsBuild();
+                          },
+                          isSelected: allSortBy
+                              .map((e) => e.sortBy == _controller.sortBy)
+                              .toList(),
+                          children: allSortBy.map((e) {
+                            return Text(
+                              e.sortName!,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1,
+                              ),
+                              strutStyle: const StrutStyle(
+                                height: 1,
+                                leading: 0,
+                                fontSize: 13,
+                              ),
+                              textScaler: TextScaler.noScaling,
+                            );
+                          }).toList(),
+                        );
+                      },
                     ),
                   ),
                 );
@@ -157,17 +152,17 @@ class _DynTopicPageState extends State<DynTopicPage> with DynMixin {
   ) {
     return switch (topState) {
       Loading() => const SliverAppBar(),
-      Success(:final response) when response != null => DynamicSliverAppBarMedium(
-        pinned: true,
-        onPerformLayout: (value) =>
-            _controller.appbarOffset = value - kToolbarHeight - padding.top,
+      Success(:final response) when response != null => DynamicSliverAppBar.medium(
+        onPerformLayout: (value) => _controller.appbarOffset =
+            value.height - kToolbarHeight - padding.top,
         title: IgnorePointer(child: Text(response.topicItem!.name)),
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: Image.asset(
-                'assets/images/topic-header-bg.png',
-              ).image,
+              image: ResizeImage(
+                width: MediaQuery.widthOf(context).cacheSize(context),
+                const AssetImage(Assets.topicHeader),
+              ),
               filterQuality: FilterQuality.low,
               fit: BoxFit.cover,
             ),
@@ -358,10 +353,7 @@ class _DynTopicPageState extends State<DynTopicPage> with DynMixin {
 
                           final item = response[index];
                           if (item.dynamicCardItem != null) {
-                            return DynamicPanel(
-                              item: item.dynamicCardItem!,
-                              maxWidth: maxWidth,
-                            );
+                            return DynamicPanel(item: item.dynamicCardItem!);
                           }
 
                           return Text(item.topicType ?? 'err');
@@ -376,10 +368,7 @@ class _DynTopicPageState extends State<DynTopicPage> with DynMixin {
                         }
                         final item = response[index];
                         if (item.dynamicCardItem != null) {
-                          return DynamicPanel(
-                            item: item.dynamicCardItem!,
-                            maxWidth: maxWidth,
-                          );
+                          return DynamicPanel(item: item.dynamicCardItem!);
                         } else {
                           return Text(item.topicType ?? 'err');
                         }

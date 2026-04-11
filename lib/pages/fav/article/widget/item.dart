@@ -1,10 +1,11 @@
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/button/icon_button.dart';
+import 'package:PiliPlus/common/widgets/flutter/layout_builder.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/stat/stat.dart';
 import 'package:PiliPlus/models/common/stat_type.dart';
 import 'package:PiliPlus/models_new/fav/fav_article/item.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide LayoutBuilder;
 import 'package:get/get.dart';
 
 class FavArticleItem extends StatelessWidget {
@@ -35,7 +36,7 @@ class FavArticleItem extends StatelessWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: StyleString.safeSpace,
+                horizontal: Style.safeSpace,
                 vertical: 5,
               ),
               child: Row(
@@ -43,19 +44,15 @@ class FavArticleItem extends StatelessWidget {
                 children: [
                   if (item.cover != null) ...[
                     AspectRatio(
-                      aspectRatio: StyleString.aspectRatio,
+                      aspectRatio: Style.aspectRatio,
                       child: LayoutBuilder(
-                        builder:
-                            (
-                              BuildContext context,
-                              BoxConstraints boxConstraints,
-                            ) {
-                              return NetworkImgLayer(
-                                src: item.cover!.url,
-                                width: boxConstraints.maxWidth,
-                                height: boxConstraints.maxHeight,
-                              );
-                            },
+                        builder: (context, boxConstraints) {
+                          return NetworkImgLayer(
+                            src: item.cover!.url,
+                            width: boxConstraints.maxWidth,
+                            height: boxConstraints.maxHeight,
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 10),

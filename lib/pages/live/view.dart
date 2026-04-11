@@ -1,5 +1,5 @@
-import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/skeleton/video_card_v.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/button/icon_button.dart';
 import 'package:PiliPlus/common/widgets/button/more_btn.dart';
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
@@ -9,7 +9,6 @@ import 'package:PiliPlus/common/widgets/pair.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models_new/live/live_feed_index/card_data_list_item.dart';
 import 'package:PiliPlus/models_new/live/live_feed_index/card_list.dart';
-import 'package:PiliPlus/pages/common/common_page.dart';
 import 'package:PiliPlus/pages/live/controller.dart';
 import 'package:PiliPlus/pages/live/widgets/live_item_app.dart';
 import 'package:PiliPlus/pages/live_area/view.dart';
@@ -22,6 +21,7 @@ import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class LivePage extends StatefulWidget {
   const LivePage({super.key});
@@ -30,10 +30,9 @@ class LivePage extends StatefulWidget {
   State<LivePage> createState() => _LivePageState();
 }
 
-class _LivePageState extends CommonPageState<LivePage, LiveController>
+class _LivePageState extends State<LivePage>
     with AutomaticKeepAliveClientMixin {
-  @override
-  LiveController controller = Get.put(LiveController());
+  final LiveController controller = Get.put(LiveController());
 
   @override
   bool get wantKeepAlive => true;
@@ -50,31 +49,29 @@ class _LivePageState extends CommonPageState<LivePage, LiveController>
   Widget build(BuildContext context) {
     super.build(context);
     final ThemeData theme = Theme.of(context);
-    return onBuild(
-      Container(
-        clipBehavior: Clip.hardEdge,
-        margin: const EdgeInsets.symmetric(horizontal: StyleString.safeSpace),
-        decoration: const BoxDecoration(borderRadius: StyleString.mdRadius),
-        child: refreshIndicator(
-          onRefresh: controller.onRefresh,
-          child: CustomScrollView(
-            controller: controller.scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.only(
-                  top: StyleString.cardSpace,
-                  bottom: 100,
-                ),
-                sliver: SliverMainAxisGroup(
-                  slivers: [
-                    Obx(() => _buildTop(theme, controller.topState.value)),
-                    Obx(() => _buildBody(theme, controller.loadingState.value)),
-                  ],
-                ),
+    return Container(
+      clipBehavior: Clip.hardEdge,
+      margin: const EdgeInsets.symmetric(horizontal: Style.safeSpace),
+      decoration: const BoxDecoration(borderRadius: Style.mdRadius),
+      child: refreshIndicator(
+        onRefresh: controller.onRefresh,
+        child: CustomScrollView(
+          controller: controller.scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.only(
+                top: Style.cardSpace,
+                bottom: 100,
               ),
-            ],
-          ),
+              sliver: SliverMainAxisGroup(
+                slivers: [
+                  Obx(() => _buildTop(theme, controller.topState.value)),
+                  Obx(() => _buildBody(theme, controller.loadingState.value)),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -134,6 +131,20 @@ class _LivePageState extends CommonPageState<LivePage, LiveController>
                     ),
                     iconButton(
                       size: 26,
+                      iconSize: 18,
+                      context: context,
+                      tooltip: '切换${controller.showFirstFrame ? '封面' : '首帧'}',
+                      icon: controller.showFirstFrame
+                          ? const Icon(MdiIcons.alphaFBox)
+                          : const Icon(MdiIcons.image),
+                      onPressed: () {
+                        controller.showFirstFrame = !controller.showFirstFrame;
+                        setState(() {});
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    iconButton(
+                      size: 26,
                       iconSize: 16,
                       context: context,
                       tooltip: '游戏赛事',
@@ -165,10 +176,10 @@ class _LivePageState extends CommonPageState<LivePage, LiveController>
   }
 
   late final gridDelegate = SliverGridDelegateWithExtentAndRatio(
-    mainAxisSpacing: StyleString.cardSpace,
-    crossAxisSpacing: StyleString.cardSpace,
+    mainAxisSpacing: Style.cardSpace,
+    crossAxisSpacing: Style.cardSpace,
     maxCrossAxisExtent: Grid.smallCardWidth,
-    childAspectRatio: StyleString.aspectRatio,
+    childAspectRatio: Style.aspectRatio,
     mainAxisExtent: textScaler.scale(90),
   );
 
@@ -228,9 +239,13 @@ class _LivePageState extends CommonPageState<LivePage, LiveController>
                     if (item is LiveCardList) {
                       return LiveCardVApp(
                         item: item.cardData!.smallCardV1!,
+                        showFirstFrame: controller.showFirstFrame,
                       );
                     }
-                    return LiveCardVApp(item: item);
+                    return LiveCardVApp(
+                      item: item,
+                      showFirstFrame: controller.showFirstFrame,
+                    );
                   },
                   itemCount: response.length,
                 )
@@ -299,6 +314,7 @@ class _LivePageState extends CommonPageState<LivePage, LiveController>
         height: 68.0 + textScaler.scale(12),
         child: CustomScrollView(
           scrollDirection: Axis.horizontal,
+          controller: controller.followController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverFixedExtentList.builder(

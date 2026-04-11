@@ -18,8 +18,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 
     defaultConfig {
@@ -54,10 +56,18 @@ android {
             signingConfig = config ?: signingConfigs["debug"]
         }
         release {
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            if (project.hasProperty("dev")) {
+                applicationIdSuffix = ".dev"
+                resValue(
+                    type = "string",
+                    name = "app_name",
+                    value = "PiliPlus dev",
+                )
+            }
+//            proguardFiles(
+//                getDefaultProguardFile("proguard-android-optimize.txt"),
+//                "proguard-rules.pro"
+//            )
         }
         debug {
             applicationIdSuffix = ".debug"

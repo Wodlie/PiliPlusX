@@ -1,5 +1,6 @@
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
+import 'package:PiliPlus/common/widgets/flutter/layout_builder.dart';
 import 'package:PiliPlus/common/widgets/image/image_save.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/models_new/space/space_fav/list.dart';
@@ -8,7 +9,7 @@ import 'package:PiliPlus/utils/fav_utils.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide LayoutBuilder;
 import 'package:get/get.dart';
 
 class MemberFavItem extends StatelessWidget {
@@ -53,7 +54,7 @@ class MemberFavItem extends StatelessWidget {
         onSecondaryTap: PlatformUtils.isMobile ? null : onLongPress,
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: StyleString.safeSpace,
+            horizontal: Style.safeSpace,
             vertical: 5,
           ),
           child: Row(
@@ -63,7 +64,7 @@ class MemberFavItem extends StatelessWidget {
                 clipBehavior: Clip.none,
                 children: [
                   AspectRatio(
-                    aspectRatio: StyleString.aspectRatio,
+                    aspectRatio: Style.aspectRatio,
                     child: LayoutBuilder(
                       builder: (context, constraints) => NetworkImgLayer(
                         src: item.cover,

@@ -3,7 +3,7 @@ import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/pages/mine/controller.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/login_utils.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 
 abstract final class Accounts {
   static late final Box<LoginAccount> account;
@@ -26,6 +26,14 @@ abstract final class Accounts {
       return Accounts.main;
     }
     return reply;
+  }
+
+  static Account get blacklist {
+    final blacklist = accountMode[AccountType.blacklist.index];
+    if (blacklist is AnonymousAccount) {
+      return Accounts.main;
+    }
+    return blacklist;
   }
   // static set main(Account account) => set(AccountType.main, account);
 
@@ -77,13 +85,13 @@ abstract final class Accounts {
   //   }
   // }
 
-  static Future<void> refresh() async {
+  static Future<void> refresh() {
     for (final a in account.values) {
       for (final t in a.type) {
         accountMode[t.index] = a;
       }
     }
-    await Future.wait(
+    return Future.wait(
       (accountMode.toSet()..removeWhere((i) => i.activated)).map(
         Request.buvidActive,
       ),

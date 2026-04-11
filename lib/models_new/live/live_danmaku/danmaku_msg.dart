@@ -1,29 +1,30 @@
 import 'package:PiliPlus/models/model_owner.dart';
 import 'package:PiliPlus/models_new/live/live_danmaku/live_emote.dart';
+import 'package:PiliPlus/models_new/live/live_medal_wall/uinfo_medal.dart';
 import 'package:PiliPlus/pages/danmaku/danmaku_model.dart';
+import 'package:PiliPlus/utils/global_data.dart';
 
 class DanmakuMsg {
   final String name;
-  final Object uid;
   final String text;
   final Map<String, BaseEmote>? emots;
   final BaseEmote? uemote;
-  final LiveDanmaku extra;
   final Owner? reply;
+  final LiveDanmaku extra;
+  final UinfoMedal? medalInfo;
 
   const DanmakuMsg({
     required this.name,
-    required this.uid,
     required this.text,
     this.emots,
     this.uemote,
-    required this.extra,
     this.reply,
+    required this.extra,
+    this.medalInfo,
   });
 
   factory DanmakuMsg.fromPrefetch(Map<String, dynamic> obj) {
     final user = obj['user'];
-    final uid = user['uid'];
     BaseEmote? uemote;
     if ((obj['emoticon']?['emoticon_unique'] as String?)?.isNotEmpty == true) {
       uemote = BaseEmote.fromJson(obj['emoticon']);
@@ -39,32 +40,35 @@ class DanmakuMsg {
         );
       }
     }
+    final medal = user['medal'];
     return DanmakuMsg(
       name: user['base']['name'],
-      uid: uid,
       text: obj['text'],
       emots: (obj['emots'] as Map<String, dynamic>?)?.map(
         (k, v) => MapEntry(k, BaseEmote.fromJson(v)),
       ),
       uemote: uemote,
+      reply: reply,
       extra: LiveDanmaku(
         id: obj['id_str'],
-        mid: uid,
+        mid: user['uid'],
         dmType: obj['dm_type'],
         ts: checkInfo['ts'],
         ct: checkInfo['ct'],
       ),
-      reply: reply,
+      medalInfo: !GlobalData().showMedal || medal == null
+          ? null
+          : UinfoMedal.fromJson(medal),
     );
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'name': name,
-    'uid': uid,
     'text': text,
-    'emots': emots,
-    'uemote': uemote?.toJson(),
+    'emots': ?emots,
+    'uemote': ?uemote?.toJson(),
+    'reply': ?reply?.toJson(),
     'extra': extra.toJson(),
-    'reply': reply?.toJson(),
+    'medal': ?medalInfo?.toJson(),
   };
 }

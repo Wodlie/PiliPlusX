@@ -13,7 +13,7 @@ on:
 jobs:
   build-macos-app:
     name: Release IOS
-    runs-on: macos-latest
+    runs-on: macos-26
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -30,9 +30,9 @@ jobs:
         shell: pwsh
         run: lib/scripts/build.ps1
 
-      - name: apply modal barrier patch
-        working-directory: ${{ env.FLUTTER_ROOT }}
-        run: git apply $GITHUB_WORKSPACE/lib/scripts/modal-barrier-patch.diff || true
+      - name: Apply Patch
+        shell: pwsh
+        run: lib/scripts/patch.ps1 iOS
         continue-on-error: true
 
       - name: Build iOS
@@ -55,7 +55,8 @@ jobs:
             PiliPlusX_ios_*.ipa
 
       - name: Upload ios release
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
+          archive: false
           name: iOS-release
           path: PiliPlusX_ios_*.ipa

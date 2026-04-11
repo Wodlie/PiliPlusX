@@ -88,7 +88,7 @@ abstract final class ReplyHttp {
     }
   }
 
-  static Future<LoadingState<Null>> hateReply({
+  static Future<LoadingState<void>> hateReply({
     required int type,
     required int action,
     required int oid,
@@ -116,7 +116,7 @@ abstract final class ReplyHttp {
   }
 
   // 评论点赞
-  static Future<LoadingState<Null>> likeReply({
+  static Future<LoadingState<void>> likeReply({
     required int type,
     required int oid,
     required int rpid,
@@ -160,7 +160,7 @@ abstract final class ReplyHttp {
     }
   }
 
-  static Future<LoadingState<Null>> replyTop({
+  static Future<LoadingState<void>> replyTop({
     required Object oid,
     required Object type,
     required Object rpid,
@@ -187,7 +187,7 @@ abstract final class ReplyHttp {
     }
   }
 
-  static Future<LoadingState<Null>> report({
+  static Future<LoadingState<void>> report({
     required Object rpid,
     required Object oid,
     required int reasonType,
@@ -244,7 +244,7 @@ abstract final class ReplyHttp {
     }
   }
 
-  static Future<LoadingState<Null>> replySubjectModify({
+  static Future<LoadingState<void>> replySubjectModify({
     required int oid,
     required int type,
     required int action,
