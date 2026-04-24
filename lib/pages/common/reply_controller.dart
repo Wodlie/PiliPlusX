@@ -2,6 +2,8 @@ import 'package:PiliPlus/common/widgets/flutter/text_field/controller.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
     show MainListReply, ReplyInfo, SubjectControl, Mode;
 import 'package:PiliPlus/grpc/bilibili/pagination.pb.dart';
+import 'package:PiliPlus/grpc/reply.dart' show ReplyGrpc;
+import 'package:PiliPlus/grpc/reply_translate.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/reply.dart';
 import 'package:PiliPlus/models/common/reply/reply_sort_type.dart';
@@ -23,6 +25,10 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
   late final Rx<Mode> mode;
 
   final savedReplies = <Object, List<RichTextItem>?>{};
+
+  /// Cache of translated text keyed by reply id.
+  /// null = no translation yet, empty string = translating, non-empty = translated text.
+  final RxMap<Int64, String> translatedReplies = <Int64, String>{}.obs;
 
   Int64? upMid;
   Int64? cursorNext;
@@ -256,5 +262,44 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
   void onClose() {
     savedReplies.clear();
     super.onClose();
+  }
+
+  /// Request AI translation for a single reply.
+  Future<void> translateReply(ReplyInfo replyItem) async {
+    final rpid = replyItem.id;
+    if (translatedReplies.containsKey(rpid)) {
+      if (translatedReplies[rpid]?.isNotEmpty == true) {
+        // Already translated — toggle off
+        translatedReplies.remove(rpid);
+        return;
+      }
+      // Currently translating — ignore double-tap
+      return;
+    }
+
+    // Mark as translating
+    translatedReplies[rpid] = '';
+
+    final res = await ReplyGrpc.translateReply(
+      oid: replyItem.oid.toInt(),
+      type: replyItem.type.toInt(),
+      rpids: [rpid.toInt()],
+    );
+
+    if (res case Success(:final response)) {
+      final translatedInfo = response.translatedReplies[rpid];
+      if (translatedInfo != null &&
+          translatedInfo.hasTranslatedContent() &&
+          translatedInfo.translatedContent.message.isNotEmpty) {
+        translatedReplies[rpid] =
+            translatedInfo.translatedContent.message;
+      } else {
+        translatedReplies.remove(rpid);
+        SmartDialog.showToast('未获取到翻译结果');
+      }
+    } else {
+      translatedReplies.remove(rpid);
+      res.toast();
+    }
   }
 }

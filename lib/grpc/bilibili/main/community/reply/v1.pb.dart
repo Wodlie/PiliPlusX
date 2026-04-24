@@ -9494,6 +9494,8 @@ class ReplyInfo extends $pb.GeneratedMessage {
     ReplyControl? replyControl,
     MemberV2? memberV2,
     $core.String? trackInfo,
+    // MANUAL ADDITION: translatedContent (field 17) for TranslateReply API
+    Content? translatedContent,
   }) {
     final result = create();
     if (replies != null) result.replies.addAll(replies);
@@ -9512,6 +9514,7 @@ class ReplyInfo extends $pb.GeneratedMessage {
     if (replyControl != null) result.replyControl = replyControl;
     if (memberV2 != null) result.memberV2 = memberV2;
     if (trackInfo != null) result.trackInfo = trackInfo;
+    if (translatedContent != null) result.translatedContent = translatedContent;
     return result;
   }
 
@@ -9550,6 +9553,9 @@ class ReplyInfo extends $pb.GeneratedMessage {
     ..aOM<MemberV2>(15, _omitFieldNames ? '' : 'memberV2',
         subBuilder: MemberV2.create)
     ..aOS(16, _omitFieldNames ? '' : 'trackInfo')
+    // MANUAL ADDITION: translatedContent (field 17) for TranslateReply API
+    ..aOM<Content>(17, _omitFieldNames ? '' : 'translatedContent',
+        subBuilder: Content.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9715,6 +9721,18 @@ class ReplyInfo extends $pb.GeneratedMessage {
   $core.bool hasTrackInfo() => $_has(15);
   @$pb.TagNumber(16)
   void clearTrackInfo() => $_clearField(16);
+
+  // MANUAL ADDITION: translatedContent (field 17) for TranslateReply API
+  @$pb.TagNumber(17)
+  Content get translatedContent => $_getN(16);
+  @$pb.TagNumber(17)
+  set translatedContent(Content value) => $_setField(17, value);
+  @$pb.TagNumber(17)
+  $core.bool hasTranslatedContent() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearTranslatedContent() => $_clearField(17);
+  @$pb.TagNumber(17)
+  Content ensureTranslatedContent() => $_ensure(16);
 }
 
 class ReplyInfoReply extends $pb.GeneratedMessage {

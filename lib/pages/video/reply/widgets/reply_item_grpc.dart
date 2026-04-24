@@ -63,6 +63,9 @@ class ReplyItemGrpc extends StatelessWidget {
     this.onCheckReply,
     this.onToggleTop,
     this.jumpToDialogue,
+    this.translatedText,
+    this.isTranslating = false,
+    this.onTranslate,
   });
   final ReplyInfo replyItem;
   final int replyLevel;
@@ -77,6 +80,13 @@ class ReplyItemGrpc extends StatelessWidget {
   final ValueChanged<ReplyInfo>? onCheckReply;
   final ValueChanged<ReplyInfo>? onToggleTop;
   final VoidCallback? jumpToDialogue;
+
+  /// Translated text for this reply. null/toggle to show original.
+  final String? translatedText;
+  /// Whether a translation request is in-flight.
+  final bool isTranslating;
+  /// Called when the translate button is tapped.
+  final VoidCallback? onTranslate;
 
   static final _voteRegExp = RegExp(r"^\{vote:\d+?\}$");
   static final _timeRegExp = RegExp(r'^(?:\d+[:：])?\d+[:：]\d+$');
@@ -299,32 +309,73 @@ class ReplyItemGrpc extends StatelessWidget {
         const SizedBox(height: 10),
         Padding(
           padding: padding,
-          child: custom_text.Text.rich(
-            primary: theme.colorScheme.primary,
-            style: TextStyle(
-              height: 1.75,
-              fontSize: theme.textTheme.bodyMedium!.fontSize,
-            ),
-            maxLines: replyLevel == 1 ? replyLengthLimit : null,
-            TextSpan(
-              children: [
-                if (replyItem.replyControl.isUpTop) ...[
-                  const WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: PBadge(
-                      text: 'TOP',
-                      size: PBadgeSize.small,
-                      isStack: false,
-                      type: PBadgeType.line_primary,
-                      fontSize: 9,
-                      textScaleFactor: 1,
-                    ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (translatedText != null) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
                   ),
-                  const TextSpan(text: ' '),
-                ],
-                _buildMessage(context, theme, replyItem),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.translate,
+                        size: 14,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          translatedText!,
+                          style: TextStyle(
+                            height: 1.75,
+                            fontSize: theme.textTheme.bodyMedium!.fontSize,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
-            ),
+              custom_text.Text.rich(
+                primary: theme.colorScheme.primary,
+                style: TextStyle(
+                  height: 1.75,
+                  fontSize: theme.textTheme.bodyMedium!.fontSize,
+                ),
+                maxLines: replyLevel == 1 ? replyLengthLimit : null,
+                TextSpan(
+                  children: [
+                    if (replyItem.replyControl.isUpTop) ...[
+                      const WidgetSpan(
+                        alignment: PlaceholderAlignment.middle,
+                        child: PBadge(
+                          text: 'TOP',
+                          size: PBadgeSize.small,
+                          isStack: false,
+                          type: PBadgeType.line_primary,
+                          fontSize: 9,
+                          textScaleFactor: 1,
+                        ),
+                      ),
+                      const TextSpan(text: ' '),
+                    ],
+                    _buildMessage(context, theme, replyItem),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
         if (replyItem.content.pictures.isNotEmpty) ...[
@@ -429,6 +480,48 @@ class ReplyItemGrpc extends StatelessWidget {
             ),
           ),
         const Spacer(),
+        if (onTranslate != null) ...[
+          if (isTranslating)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 32,
+              child: TextButton(
+                style: buttonStyle,
+                onPressed: onTranslate,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.translate,
+                      size: 17,
+                      color: translatedText != null
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outline.withValues(alpha: 0.8),
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      translatedText == null ? '翻译' : '原文',
+                      style: translatedText != null
+                          ? textStyle.copyWith(
+                              color: theme.colorScheme.primary)
+                          : textStyle,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(width: 2),
+        ],
         ZanButtonGrpc(replyItem: replyItem),
         const SizedBox(width: 5),
       ],
