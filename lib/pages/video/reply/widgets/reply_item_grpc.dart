@@ -481,6 +481,7 @@ class ReplyItemGrpc extends StatelessWidget {
           ),
         const Spacer(),
         if (onTranslate != null &&
+            Pref.enableCommentTranslate &&
             replyItem.replyControl.translationSwitch == 2) ...[
           if (isTranslating)
             Padding(
