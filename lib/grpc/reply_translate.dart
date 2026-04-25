@@ -49,8 +49,16 @@ class TranslateReplyReq extends $pb.GeneratedMessage {
       createEmptyInstance: create)
     ..aInt64(1, _omitFieldNames ? '' : 'type')
     ..aInt64(2, _omitFieldNames ? '' : 'oid')
-    ..p<$fixnum.Int64>(3, _omitFieldNames ? '' : 'rpids')
+    ..p<$fixnum.Int64>(3, _omitFieldNames ? '' : 'rpids',
+        $pb.PbFieldType.P6)
     ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslateReplyReq clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslateReplyReq copyWith(void Function(TranslateReplyReq) updates) =>
+      super.copyWith((message) => updates(message as TranslateReplyReq))
+          as TranslateReplyReq;
 
   @$core.override
   $pb.BuilderInfo get info_ => _i;
@@ -136,4 +144,12 @@ class TranslateReplyResp extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(1)
   $pb.PbMap<$fixnum.Int64, ReplyInfo> get translatedReplies => $_getMap(0);
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslateReplyResp clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranslateReplyResp copyWith(
+          void Function(TranslateReplyResp) updates) =>
+      super.copyWith((message) => updates(message as TranslateReplyResp))
+          as TranslateReplyResp;
 }
