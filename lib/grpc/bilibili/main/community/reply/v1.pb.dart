@@ -8159,6 +8159,9 @@ class ReplyControl extends $pb.GeneratedMessage {
     ReplyControl_EasterEggLabel? easterEggLabel,
     $core.String? contextFeature,
     ReplyControl_InsertEffect? insertEffect,
+    // MANUAL: translate API fields
+    $core.int? translationSwitch,
+    $core.bool? showTranslation,
   }) {
     final result = create();
     if (action != null) result.action = action;
@@ -8198,6 +8201,8 @@ class ReplyControl extends $pb.GeneratedMessage {
     if (easterEggLabel != null) result.easterEggLabel = easterEggLabel;
     if (contextFeature != null) result.contextFeature = contextFeature;
     if (insertEffect != null) result.insertEffect = insertEffect;
+    if (translationSwitch != null) result.translationSwitch = translationSwitch;
+    if (showTranslation != null) result.showTranslation = showTranslation;
     return result;
   }
 
@@ -8257,6 +8262,9 @@ class ReplyControl extends $pb.GeneratedMessage {
     ..aOS(35, _omitFieldNames ? '' : 'contextFeature')
     ..aOM<ReplyControl_InsertEffect>(36, _omitFieldNames ? '' : 'insertEffect',
         subBuilder: ReplyControl_InsertEffect.create)
+    // MANUAL: translate API fields
+    ..aI(37, _omitFieldNames ? '' : 'translationSwitch')
+    ..aOB(100, _omitFieldNames ? '' : 'showTranslation')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -8604,6 +8612,25 @@ class ReplyControl extends $pb.GeneratedMessage {
   void clearInsertEffect() => $_clearField(36);
   @$pb.TagNumber(36)
   ReplyControl_InsertEffect ensureInsertEffect() => $_ensure(35);
+
+  // MANUAL: translate API fields
+  @$pb.TagNumber(37)
+  $core.int get translationSwitch => $_getIZ(36);
+  @$pb.TagNumber(37)
+  set translationSwitch($core.int value) => $_setSignedInt32(36, value);
+  @$pb.TagNumber(37)
+  $core.bool hasTranslationSwitch() => $_has(36);
+  @$pb.TagNumber(37)
+  void clearTranslationSwitch() => $_clearField(37);
+
+  @$pb.TagNumber(100)
+  $core.bool get showTranslation => $_getBF(37);
+  @$pb.TagNumber(100)
+  set showTranslation($core.bool value) => $_setBool(37, value);
+  @$pb.TagNumber(100)
+  $core.bool hasShowTranslation() => $_has(37);
+  @$pb.TagNumber(100)
+  void clearShowTranslation() => $_clearField(100);
 }
 
 class ReplyExtra extends $pb.GeneratedMessage {

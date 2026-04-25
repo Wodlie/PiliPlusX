@@ -480,7 +480,8 @@ class ReplyItemGrpc extends StatelessWidget {
             ),
           ),
         const Spacer(),
-        if (onTranslate != null) ...[
+        if (onTranslate != null &&
+            replyItem.replyControl.translationSwitch == 2) ...[
           if (isTranslating)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
