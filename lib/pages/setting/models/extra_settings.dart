@@ -653,6 +653,13 @@ List<SettingsModel> get extraSettings => [
     onChanged: (value) => ReplyItemGrpc.enableWordRe = value,
   ),
   const SwitchModel(
+    title: '评论区AI翻译',
+    subtitle: '在评论区显示翻译按钮',
+    leading: Icon(Icons.translate),
+    setKey: SettingBoxKey.enableCommentTranslate,
+    defaultVal: true,
+  ),
+  const SwitchModel(
     title: '启用AI总结',
     subtitle: '视频详情页开启AI总结',
     leading: Icon(Icons.engineering_outlined),

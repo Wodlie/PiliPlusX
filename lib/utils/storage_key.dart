@@ -70,6 +70,7 @@ abstract final class SettingBoxKey {
       enableSearchWord = 'enableSearchWord',
       enableSystemProxy = 'enableSystemProxy',
       enableAi = 'enableAi',
+      enableCommentTranslate = 'enableCommentTranslate',
       disableLikeMsg = 'disableLikeMsg',
       defaultHomePage = 'defaultHomePage',
       previewQuality = 'previewQuality',

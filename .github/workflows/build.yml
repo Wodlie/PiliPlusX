@@ -118,6 +118,8 @@ jobs:
               run: |
                   tag_name=${{ github.event_name == 'push' && github.ref_name || github.event.inputs.tag }}
                   mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "PiliPlusX_android_${tag_name}_arm64-v8a.apk"
+                  mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "PiliPlusX_android_${tag_name}_armeabi-v7a.apk"
+                  mv build/app/outputs/flutter-apk/app-x86_64-release.apk "PiliPlusX_android_${tag_name}_x86_64.apk"
               shell: bash
 
             - name: Release
@@ -136,21 +138,21 @@ jobs:
               with:
                   archive: false
                   name: Android_arm64-v8a
-                  path: PiliPlus_android_*_arm64-v8a.apk
+                  path: PiliPlusX_android_*_arm64-v8a.apk
 
             - name: 上传
               uses: actions/upload-artifact@v7
               with:
                   archive: false
                   name: Android_armeabi-v7a
-                  path: PiliPlus_android_*_armeabi-v7a.apk
+                  path: PiliPlusX_android_*_armeabi-v7a.apk
 
             - name: 上传
               uses: actions/upload-artifact@v7
               with:
                   archive: false
                   name: Android_x86_64
-                  path: PiliPlus_android_*_x86_64.apk
+                  path: PiliPlusX_android_*_x86_64.apk
 
     ios:
         if: ${{ github.event_name == 'pull_request' || github.event.inputs.build_ios == 'true' || github.event_name == 'push' }}
