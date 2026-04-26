@@ -97,6 +97,20 @@ abstract final class ApiType {
       Api.tvPlayUrl,
       Api.videoshot,
     },
+    // reply
+    AccountType.reply: {
+      Api.replyAdd,
+      Api.replyDel,
+      Api.likeReply,
+      Api.hateReply,
+      Api.replyTop,
+      Api.replyReport,
+      Api.replySubjectModify,
+    },
+    AccountType.blacklist: {
+      Api.blackLst,
+      Api.relationMod,
+    },
   };
 
   static const loginApi = {

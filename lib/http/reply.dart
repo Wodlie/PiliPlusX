@@ -101,9 +101,12 @@ abstract final class ReplyHttp {
         'oid': oid,
         'rpid': rpid,
         'action': action,
-        'csrf': Accounts.main.csrf,
+        'csrf': Accounts.reply.csrf,
       },
-      options: Options(contentType: Headers.formUrlEncodedContentType),
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': Accounts.reply},
+      ),
     );
     if (res.data['code'] == 0) {
       return const Success(null);
@@ -126,9 +129,12 @@ abstract final class ReplyHttp {
         'oid': oid,
         'rpid': rpid,
         'action': action,
-        'csrf': Accounts.main.csrf,
+        'csrf': Accounts.reply.csrf,
       },
-      options: Options(contentType: Headers.formUrlEncodedContentType),
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': Accounts.reply},
+      ),
     );
     if (res.data['code'] == 0) {
       return const Success(null);
@@ -167,9 +173,12 @@ abstract final class ReplyHttp {
         'type': type,
         'rpid': rpid,
         'action': isUpTop ? 0 : 1,
-        'csrf': Accounts.main.csrf,
+        'csrf': Accounts.reply.csrf,
       },
-      options: Options(contentType: Headers.formUrlEncodedContentType),
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': Accounts.reply},
+      ),
     );
     if (res.data['code'] == 0) {
       return const Success(null);
@@ -186,10 +195,10 @@ abstract final class ReplyHttp {
     String? reasonDesc,
   }) async {
     final res = await Request().post(
-      '/x/v2/reply/report',
+      Api.replyReport,
       data: {
         'add_blacklist': banUid,
-        'csrf': Accounts.main.csrf,
+        'csrf': Accounts.reply.csrf,
         'gaia_source': 'main_h5',
         'oid': oid,
         'platform': 'android',
@@ -199,7 +208,10 @@ abstract final class ReplyHttp {
         'type': 1,
         if (reasonType == 0) 'content': reasonDesc!,
       },
-      options: Options(contentType: Headers.formUrlEncodedContentType),
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': Accounts.reply},
+      ),
     );
 
     if (res.data['code'] == 0) {
@@ -243,9 +255,12 @@ abstract final class ReplyHttp {
         'oid': oid,
         'type': type,
         'action': action,
-        'csrf': Accounts.main.csrf,
+        'csrf': Accounts.reply.csrf,
       },
-      options: Options(contentType: Headers.formUrlEncodedContentType),
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': Accounts.reply},
+      ),
     );
     if (res.data['code'] == 0) {
       if (res.data['data']?['action_toast'] case final String toast) {

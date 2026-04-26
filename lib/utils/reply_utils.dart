@@ -65,7 +65,7 @@ abstract final class ReplyUtils {
     // biliSendCommAntifraud
     if (Platform.isAndroid && biliSendCommAntifraud) {
       try {
-        final String cookieString = Accounts.main.cookieJar
+        final String cookieString = Accounts.reply.cookieJar
             .toJson()
             .entries
             .map((i) => '${i.key}=${i.value}')

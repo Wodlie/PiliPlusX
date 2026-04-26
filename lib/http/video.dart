@@ -29,7 +29,10 @@ import 'package:PiliPlus/models_new/video/video_play_info/data.dart';
 import 'package:PiliPlus/models_new/video/video_relation/data.dart';
 import 'package:PiliPlus/models_new/video/video_shot/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
@@ -47,6 +50,13 @@ import 'package:protobuf/protobuf.dart';
 abstract final class VideoHttp {
   static RegExp zoneRegExp = RegExp(Pref.banWordForZone, caseSensitive: false);
   static bool enableFilter = zoneRegExp.pattern.isNotEmpty;
+
+  static AccountType _accountTypeForRelationAct(int act) {
+    return switch (act) {
+      5 || 6 => AccountType.blacklist,
+      _ => AccountType.main,
+    };
+  }
 
   // 首页推荐视频
   static Future<LoadingState<List<RcmdVideoItemModel>>> rcmdVideoList({
@@ -262,6 +272,34 @@ abstract final class VideoHttp {
           seasonId: seasonId,
           tryLook: tryLook,
           videoType: VideoType.pgc,
+        );
+      } else if (bvid != null && IdUtils.bvRegexExact.hasMatch(bvid)) {
+        // 若bvid符合有效格式, 弹窗
+        SmartDialog.show(
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('提示'),
+              content: const Text('视频可能换源，是否跳转到新地址？'),
+              actions: [
+                TextButton(
+                  onPressed: () => SmartDialog.dismiss(),
+                  child: Text(
+                    '取消',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    SmartDialog.dismiss();
+                    PiliScheme.videoPush(null, bvid, showDialog: false);
+                  },
+                  child: const Text('确定'),
+                ),
+              ],
+            );
+          },
         );
       }
       return Error(_parseVideoErr(res.data['code'], res.data['message']));
@@ -550,12 +588,15 @@ abstract final class VideoHttp {
         'at_name_to_mid': jsonEncode(atNameToMid), // {"name":uid}
       if (pictures != null) 'pictures': jsonEncode(pictures),
       if (syncToDynamic) 'sync_to_dynamic': 1,
-      'csrf': Accounts.main.csrf,
+      'csrf': Accounts.reply.csrf,
     };
     final res = await Request().post(
       Api.replyAdd,
       data: data,
-      options: Options(contentType: Headers.formUrlEncodedContentType),
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': Accounts.reply},
+      ),
     );
     if (res.data['code'] == 0) {
       try {
@@ -588,9 +629,12 @@ abstract final class VideoHttp {
         'type': type, //type.index
         'oid': oid,
         'rpid': rpid,
-        'csrf': Accounts.main.csrf,
+        'csrf': Accounts.reply.csrf,
       },
-      options: Options(contentType: Headers.formUrlEncodedContentType),
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': Accounts.reply},
+      ),
     );
     if (res.data['code'] == 0) {
       GStorage.reply?.delete(rpid.toString());
@@ -606,6 +650,8 @@ abstract final class VideoHttp {
     required int act,
     required int reSrc,
   }) async {
+    final accountType = _accountTypeForRelationAct(act);
+    final account = Accounts.get(accountType);
     final res = await Request().post(
       Api.relationMod,
       queryParameters: {
@@ -624,10 +670,11 @@ abstract final class VideoHttp {
           "entity_id": mid,
           'fp': BrowserUa.pc,
         }),
-        'csrf': Accounts.main.csrf,
+        'csrf': account.csrf,
       },
       options: Options(
         contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': account},
         headers: {
           'origin': 'https://space.bilibili.com',
           'referer': 'https://space.bilibili.com/$mid/dynamic',

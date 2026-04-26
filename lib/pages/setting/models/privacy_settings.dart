@@ -58,12 +58,19 @@ List<SettingsModel> get privacySettings => [
 Widget _getAccountDetail(BuildContext context) {
   final slivers = <Widget>[];
   final theme = TextTheme.of(context);
+  final colorScheme = ColorScheme.of(context);
   for (final i in AccountType.values) {
     final url = ApiType.apiTypeSet[i];
     if (url == null) continue;
 
     slivers
       ..add(Center(child: Text(i.title, style: theme.titleMedium)))
+      ..add(
+        Text(
+          i.desc,
+          style: theme.bodySmall?.copyWith(color: colorScheme.outline),
+        ),
+      )
       ..add(SelectableText(url.join('\n')));
   }
   return Column(

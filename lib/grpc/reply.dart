@@ -2,6 +2,7 @@ import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart';
 import 'package:PiliPlus/grpc/bilibili/pagination.pb.dart';
 import 'package:PiliPlus/grpc/grpc_req.dart';
+import 'package:PiliPlus/grpc/reply_translate.dart';
 import 'package:PiliPlus/grpc/url.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -9,6 +10,7 @@ import 'package:fixnum/fixnum.dart';
 
 abstract final class ReplyGrpc {
   static bool antiGoodsReply = Pref.antiGoodsReply;
+  static int minLevelForReply = Pref.minLevelForReply;
   static RegExp replyRegExp = RegExp(
     Pref.banWordForReply,
     caseSensitive: false,
@@ -38,7 +40,9 @@ abstract final class ReplyGrpc {
 
   static bool needRemoveGrpc(ReplyInfo reply) {
     return (enableFilter && replyRegExp.hasMatch(reply.content.message)) ||
-        (antiGoodsReply && needRemoveGoodGrpc(reply));
+        (antiGoodsReply && needRemoveGoodGrpc(reply)) ||
+        (minLevelForReply > 0 &&
+            reply.member.level.toInt() < minLevelForReply);
   }
 
   static Future<LoadingState<MainListReply>> mainList({
@@ -47,6 +51,7 @@ abstract final class ReplyGrpc {
     required Mode mode,
     required String? offset,
     required Int64? cursorNext,
+    int autoLoadDepth = 0,
   }) async {
     final res = await GrpcReq.request(
       GrpcUrl.mainList,
@@ -77,6 +82,32 @@ abstract final class ReplyGrpc {
           }
           return hasMatch;
         });
+      }
+
+      // When all replies on this page were filtered out but the server
+      // indicates more pages exist, automatically load the next page so
+      // the user is not stuck with an empty comment section.
+      // Limit consecutive auto-loads to avoid excessive API calls.
+      if (response.replies.isEmpty &&
+          !response.cursor.isEnd &&
+          autoLoadDepth < 5 &&
+          response.hasPaginationReply() &&
+          response.paginationReply.nextOffset.isNotEmpty) {
+        final nextRes = await mainList(
+          type: type,
+          oid: oid,
+          mode: mode,
+          offset: response.paginationReply.nextOffset,
+          cursorNext: response.cursor.next,
+          autoLoadDepth: autoLoadDepth + 1,
+        );
+        if (nextRes case Success(response: final nextResponse)) {
+          // Update cursor/pagination to reflect the furthest page fetched,
+          // so subsequent loads continue from the correct position.
+          response.cursor = nextResponse.cursor;
+          response.paginationReply = nextResponse.paginationReply;
+          response.replies.addAll(nextResponse.replies);
+        }
       }
     }
     return res;
@@ -147,5 +178,21 @@ abstract final class ReplyGrpc {
       ),
       SearchItemReply.fromBuffer,
     );
-}
+  }
+
+  static Future<LoadingState<TranslateReplyResp>> translateReply({
+    required int oid,
+    required int type,
+    required List<int> rpids,
+  }) {
+    return GrpcReq.request(
+      GrpcUrl.translateReply,
+      TranslateReplyReq(
+        oid: Int64(oid),
+        type: Int64(type),
+        rpids: rpids.map((id) => Int64(id)),
+      ),
+      TranslateReplyResp.fromBuffer,
+    );
+  }
 }

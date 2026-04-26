@@ -247,7 +247,7 @@ class _MainAppState extends PopScopeState<MainApp>
     await trayManager.setContextMenu(trayMenu);
   }
 
-  static void _onBack() {
+  void _onBack() {
     if (Platform.isAndroid) {
       Utils.channel.invokeMethod('back');
     }

@@ -219,6 +219,8 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
   }
 
   Widget _header(ThemeData theme, ReplyInfo firstFloor) {
+    final rpid = firstFloor.id;
+    final translated = _controller.translatedReplies[rpid];
     return SliverMainAxisGroup(
       slivers: [
         SliverToBoxAdapter(
@@ -230,6 +232,10 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
             upMid: widget.upMid ?? _controller.upMid,
             onCheckReply: (item) =>
                 _controller.onCheckReply(item, isManual: true),
+            translatedText:
+                translated != null && translated.isNotEmpty ? translated : null,
+            isTranslating: translated != null && translated.isEmpty,
+            onTranslate: () => _controller.translateReply(firstFloor),
           ),
         ),
         SliverToBoxAdapter(
@@ -346,6 +352,8 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
   }
 
   Widget _replyItem(BuildContext context, ReplyInfo replyItem, int index) {
+    final rpid = replyItem.id;
+    final translated = _controller.translatedReplies[rpid];
     return ReplyItemGrpc(
       replyItem: replyItem,
       replyLevel: isDialogue ? 3 : 2,
@@ -370,6 +378,10 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
         }
       },
       onCheckReply: (item) => _controller.onCheckReply(item, isManual: true),
+      translatedText:
+          translated != null && translated.isNotEmpty ? translated : null,
+      isTranslating: translated != null && translated.isEmpty,
+      onTranslate: () => _controller.translateReply(replyItem),
     );
   }
 }

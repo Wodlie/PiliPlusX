@@ -354,6 +354,9 @@ class PlPlayerController with BlockConfigMixin {
   late final fastForBackwardDuration = Duration(
     seconds: Pref.fastForBackwardDuration,
   );
+  late final fastForBackwardDuration_ = Duration(
+    seconds: Pref.fastForBackwardDuration_,
+  );
 
   late final horizontalSeasonPanel = Pref.horizontalSeasonPanel;
   late final preInitPlayer = Pref.preInitPlayer;
@@ -397,6 +400,9 @@ class PlPlayerController with BlockConfigMixin {
   late PlayRepeat playRepeat = Pref.playRepeat;
 
   TextStyle get subTitleStyle => TextStyle(
+    fontFamily: !Pref.useSystemFont && Platform.isAndroid
+        ? 'HarmonyOS_Sans'
+        : null,
     height: 1.5,
     fontSize:
         16 * (isFullScreen.value ? subtitleFontScaleFS : subtitleFontScale),
@@ -1490,7 +1496,11 @@ class PlPlayerController with BlockConfigMixin {
       } else {
         if (PlatformUtils.isMobile) {
           if (!removeSafeArea) {
-            showStatusBar();
+            if (!Pref.hideStatusBar) {
+              showStatusBar();
+            } else {
+              hideStatusBarKeepNav();
+            }
           }
           if (orientation == null && mode == .none) {
             return;
@@ -1755,7 +1765,7 @@ class PlPlayerController with BlockConfigMixin {
           builder: (context) => GestureDetector(
             onTap: () {
               Get.back();
-              ImageUtils.saveByteImg(
+              ImageUtils.saveScreenShot(
                 bytes: value,
                 fileName: 'screenshot_${ImageUtils.time}',
               );

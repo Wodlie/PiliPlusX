@@ -63,18 +63,26 @@ Future<void>? fullMode() {
 }
 
 bool _showStatusBar = true;
-Future<void>? hideStatusBar() {
+Future<void> hideStatusBar() async {
   if (!_showStatusBar) {
-    return null;
+    return;
   }
   _showStatusBar = false;
   return SystemChrome.setEnabledSystemUIMode(.immersiveSticky);
 }
 
+Future<void> hideStatusBarKeepNav() async {
+  _showStatusBar = false;
+  await SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.manual,
+    overlays: [SystemUiOverlay.bottom],
+  );
+}
+
 //退出全屏显示
-Future<void>? showStatusBar() {
+Future<void> showStatusBar() async {
   if (_showStatusBar) {
-    return null;
+    return;
   }
   _showStatusBar = true;
   return SystemChrome.setEnabledSystemUIMode(

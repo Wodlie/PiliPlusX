@@ -772,7 +772,8 @@ class LoginPageController extends GetxController
         ),
         titlePadding: const .only(left: 22, top: 16, right: 22, bottom: 3),
         contentPadding: const .symmetric(vertical: 5),
-        actionsPadding: const .only(left: 16, right: 16, bottom: 10),
+        actionsPadding: const .only(left: 8, right: 16, bottom: 10),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
         content: SingleChildScrollView(
           child: AnimatedSize(
             curve: Curves.easeIn,
@@ -827,26 +828,38 @@ class LoginPageController extends GetxController
         ),
         actions: [
           TextButton(
-            onPressed: Get.back,
-            child: Text(
-              '取消',
-              style: TextStyle(color: ColorScheme.of(context).outline),
-            ),
-          ),
-          TextButton(
             onPressed: () {
               Get.back();
-              for (final type in AccountType.values) {
-                final index = type.index;
-                final account = quickSelect
-                    ? selectAccount.first
-                    : selectAccount[index];
-                if (account != Accounts.accountMode[index]) {
-                  Accounts.set(type, account);
-                }
-              }
+              Get.toNamed('/loginPage');
             },
-            child: const Text('确定'),
+            child: const Text('登录新账号'),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: Get.back,
+                child: Text(
+                  '取消',
+                  style: TextStyle(color: ColorScheme.of(context).outline),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Get.back();
+                  for (final type in AccountType.values) {
+                    final index = type.index;
+                    final account = quickSelect
+                        ? selectAccount.first
+                        : selectAccount[index];
+                    if (account != Accounts.accountMode[index]) {
+                      Accounts.set(type, account);
+                    }
+                  }
+                },
+                child: const Text('确定'),
+              ),
+            ],
           ),
         ],
       ),
