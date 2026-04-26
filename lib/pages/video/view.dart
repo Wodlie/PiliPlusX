@@ -62,8 +62,6 @@ import 'package:PiliPlus/utils/num_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
-import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:auto_orientation/auto_orientation.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:floating/floating.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -537,9 +535,6 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     }
     _steinResumeWorker?.dispose();
     removeObserverMobile(this);
-    if (PlatformUtils.isMobile && !Pref.hideStatusBar) {
-      showStatusBar();
-    }
     super.dispose();
   }
 
@@ -660,41 +655,6 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       videoDetailController.removeSafeArea || (isFullScreen && !isPortrait);
 
   Widget get childWhenDisabled {
-    videoDetailController.animationController
-      ..removeListener(animListener)
-      ..addListener(animListener);
-    if (PlatformUtils.isMobile && mounted && isShowing && !isFullScreen) {
-      if (isPortrait) {
-        if (!Pref.hideStatusBar) {
-          showStatusBar();
-        } else {
-          hideStatusBarKeepNav();
-        }
-      } else if (!videoDetailController.horizontalScreen) {
-        hideStatusBar();
-      }
-    }
-    if (PlatformUtils.isMobile) {
-      if (!isPortrait &&
-          !isFullScreen &&
-          plPlayerController != null &&
-          videoDetailController.autoPlay) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          plPlayerController!.triggerFullScreen(
-            status: true,
-            isManualFS: false,
-            mode: FullScreenMode.gravity,
-          );
-        });
-      } else if (isPortrait &&
-          isFullScreen &&
-          plPlayerController?.isManualFS == false &&
-          plPlayerController?.controlsLock.value == false) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          plPlayerController!.triggerFullScreen(status: false);
-        });
-      }
-    }
     return Obx(
       () {
         final isFullScreen = this.isFullScreen;

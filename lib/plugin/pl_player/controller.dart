@@ -1475,6 +1475,7 @@ class PlPlayerController with BlockConfigMixin {
     bool inAppFullScreen = false,
     DeviceOrientation? orientation,
     bool isManualFS = true,
+    FullScreenMode? mode,
   }) async {
     if (isDesktopPip) return;
     if (isFullScreen.value == status) return;
@@ -1619,6 +1620,7 @@ class PlPlayerController with BlockConfigMixin {
 
   bool _isCloseAll = false;
   bool get isCloseAll => _isCloseAll;
+  set isCloseAll(bool v) => _isCloseAll = v;
 
   void resetScreenRotation() {
     if (horizontalScreen) {

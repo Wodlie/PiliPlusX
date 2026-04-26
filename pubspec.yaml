@@ -130,10 +130,10 @@ dependencies:
   flutter_volume_controller: ^1.3.3
   wakelock_plus: ^1.2.8
   # universal_platform: ^1.1.0
-  # auto_orientation:
-  #   git:
-  #     url: https://github.com/bggRGjQaUbCoE/auto_orientation.git
-  #     ref: master
+  auto_orientation:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/auto_orientation.git
+      ref: master
   native_device_orientation:
     git:
       url: https://github.com/bggRGjQaUbCoE/flutter_native_device_orientation.git

@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter/services.dart'
-    show SystemChrome, MethodChannel, SystemUiOverlay, DeviceOrientation;
+    show SystemChrome, MethodChannel, SystemUiOverlay, SystemUiMode, DeviceOrientation;
 
 bool _isDesktopFullScreen = false;
 
