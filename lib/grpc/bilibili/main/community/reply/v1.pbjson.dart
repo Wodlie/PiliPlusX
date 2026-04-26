@@ -133,6 +133,24 @@ final $typed_data.Uint8List userCallbackSceneDescriptor = $convert.base64Decode(
     'ChFVc2VyQ2FsbGJhY2tTY2VuZRIcChhJbnNlcnRfVXNlckNhbGxiYWNrU2NlbmUQABIYChRSZW'
     'NvbW1lbmRTdXBlcmJSZXBseRAB');
 
+@$core.Deprecated('Use translationSwitchDescriptor instead')
+const TranslationSwitch$json = {
+  '1': 'TranslationSwitch',
+  '2': [
+    {'1': 'TRANSLATION_SWITCH_UNSPECIFIED', '2': 0},
+    {'1': 'TRANSLATION_SWITCH_UNSUPPORTED', '2': 1},
+    {'1': 'TRANSLATION_SWITCH_SHOW_TRANSLATION', '2': 2},
+    {'1': 'TRANSLATION_SWITCH_SHOW_ORIGIN', '2': 3},
+  ],
+};
+
+/// Descriptor for `TranslationSwitch`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List translationSwitchDescriptor = $convert.base64Decode(
+    'ChFUcmFuc2xhdGlvblN3aXRjaBIiCh5UUkFOU0xBVElPTl9TV0lUQ0hfVU5TUEVDSUZJRUQQAB'
+    'IiCh5UUkFOU0xBVElPTl9TV0lUQ0hfVU5TVVBQT1JURUQQARInCiNUUkFOU0xBVElPTl9TV0lU'
+    'Q0hfU0hPV19UUkFOU0xBVElPThACEiIKHlRSQU5TTEFUSU9OX1NXSVRDSF9TSE9XX09SSUdJTh'
+    'AD');
+
 @$core.Deprecated('Use activityDescriptor instead')
 const Activity$json = {
   '1': 'Activity',
@@ -4561,3 +4579,4 @@ const WordSearchParam$json = {
 /// Descriptor for `WordSearchParam`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List wordSearchParamDescriptor = $convert.base64Decode(
     'Cg9Xb3JkU2VhcmNoUGFyYW0SHwoLc2hvd25fY291bnQYASABKANSCnNob3duQ291bnQ=');
+

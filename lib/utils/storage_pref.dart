@@ -196,11 +196,15 @@ abstract final class Pref {
   static bool get showDynamicsRefreshFab =>
       _setting.get(SettingBoxKey.showDynamicsRefreshFab, defaultValue: false);
 
-  static FullScreenMode get fullScreenMode =>
-      FullScreenMode.values[_setting.get(
-        SettingBoxKey.fullScreenMode,
-        defaultValue: FullScreenMode.auto.index,
-      )];
+  static FullScreenMode get fullScreenMode {
+    int? index = _setting.get(SettingBoxKey.fullScreenMode);
+    if (index == null) {
+      final FullScreenMode mode = horizontalScreen && isTablet ? .none : .auto;
+      _setting.put(SettingBoxKey.fullScreenMode, mode.index);
+      return mode;
+    }
+    return FullScreenMode.values[index];
+  }
 
   static BtmProgressBehavior get btmProgressBehavior =>
       BtmProgressBehavior.values[_setting.get(
@@ -389,12 +393,12 @@ abstract final class Pref {
 
   static bool get horizontalSeasonPanel => _setting.get(
     SettingBoxKey.horizontalSeasonPanel,
-    defaultValue: PlatformUtils.isDesktop,
+    defaultValue: horizontalScreen,
   );
 
   static bool get horizontalMemberPage => _setting.get(
     SettingBoxKey.horizontalMemberPage,
-    defaultValue: PlatformUtils.isDesktop,
+    defaultValue: horizontalScreen,
   );
 
   static int? get replyLengthLimit {
@@ -662,9 +666,6 @@ abstract final class Pref {
   static bool get enableBackgroundPlay =>
       _setting.get(SettingBoxKey.enableBackgroundPlay, defaultValue: true);
 
-  static bool get allowRotateScreen =>
-      _setting.get(SettingBoxKey.allowRotateScreen, defaultValue: true);
-
   static bool get disableLikeMsg =>
       _setting.get(SettingBoxKey.disableLikeMsg, defaultValue: false);
 
@@ -691,8 +692,10 @@ abstract final class Pref {
     return scale.clamp(0.5, 3.0);
   }
 
-  static bool get dynamicsWaterfallFlow =>
-      _setting.get(SettingBoxKey.dynamicsWaterfallFlow, defaultValue: true);
+  static bool get dynamicsWaterfallFlow => _setting.get(
+    SettingBoxKey.dynamicsWaterfallFlow,
+    defaultValue: horizontalScreen,
+  );
 
   static bool get hideTopBar => _setting.get(
     SettingBoxKey.hideTopBar,
@@ -1023,4 +1026,10 @@ abstract final class Pref {
 
   static bool get saveReply =>
       _setting.get(SettingBoxKey.saveReply, defaultValue: true);
+
+  static bool get floatingNavBar =>
+      _setting.get(SettingBoxKey.floatingNavBar, defaultValue: false);
+
+  static bool get removeSafeArea =>
+      _setting.get(SettingBoxKey.removeSafeArea, defaultValue: false);
 }

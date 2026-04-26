@@ -33,6 +33,17 @@ abstract final class Utils {
     _ => color,
   };
 
+  static bool getDimensionFromUri(String uri) {
+    try {
+      final params = Uri.parse(uri).queryParameters;
+      final width = int.parse(params['player_width']!);
+      final height = int.parse(params['player_height']!);
+      return params['player_rotate'] == '1' ? width > height : height > width;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static String themeUrl(bool isDark) =>
       'native.theme=${isDark ? 2 : 1}&night=${isDark ? 1 : 0}';
 
@@ -87,10 +98,7 @@ abstract final class Utils {
     int.parse('${color.substring(7)}${color.substring(1, 7)}', radix: 16),
   );
 
-  static int? _sdkInt;
-  static Future<int> get sdkInt async {
-    return _sdkInt ??= (await DeviceInfoPlugin().androidInfo).version.sdkInt;
-  }
+  static late int sdkInt;
 
   static bool? _isIpad;
   static Future<bool> get isIpad async {

@@ -126,6 +126,7 @@ class VideoDetailController extends GetxController
   final plPlayerController = PlPlayerController.getInstance()
     ..brightness.value = -1;
   bool get setSystemBrightness => plPlayerController.setSystemBrightness;
+  bool get removeSafeArea => plPlayerController.removeSafeArea;
 
   late VideoItem firstVideo;
   String? videoUrl;
@@ -167,23 +168,57 @@ class VideoDetailController extends GetxController
   PlayerStatus? playerStatus;
 
   late final scrollKey = GlobalKey<ExtendedNestedScrollViewState>();
-  late final RxBool isVertical = false.obs;
+  late final RxBool isVertical;
   late final RxDouble scrollRatio = 0.0.obs;
+
   ScrollController? _scrollCtr;
   ScrollController get scrollCtr =>
       _scrollCtr ??= ScrollController()..addListener(scrollListener);
+
   late bool isExpanding = false;
   late bool isCollapsing = false;
-  AnimationController? animController;
 
-  AnimationController get animationController =>
-      animController ??= AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 200),
-      );
   late double minVideoHeight;
   late double maxVideoHeight;
   late double videoHeight;
+  late double animHeight;
+
+  AnimationController? animController;
+  AnimationController get animationController =>
+      animController ??= (AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 200),
+      )..addListener(_animListener));
+
+  void refreshPage() {
+    if (scrollKey.currentState?.mounted ?? false) {
+      (scrollKey.currentState!.context as Element).markNeedsBuild();
+    }
+  }
+
+  void _animListener() {
+    if (animationController.isForwardOrCompleted) {
+      _calcAnimHeight();
+      refreshPage();
+    }
+  }
+
+  void _calcAnimHeight() {
+    if (isExpanding) {
+      animHeight = clampDouble(
+        videoHeight * animationController.value,
+        kToolbarHeight,
+        videoHeight,
+      );
+    } else if (isCollapsing) {
+      animHeight = clampDouble(
+        maxVideoHeight -
+            (maxVideoHeight - minVideoHeight) * animationController.value,
+        minVideoHeight,
+        maxVideoHeight,
+      );
+    }
+  }
 
   void animToTop() {
     final outerController = scrollKey.currentState!.outerController;
@@ -196,13 +231,39 @@ class VideoDetailController extends GetxController
     }
   }
 
+  bool _needAnimOnDimensionChanged(bool isVertical) {
+    if (isFullScreen) {
+      if (PlatformUtils.isMobile) {
+        plPlayerController.changeOrientation(isVertical: isVertical);
+      }
+      return false;
+    }
+    return true;
+  }
+
   @pragma('vm:notify-debugger-on-exception')
-  void setVideoHeight() {
+  void _setVideoHeight() {
     try {
-      final isVertical = firstVideo.width != null && firstVideo.height != null
-          ? firstVideo.width! < firstVideo.height!
-          : false;
-      if (!scrollCtr.hasClients) {
+      var width = firstVideo.width;
+      var height = firstVideo.height;
+      if (width == null || height == null) {
+        if (isUgc && !isFileSource) {
+          final ugcIntroCtr = Get.find<UgcIntroController>(tag: heroTag);
+          final data = ugcIntroCtr.videoDetail.value;
+          if (data.cid == cid.value) {
+            final dimension = data.dimension!;
+            width = dimension.width!;
+            height = dimension.height!;
+          } else {
+            ugcIntroCtr.queryVideoIntro().whenComplete(_setVideoHeight);
+            return;
+          }
+        } else {
+          return;
+        }
+      }
+      final isVertical = height > width;
+      if (_scrollCtr?.hasClients != true) {
         videoHeight = isVertical ? maxVideoHeight : minVideoHeight;
         this.isVertical.value = isVertical;
         return;
@@ -213,10 +274,12 @@ class VideoDetailController extends GetxController
         if (this.videoHeight != videoHeight) {
           if (videoHeight > this.videoHeight) {
             // current minVideoHeight
-            isExpanding = true;
-            animationController.forward(
-              from: (minVideoHeight - scrollCtr.offset) / maxVideoHeight,
-            );
+            if (_needAnimOnDimensionChanged(isVertical)) {
+              isExpanding = true;
+              animationController.forward(
+                from: (minVideoHeight - scrollCtr.offset) / maxVideoHeight,
+              );
+            }
             this.videoHeight = maxVideoHeight;
           } else {
             // current maxVideoHeight
@@ -224,20 +287,28 @@ class VideoDetailController extends GetxController
                 .toPrecision(2);
             double minVideoHeightPrecise = minVideoHeight.toPrecision(2);
             if (currentHeight == minVideoHeightPrecise) {
-              isExpanding = true;
-              this.videoHeight = minVideoHeight;
+              if (_needAnimOnDimensionChanged(isVertical)) {
+                isExpanding = true;
+                this.videoHeight = minVideoHeight;
+              }
               animationController.forward(from: 1);
             } else if (currentHeight < minVideoHeightPrecise) {
               // expand
-              isExpanding = true;
-              animationController.forward(from: currentHeight / minVideoHeight);
+              if (_needAnimOnDimensionChanged(isVertical)) {
+                isExpanding = true;
+                animationController.forward(
+                  from: currentHeight / minVideoHeight,
+                );
+              }
               this.videoHeight = minVideoHeight;
             } else {
               // collapse
-              isCollapsing = true;
-              animationController.forward(
-                from: scrollCtr.offset / (maxVideoHeight - minVideoHeight),
-              );
+              if (_needAnimOnDimensionChanged(isVertical)) {
+                isCollapsing = true;
+                animationController.forward(
+                  from: scrollCtr.offset / (maxVideoHeight - minVideoHeight),
+                );
+              }
               this.videoHeight = minVideoHeight;
             }
           }
@@ -299,11 +370,7 @@ class VideoDetailController extends GetxController
       defaultST = Duration.zero;
     }
     data = PlayUrlModel(timeLength: entry.totalTimeMilli);
-    if (isInit) {
-      Future.delayed(const Duration(milliseconds: 120), setVideoHeight);
-    } else {
-      setVideoHeight();
-    }
+    _setVideoHeight();
   }
 
   @override
@@ -327,6 +394,7 @@ class VideoDetailController extends GetxController
     pgcType = args['pgcType'];
     heroTag = args['heroTag'];
     cover = RxString(args['cover'] ?? '');
+    isVertical = RxBool(args['isVertical'] ?? false);
 
     sourceType = args['sourceType'] ?? SourceType.normal;
     isFileSource = sourceType == SourceType.file;
@@ -833,7 +901,7 @@ class VideoDetailController extends GetxController
           codecs: 'avc1',
           quality: videoQuality,
         );
-        setVideoHeight();
+        _setVideoHeight();
         currentDecodeFormats = VideoDecodeFormatType.fromString('avc1');
         currentVideoQa.value = videoQuality;
         await _initPlayerIfNeeded(autoFullScreenFlag);
@@ -845,7 +913,7 @@ class VideoDetailController extends GetxController
         _autoPlay.value = false;
         videoState.value = false;
         if (plPlayerController.isFullScreen.value) {
-          plPlayerController.toggleFullScreen(false);
+          plPlayerController.triggerFullScreen(status: false);
         }
         isQuerying = false;
         return;
@@ -907,7 +975,7 @@ class VideoDetailController extends GetxController
         (e) => currentDecodeFormats.codes.any(e.codecs!.startsWith),
         orElse: () => videosList.first,
       );
-      setVideoHeight();
+      _setVideoHeight();
 
       videoUrl = VideoUtils.getCdnUrl(firstVideo.playUrls);
 
@@ -940,8 +1008,9 @@ class VideoDetailController extends GetxController
       _autoPlay.value = false;
       videoState.value = false;
       if (plPlayerController.isFullScreen.value) {
-        plPlayerController.toggleFullScreen(false);
+        plPlayerController.triggerFullScreen(status: false);
       }
+      result.toast();
     }
     isQuerying = false;
   }
@@ -1350,7 +1419,9 @@ class VideoDetailController extends GetxController
     _scrollCtr
       ?..removeListener(scrollListener)
       ..dispose();
-    animController?.dispose();
+    animController
+      ?..removeListener(_animListener)
+      ..dispose();
     subtitles.clear();
     vttSubtitles.clear();
     super.onClose();

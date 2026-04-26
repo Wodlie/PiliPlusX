@@ -3,6 +3,7 @@ import 'package:PiliPlus/pages/article/view.dart';
 import 'package:PiliPlus/pages/article_list/view.dart';
 import 'package:PiliPlus/pages/audio/view.dart';
 import 'package:PiliPlus/pages/blacklist/view.dart';
+import 'package:PiliPlus/pages/bubble/view.dart';
 import 'package:PiliPlus/pages/danmaku_block/view.dart';
 import 'package:PiliPlus/pages/dlna/view.dart';
 import 'package:PiliPlus/pages/download/view.dart';
@@ -34,6 +35,7 @@ import 'package:PiliPlus/pages/main_reply/view.dart';
 import 'package:PiliPlus/pages/match_info/view.dart';
 import 'package:PiliPlus/pages/member/view.dart';
 import 'package:PiliPlus/pages/member_dynamics/view.dart';
+import 'package:PiliPlus/pages/member_guard/view.dart';
 import 'package:PiliPlus/pages/member_profile/view.dart';
 import 'package:PiliPlus/pages/member_search/view.dart';
 import 'package:PiliPlus/pages/member_upower_rank/view.dart';
@@ -196,5 +198,7 @@ class Routes {
     GetPage(name: '/myReply', page: () => const MyReply()),
     GetPage(name: '/videoWeb', page: () => const MemberVideoWeb()),
     GetPage(name: '/ssWeb', page: () => const MemberSSWeb()),
+    GetPage(name: '/memberGuard', page: () => const MemberGuard()),
+    GetPage(name: '/bubble', page: () => const BubblePage()),
   ];
 }

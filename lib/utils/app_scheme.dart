@@ -397,6 +397,9 @@ abstract final class PiliScheme {
               }
             }
             return false;
+          case 'download':
+            Get.toNamed('/download');
+            return true;
           default:
             if (!selfHandle) {
               // if (kDebugMode) debugPrint('$uri');
@@ -614,11 +617,13 @@ abstract final class PiliScheme {
             IdUtils.bvRegex.firstMatch(path)?.group(0);
         if (bvid != null) {
           if (mediaId != null) {
-            final int? cid = await SearchHttp.ab2c(bvid: bvid);
+            final res = await SearchHttp.ab2cWithDimension(bvid: bvid);
+            final cid = res?.cid;
             if (cid != null) {
               PageUtils.toVideoPage(
                 bvid: bvid,
                 cid: cid,
+                dimension: res!.dimension,
                 extraArguments: {
                   'sourceType': SourceType.playlist,
                   'favTitle': '播放列表',
@@ -806,6 +811,15 @@ abstract final class PiliScheme {
         }
         launchURL();
         return false;
+      case 'bubble':
+        // https://www.bilibili.com/bubble/home/1
+        final id = uriDigitRegExp.firstMatch(path)?.group(1);
+        if (id != null) {
+          Get.toNamed('/bubble', arguments: {'id': id});
+          return true;
+        }
+        launchURL();
+        return false;
       default:
         final res = IdUtils.matchAvorBv(input: area?.split('?').first);
         if (res.isNotEmpty) {
@@ -865,11 +879,12 @@ abstract final class PiliScheme {
       if (showDialog) {
         SmartDialog.showLoading<dynamic>(msg: '获取中...');
       }
-      final int? cid = await SearchHttp.ab2c(
+      final res = await SearchHttp.ab2cWithDimension(
         bvid: bvid,
         aid: aid,
         part: part != null ? int.tryParse(part) : null,
       );
+      final cid = res?.cid;
       if (showDialog) {
         SmartDialog.dismiss();
       }
@@ -880,6 +895,7 @@ abstract final class PiliScheme {
           cid: cid,
           progress: progress,
           off: off,
+          dimension: res!.dimension,
         );
       }
     } catch (e) {

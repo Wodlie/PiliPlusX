@@ -56,11 +56,10 @@ jobs:
           mv build/windows/x64/runner/Release/* Release/PiliPlusX-Win/
           mv dist/**/*.exe PiliPlusX-Win-Setup/PiliPlusX_windows_${{ inputs.tag }}_x64_setup.exe
 
-      # - name: Compress
-      #   if: ${{ inputs.tag != '' }}
-      #   run: |
-      #     Compress-Archive -Path "Release/PiliPlusX-Win" -DestinationPath "PiliPlusX_windows_${{ inputs.tag }}_x64.zip"
-      #   shell: pwsh
+      - name: Compress
+        run: |
+          Compress-Archive -Path "Release/PiliPlusX-Win" -DestinationPath "PiliPlusX_windows_${{ inputs.tag }}_x64_portable.zip"
+        shell: pwsh
 
       - name: Release
         if: ${{ inputs.tag != '' && !contains(inputs.tag, 'test') }}
@@ -76,9 +75,9 @@ jobs:
       - name: Upload windows file release
         uses: actions/upload-artifact@v7
         with:
-          archive: true
-          name: PiliPlus_windows_${{env.version}}_x64_portable
-          path: Release
+          archive: false
+          name: Windows-file-x64-release
+          path: PiliPlus_windows_*.zip
 
       - name: Upload windows setup release
         uses: actions/upload-artifact@v7
