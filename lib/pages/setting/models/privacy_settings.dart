@@ -3,6 +3,7 @@ import 'package:PiliPlus/pages/mine/controller.dart';
 import 'package:PiliPlus/pages/setting/models/model.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/api_type.dart';
+import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -30,6 +31,13 @@ List<SettingsModel> get privacySettings => [
     getSubtitle: () => MineController.anonymity.value
         ? '已进入无痕模式，搜索、观看视频/直播不携带Cookie与CSRF，其余操作不受影响'
         : '未开启无痕模式，将使用账户信息提供完整服务',
+  ),
+  const SwitchModel(
+    title: '无痕模式：屏蔽空降助手查询',
+    subtitle: '开启后，无痕模式下不再向空降助手服务器查询跳过片段',
+    leading: Icon(Icons.not_interested_outlined),
+    setKey: SettingBoxKey.suppressSponsorBlockIncognito,
+    defaultVal: false,
   ),
   NormalModel(
     onTap: (context, setState) {
