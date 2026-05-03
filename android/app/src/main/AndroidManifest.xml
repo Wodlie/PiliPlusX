@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.gucooing.piliplus">
+    package="com.Wodlie.PiliPlusX">
 
     <queries>
         <intent>
@@ -106,7 +106,7 @@
             <intent-filter android:label="PiliPlusX">
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.SEARCH" />
-                <action android:name="com.example.piliplus.SHORTCUT" />
+                <action android:name="com.Wodlie.PiliPlusX.SHORTCUT" />
 
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />

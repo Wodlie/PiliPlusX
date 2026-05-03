@@ -791,6 +791,9 @@ abstract final class Pref {
   static bool get enableSponsorBlock =>
       _setting.get(SettingBoxKey.enableSponsorBlock, defaultValue: false);
 
+  static bool get suppressSponsorBlockIncognito =>
+      _setting.get(SettingBoxKey.suppressSponsorBlockIncognito, defaultValue: false);
+
   static bool get enableHA =>
       _setting.get(SettingBoxKey.enableHA, defaultValue: true);
 

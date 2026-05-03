@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:PiliPlus/common/widgets/progress_bar/segment_progress_bar.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/sponsor_block.dart';
+import 'package:PiliPlus/pages/mine/controller.dart';
 import 'package:PiliPlus/models/common/sponsor_block/segment_model.dart';
 import 'package:PiliPlus/models/common/sponsor_block/segment_type.dart';
 import 'package:PiliPlus/models/common/sponsor_block/skip_type.dart';
@@ -62,6 +63,11 @@ mixin BlockMixin on GetxController {
     required int cid,
   }) async {
     resetBlock();
+
+    if (Pref.suppressSponsorBlockIncognito &&
+        MineController.anonymity.value) {
+      return;
+    }
 
     final result = await SponsorBlock.getSkipSegments(bvid: bvid, cid: cid);
     switch (result) {
@@ -245,7 +251,10 @@ mixin BlockMixin on GetxController {
     if (autoPlay && Pref.blockToast) {
       _showBlockToast('已跳过${item.segmentType.shortTitle}片段');
     }
-    if (isBlock && Pref.blockTrack) {
+    if (isBlock &&
+        Pref.blockTrack &&
+        !(Pref.suppressSponsorBlockIncognito &&
+            MineController.anonymity.value)) {
       SponsorBlock.viewedVideoSponsorTime(item.uuid);
     }
   }

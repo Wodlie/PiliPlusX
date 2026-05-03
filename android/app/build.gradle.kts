@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.gucooing.piliplus"
+    namespace = "com.Wodlie.PiliPlusX"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -25,7 +25,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.gucooing.piliplus"
+        applicationId = "com.Wodlie.PiliPlusX"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -61,7 +61,7 @@ android {
                 resValue(
                     type = "string",
                     name = "app_name",
-                    value = "PiliPlus dev",
+                    value = "PiliPlusX dev",
                 )
             }
 //            proguardFiles(

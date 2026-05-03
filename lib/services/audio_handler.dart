@@ -20,7 +20,7 @@ Future<VideoPlayerServiceHandler> initAudioService() {
   return AudioService.init(
     builder: VideoPlayerServiceHandler.new,
     config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.gucooing.piliplus.audio',
+      androidNotificationChannelId: 'com.Wodlie.PiliPlusX.audio',
       androidNotificationChannelName: 'Audio Service ${Constants.appName}',
       androidNotificationOngoing: true,
       androidStopForegroundOnPause: true,

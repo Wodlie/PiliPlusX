@@ -125,10 +125,14 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                   ),
                 ),
                 Obx(
-                  () => _buildBody(
-                    theme,
-                    _videoReplyController.loadingState.value,
-                  ),
+                  () {
+                    // trigger rebuild when translation state changes
+                    _videoReplyController.translatedReplies.length;
+                    return _buildBody(
+                      theme,
+                      _videoReplyController.loadingState.value,
+                    );
+                  },
                 ),
               ],
             ),
