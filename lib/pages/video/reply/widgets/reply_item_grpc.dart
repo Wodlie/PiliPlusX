@@ -15,8 +15,6 @@ import 'package:PiliPlus/common/widgets/image_grid/image_grid_view.dart';
 import 'package:PiliPlus/common/widgets/pendant_avatar.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
     show ReplyInfo, ReplyControl, Content, Url;
-import 'package:PiliPlus/grpc/reply.dart';
-import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/reply.dart';
 import 'package:PiliPlus/http/video.dart';
 import 'package:PiliPlus/models/common/badge_type.dart';
@@ -297,7 +295,6 @@ class ReplyItemGrpc extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context, ThemeData theme) {
-    final replyControl = replyItem.replyControl;
     final padding = EdgeInsets.only(left: replyLevel == 0 ? 6 : 45, right: 6);
     return Column(
       mainAxisSize: .min,
@@ -316,7 +313,7 @@ class ReplyItemGrpc extends StatelessWidget {
             maxLines: replyLevel == 1 ? replyLengthLimit : null,
             TextSpan(
               children: [
-                if (replyControl.isUpTop) ...[
+                if (replyItem.replyControl.isUpTop) ...[
                   const WidgetSpan(
                     alignment: PlaceholderAlignment.middle,
                     child: PBadge(
@@ -330,14 +327,7 @@ class ReplyItemGrpc extends StatelessWidget {
                   ),
                   const TextSpan(text: ' '),
                 ],
-                _buildMessage(
-                  context,
-                  theme,
-                  replyControl.showTranslation
-                      ? replyItem.translatedContent
-                      : replyItem.content,
-                  replyControl,
-                ),
+                _buildMessage(context, theme, replyItem),
               ],
             ),
           ),
@@ -362,7 +352,7 @@ class ReplyItemGrpc extends StatelessWidget {
         ],
         if (replyLevel != 0) ...[
           const SizedBox(height: 4),
-          buttonAction(context, theme, replyControl),
+          buttonAction(context, theme, replyItem.replyControl),
         ],
         if (replyLevel == 1 && replyItem.count > Int64.ZERO) ...[
           Padding(
@@ -374,87 +364,20 @@ class ReplyItemGrpc extends StatelessWidget {
     );
   }
 
-  Widget _buildTranslateBtn(
-    BuildContext context,
-    ThemeData theme,
-    ReplyControl replyControl,
-    TextStyle textStyle,
-    ButtonStyle buttonStyle,
-  ) {
-    late bool isProcessing = false;
-    final color = replyControl.showTranslation
-        ? theme.colorScheme.primary
-        : theme.colorScheme.outline.withValues(alpha: 0.8);
-    return SizedBox(
-      height: 32,
-      child: TextButton(
-        style: buttonStyle,
-        onPressed: () async {
-          if (replyControl.showTranslation) {
-            replyControl.showTranslation = false;
-            (context as Element).markNeedsBuild();
-          } else {
-            if (isProcessing) {
-              return;
-            }
-            if (replyItem.hasTranslatedContent()) {
-              replyControl.showTranslation = true;
-              (context as Element).markNeedsBuild();
-              return;
-            }
-            isProcessing = true;
-            final res = await ReplyGrpc.translateReply(
-              type: replyItem.type,
-              oid: replyItem.oid,
-              rpid: replyItem.id,
-            );
-            if (res case Success(:final response)) {
-              final item = response.translatedReplies[replyItem.id];
-              if (item != null && item.hasTranslatedContent()) {
-                replyControl.showTranslation = true;
-                replyItem.translatedContent = item.translatedContent;
-                if (context.mounted) {
-                  (context as Element).markNeedsBuild();
-                }
-              } else {
-                SmartDialog.showToast('翻译结果为空');
-              }
-            } else if (res case Error(:final errMsg)) {
-              SmartDialog.showToast('翻译失败: $errMsg');
-            }
-            isProcessing = false;
-          }
-        },
-        child: Row(
-          spacing: 3,
-          mainAxisSize: .min,
-          children: [
-            Icon(Icons.translate, size: 16, color: color),
-            Text(
-              replyControl.showTranslation ? '原文' : '翻译',
-              style: textStyle.copyWith(color: color),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget buttonAction(
     BuildContext context,
     ThemeData theme,
     ReplyControl replyControl,
   ) {
     final textStyle = TextStyle(
-      height: 1,
-      fontWeight: .normal,
-      color: theme.colorScheme.outline,
       fontSize: theme.textTheme.labelMedium!.fontSize,
+      color: theme.colorScheme.outline,
+      fontWeight: FontWeight.normal,
     );
-    const buttonStyle = ButtonStyle(
-      visualDensity: .compact,
-      tapTargetSize: .shrinkWrap,
-      padding: WidgetStatePropertyAll(.zero),
+    final buttonStyle = TextButton.styleFrom(
+      padding: EdgeInsets.zero,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
     );
 
     Widget? dialogBtn;
@@ -489,31 +412,20 @@ class ReplyItemGrpc extends StatelessWidget {
               onReply?.call(replyItem);
             },
             child: Row(
-              spacing: 3,
-              mainAxisSize: .min,
               children: [
                 Icon(
                   Icons.reply,
                   size: 18,
                   color: theme.colorScheme.outline.withValues(alpha: 0.8),
                 ),
+                const SizedBox(width: 3),
                 Text('回复', style: textStyle),
               ],
             ),
           ),
         ),
         const SizedBox(width: 2),
-        if (replyControl.translationSwitch ==
-            .TRANSLATION_SWITCH_SHOW_TRANSLATION) ...[
-          _buildTranslateBtn(
-            context,
-            theme,
-            replyControl,
-            textStyle,
-            buttonStyle,
-          ),
-          const SizedBox(width: 2),
-        ] else if (replyControl.cardLabels.isNotEmpty) ...[
+        if (replyItem.replyControl.cardLabels.isNotEmpty) ...[
           Text(
             dialogBtn != null
                 ? replyControl.cardLabels.first.textContent
@@ -631,12 +543,7 @@ class ReplyItemGrpc extends StatelessWidget {
                                 ? ''
                                 : ' ',
                           ),
-                          _buildMessage(
-                            context,
-                            theme,
-                            childReply.content,
-                            childReply.replyControl,
-                          ),
+                          _buildMessage(context, theme, childReply),
                         ],
                       ),
                     ),
@@ -685,9 +592,9 @@ class ReplyItemGrpc extends StatelessWidget {
   InlineSpan _buildMessage(
     BuildContext context,
     ThemeData theme,
-    Content content,
-    ReplyControl replyControl,
+    ReplyInfo replyItem,
   ) {
+    final Content content = replyItem.content;
     final List<InlineSpan> spanChildren = <InlineSpan>[];
     bool hasNote = false;
 
@@ -926,7 +833,9 @@ class ReplyItemGrpc extends StatelessWidget {
       }
     }
 
-    if (!hasNote && replyControl.isNote && replyControl.isNoteV2) {
+    if (!hasNote &&
+        replyItem.replyControl.isNote &&
+        replyItem.replyControl.isNoteV2) {
       final Color color;
       NoDeadlineTapGestureRecognizer? recognizer;
 
