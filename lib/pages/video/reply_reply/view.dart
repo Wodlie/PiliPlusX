@@ -197,6 +197,8 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
               _header(theme, firstFloor)
             else
               Obx(() {
+                // trigger rebuild when translation state changes
+                _controller.translatedReplies.length;
                 final firstFloor = _controller.firstFloor.value;
                 if (firstFloor == null) {
                   return const SliverToBoxAdapter();
@@ -205,7 +207,11 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
               }),
             _sortWidget(theme),
           ],
-          Obx(() => _buildBody(theme, _controller.loadingState.value)),
+          Obx(() {
+            // trigger rebuild when translation state changes
+            _controller.translatedReplies.length;
+            return _buildBody(theme, _controller.loadingState.value);
+          }),
         ],
       ),
     );
