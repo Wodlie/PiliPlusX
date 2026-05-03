@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/style.dart';
+import 'package:PiliPlus/common/widgets/custom_icon.dart';
 import 'package:PiliPlus/common/widgets/dialog/report.dart';
 import 'package:PiliPlus/common/widgets/extra_hit_test_widget.dart';
 import 'package:PiliPlus/common/widgets/pendant_avatar.dart';
@@ -14,6 +15,7 @@ import 'package:PiliPlus/models/dynamics/result.dart';
 import 'package:PiliPlus/pages/dynamics/controller.dart';
 import 'package:PiliPlus/pages/save_panel/view.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/color_utils.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
@@ -22,7 +24,7 @@ import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
-import 'package:PiliPlus/utils/utils.dart';
+import 'package:PiliPlus/utils/share_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
@@ -205,7 +207,7 @@ class AuthorPanel extends StatelessWidget {
                     height: 1,
                     fontSize: 11,
                     fontFamily: Assets.digitalNum,
-                    color: Utils.parseColor(
+                    color: ColourUtils.parseColor(
                       moduleAuthor.decorate!.fan!.color!,
                     ),
                   ),
@@ -318,7 +320,7 @@ class AuthorPanel extends StatelessWidget {
                 leading: const Icon(Icons.share_outlined, size: 19),
                 onTap: () {
                   Get.back();
-                  Utils.shareText(
+                  ShareUtils.shareText(
                     '${HttpString.dynamicShareBaseUrl}/${item.idStr}',
                   );
                 },
@@ -394,14 +396,7 @@ class AuthorPanel extends StatelessWidget {
                     );
                   },
                   minLeadingWidth: 0,
-                  leading: const Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(Icons.shield_outlined, size: 19),
-                      Icon(Icons.published_with_changes_sharp, size: 12),
-                    ],
-                  ),
+                  leading: const Icon(CustomIcons.shield_published, size: 19),
                   title: Text('检查动态', style: theme.textTheme.titleSmall!),
                 ),
                 if (onSetTop != null)
