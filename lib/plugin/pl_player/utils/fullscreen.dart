@@ -90,3 +90,8 @@ Future<void> showStatusBar() async {
     overlays: SystemUiOverlay.values,
   );
 }
+
+/// Alias for upstream compatibility
+bool get showSystemBar_ => _showStatusBar;
+Future<void>? hideSystemBar() => hideStatusBar();
+Future<void>? showSystemBar() => showStatusBar();

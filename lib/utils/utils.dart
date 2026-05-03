@@ -5,6 +5,7 @@ import 'package:PiliPlus/common/constants.dart';
 import 'package:catcher_2/catcher_2.dart';
 import 'package:flutter/services.dart'
     show Clipboard, ClipboardData, MethodChannel;
+import 'package:flutter/rendering.dart' show Color;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
 abstract final class Utils {
@@ -81,6 +82,14 @@ abstract final class Utils {
     RangeError.checkNotNegative(slash, '/');
     return uri.substring(slash + 1, (fileExt || dot == -1) ? qMark : dot);
   }
+
+  static String levelName(
+    Object level, {
+    bool isSeniorMember = false,
+  }) => 'assets/images/lv/lv${isSeniorMember ? '6_s' : level}.png';
+
+  static Color parseColor(String color) =>
+      Color(int.parse('FF${color.substring(1)}', radix: 16));
 
   /// When calling this from a `catch` block consider annotating the method
   /// containing the `catch` block with
