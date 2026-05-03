@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=PiliPlus
+Name=PiliPlusX
 Comment=A third-party Bilibili Client developed in Flutter
 Comment[zh_CN]=使用 Flutter 开发的 BiliBili 第三方客户端
-Exec=piliplus
-Icon=piliplus
+Exec=piliplusx
+Icon=piliplusx
 Terminal=false
-StartupWMClass=com.example.piliplus
+StartupWMClass=com.Wodlie.PiliPlusX
 Categories=Video;AudioVideo;Player;

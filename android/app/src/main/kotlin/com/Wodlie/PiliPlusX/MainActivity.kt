@@ -1,4 +1,4 @@
-package com.gucooing.piliplus
+package com.Wodlie.PiliPlusX
 
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
