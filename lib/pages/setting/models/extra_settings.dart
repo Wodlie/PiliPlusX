@@ -235,6 +235,18 @@ List<SettingsModel> get extraSettings => [
         : '屏蔽低于 lv${ReplyGrpc.minLevelForReply} 的评论',
     onTap: _showReplyMinLevelDialog,
   ),
+  SplitModel(
+    normalModel: const NormalModel.split(
+      title: '@评论过滤',
+      subtitle: '低质量 @ 评论过滤，点击配置',
+      leading: Icon(Icons.alternate_email),
+    ),
+    switchModel: SwitchModel.split(
+      defaultVal: false,
+      setKey: SettingBoxKey.enableAtFilter,
+      onTap: (context) => Get.toNamed('/atFilterSetting'),
+    ),
+  ),
   getBanWordModel(
     title: '动态关键词过滤',
     key: SettingBoxKey.banWordForDyn,
