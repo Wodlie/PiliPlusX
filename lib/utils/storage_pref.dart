@@ -792,6 +792,32 @@ abstract final class Pref {
   static bool get suppressSponsorBlockIncognito =>
       _setting.get(SettingBoxKey.suppressSponsorBlockIncognito, defaultValue: false);
 
+  // ===== @评论过滤 (At-filter) =====
+
+  static bool get enableAtFilter =>
+      _setting.get(SettingBoxKey.enableAtFilter, defaultValue: false);
+
+  static bool get enableAtFilterPureAt =>
+      _setting.get(SettingBoxKey.enableAtFilterPureAt, defaultValue: false);
+
+  static bool get enableAtFilterBodyLength =>
+      _setting.get(SettingBoxKey.enableAtFilterBodyLength, defaultValue: false);
+
+  static int get atFilterBodyLengthThreshold =>
+      _setting.get(SettingBoxKey.atFilterBodyLengthThreshold, defaultValue: 10);
+
+  static bool get enableAtFilterAtCount =>
+      _setting.get(SettingBoxKey.enableAtFilterAtCount, defaultValue: false);
+
+  static int get atFilterAtCountThreshold =>
+      _setting.get(SettingBoxKey.atFilterAtCountThreshold, defaultValue: 5);
+
+  static bool get enableAtFilterLikeExempt =>
+      _setting.get(SettingBoxKey.enableAtFilterLikeExempt, defaultValue: false);
+
+  static int get atFilterLikeExemptThreshold =>
+      _setting.get(SettingBoxKey.atFilterLikeExemptThreshold, defaultValue: 50);
+
   static bool get enableHA =>
       _setting.get(SettingBoxKey.enableHA, defaultValue: true);
 

@@ -201,6 +201,15 @@ abstract final class SettingBoxKey {
       blockServer = 'blockServer',
       blockTrack = 'blockTrack';
 
+  static const String enableAtFilter = 'enableAtFilter',
+      enableAtFilterPureAt = 'enableAtFilterPureAt',
+      enableAtFilterBodyLength = 'enableAtFilterBodyLength',
+      atFilterBodyLengthThreshold = 'atFilterBodyLengthThreshold',
+      enableAtFilterAtCount = 'enableAtFilterAtCount',
+      atFilterAtCountThreshold = 'atFilterAtCountThreshold',
+      enableAtFilterLikeExempt = 'enableAtFilterLikeExempt',
+      atFilterLikeExemptThreshold = 'atFilterLikeExemptThreshold';
+
   static const String enableShowDanmaku = 'enableShowDanmaku',
       enableShowLiveDanmaku = 'enableShowLiveDanmaku',
       pipNoDanmaku = 'pipNoDanmaku',
