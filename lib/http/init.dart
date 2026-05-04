@@ -61,9 +61,7 @@ class Request {
   }
 
   static Future<void> buvidActive(Account account) async {
-    // 这样线程不安全, 但仍按预期进行
     if (account.activated) return;
-    account.activated = true;
     try {
       // final html = await Request().get(Api.dynamicSpmPrefix,
       //     options: Options(extra: {'account': account}));
@@ -90,7 +88,11 @@ class Request {
         },
       });
 
-      await Request().post(
+      // Use dio.post directly so that DioException (non-2xx, network
+      // error) propagates out of the try block and keeps activated=false.
+      // Request().post() wraps DioException into a synthetic Response,
+      // which would prevent the catch from ever firing for common errors.
+      await dio.post(
         Api.activateBuvidApi,
         data: {'payload': jsonData},
         options: Options(
@@ -98,7 +100,12 @@ class Request {
           contentType: Headers.jsonContentType,
         ),
       );
-    } catch (_) {}
+      // Only mark activated after the request completes without error.
+      account.activated = true;
+    } catch (_) {
+      // Keep activated = false on failure so the account remains
+      // retryable on the next buvidActive call.
+    }
   }
 
   static Dio _cloneHttp11Dio() {
