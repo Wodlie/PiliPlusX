@@ -22,6 +22,7 @@ import 'package:PiliPlus/utils/grid.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
+import 'package:PiliPlus/utils/share_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -170,6 +171,7 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage> {
             // if (kDebugMode) debugPrint('json page');
             content = OpusContent(
               opus: controller.opus!,
+              images: controller.images,
               maxWidth: maxWidth,
             );
           } else if (controller.opusData?.modules.moduleBlocked != null) {
@@ -427,7 +429,7 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage> {
         icon: const Icon(Icons.more_vert, size: 19),
         itemBuilder: (BuildContext context) => <PopupMenuEntry>[
           PopupMenuItem(
-            onTap: () => Utils.shareText(controller.url),
+            onTap: () => ShareUtils.shareText(controller.url),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -620,7 +622,7 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage> {
                       text: '分享',
                       icon: CustomIcons.share_node,
                       stat: null,
-                      onPressed: () => Utils.shareText(controller.url),
+                      onPressed: () => ShareUtils.shareText(controller.url),
                     ),
                   ),
                   Expanded(
