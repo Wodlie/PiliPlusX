@@ -3,6 +3,7 @@ import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/pages/mine/controller.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/login_utils.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:hive_ce/hive.dart';
 
 abstract final class Accounts {
@@ -87,17 +88,32 @@ abstract final class Accounts {
   //   }
   // }
 
-  static Future<void> refresh() {
+  static Future<void> refresh() async {
+    final persistAccounts = <LoginAccount>[];
     for (final a in account.values) {
       for (final t in a.type) {
         accountMode[t.index] = a;
       }
+      if (a.needsBuvidPersist) {
+        persistAccounts.add(a);
+      }
     }
-    return Future.wait(
-      (accountMode.toSet()..removeWhere((i) => i.activated)).map(
+    // Persist accounts whose BUVID was auto-generated (old Hive records
+    // that lacked field 4). This closes the gap where a fresh BUVID was
+    // computed transiently but never written back to durable storage.
+    await Future.wait([
+      ...persistAccounts.map((a) => a.onChange()),
+      ...(accountMode.toSet()..removeWhere((i) => i.activated)).map(
         Request.buvidActive,
       ),
-    );
+    ]);
+    // Legacy global 'buvid' key cleanup.
+    // Since Tasks 1-2, guest BUVID (Pref.guestBuvid) covers anonymous
+    // paths and per-account BUVID (LoginAccount.buvid) covers
+    // logged-in paths. The old global key is no longer read by any
+    // code path. Remove it so it can never accidentally re-enter
+    // account hydration.
+    await Pref.deleteLegacyBuvid();
   }
 
   static Future<void> clear() async {

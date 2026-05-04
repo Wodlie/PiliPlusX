@@ -950,14 +950,43 @@ abstract final class Pref {
   static bool get silentDownImg =>
       _setting.get(SettingBoxKey.silentDownImg, defaultValue: false);
 
-  static String get buvid {
-    String? buvid = _localCache.get(LocalCacheKey.buvid);
+  static String get guestBuvid {
+    String? buvid = _localCache.get(LocalCacheKey.guestBuvid);
     if (buvid == null) {
       buvid = LoginUtils.generateBuvid();
-      _localCache.put(LocalCacheKey.buvid, buvid);
+      _localCache.put(LocalCacheKey.guestBuvid, buvid);
     }
     return buvid;
   }
+
+  /// Compatibility-only view of the orphaned legacy global 'buvid' key.
+  ///
+  /// This is retained only so cleanup/migration code can inspect or delete the
+  /// old cache entry. Guest traffic must use [guestBuvid], and logged-in
+  /// business paths must use account-owned BUVID (`Account.buvid`).
+  @Deprecated('Legacy cleanup only. Use guestBuvid or Account.buvid instead.')
+  static String? get legacyBuvid => _localCache.get(LocalCacheKey.legacyBuvid);
+
+  static Future<void> deleteGuestBuvid() => _localCache.delete(
+    LocalCacheKey.guestBuvid,
+  );
+
+  /// Deletes the legacy global 'buvid' key from local cache.
+  /// No code path reads this key anymore — guest paths use [guestBuvid]
+  /// and logged-in paths use [LoginAccount.buvid].
+  /// Safe to call unconditionally (Hive delete is a no-op for missing keys).
+  static Future<void> deleteLegacyBuvid() => _localCache.delete(
+    LocalCacheKey.legacyBuvid,
+  );
+
+  /// Guest-compatibility wrapper kept only for deprecated callers.
+  ///
+  /// Core login/request paths must not read this getter. Use [guestBuvid] for
+  /// anonymous flows or `Account.buvid` for logged-in flows instead.
+  @Deprecated(
+    'Guest-compatibility wrapper only. Use guestBuvid or Account.buvid instead.',
+  )
+  static String get buvid => guestBuvid;
 
   static bool get showMemberShop =>
       _setting.get(SettingBoxKey.showMemberShop, defaultValue: false);

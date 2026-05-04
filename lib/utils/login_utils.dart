@@ -96,7 +96,14 @@ abstract final class LoginUtils {
     return 'XY${md5Str[2]}${md5Str[12]}${md5Str[22]}$md5Str';
   }
 
-  static final buvid = Pref.buvid;
+  /// Guest-compatibility wrapper kept only to avoid breaking old callers.
+  ///
+  /// Login/request business paths must read `Account.buvid` or
+  /// `Pref.guestBuvid` directly instead of routing through this legacy alias.
+  @Deprecated(
+    'Guest-compatibility wrapper only. Use Account.buvid or Pref.guestBuvid instead.',
+  )
+  static String get buvid => Pref.guestBuvid;
 
   // static String getUUID() {
   //   return const Uuid().v4().replaceAll('-', '');
