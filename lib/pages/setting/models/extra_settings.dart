@@ -82,6 +82,13 @@ List<SettingsModel> get extraSettings => [
       onTap: (context) => Get.toNamed('/sponsorBlock'),
     ),
   ),
+  const SwitchModel(
+    title: '无痕模式不发送查询',
+    subtitle: '开启后，无痕模式下不向空降助手服务器查询跳过片段',
+    leading: Icon(Icons.not_interested_outlined),
+    setKey: SettingBoxKey.suppressSponsorBlockIncognito,
+    defaultVal: false,
+  ),
   PopupModel<SkipType>(
     title: '番剧片头/片尾跳过类型',
     leading: const Icon(MdiIcons.debugStepOver),
