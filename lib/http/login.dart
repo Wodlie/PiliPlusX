@@ -17,17 +17,22 @@ import 'package:encrypt/encrypt.dart';
 
 abstract final class LoginHttp {
   static final String deviceId = LoginUtils.genDeviceId();
-  static String get buvid => LoginUtils.buvid;
-  static final Map<String, String> headers = {
+
+  static Map<String, String> appHeaders({
+    required String buvid,
+    required String appKey,
+    required String userAgent,
+    String? contentType,
+  }) => {
     'buvid': buvid,
     'env': 'prod',
-    'app-key': 'android_hd',
-    'user-agent': Constants.userAgent,
+    'app-key': appKey,
+    'user-agent': userAgent,
     'x-bili-trace-id': Constants.traceId,
     'x-bili-aurora-eid': '',
     'x-bili-aurora-zone': '',
     'bili-http-engine': 'cronet',
-    'content-type': 'application/x-www-form-urlencoded; charset=utf-8',
+    if (contentType != null) 'content-type': contentType,
   };
 
   @pragma('vm:notify-debugger-on-exception')
@@ -101,10 +106,11 @@ abstract final class LoginHttp {
     String? geeValidate,
     String? recaptchaToken,
   }) async {
+    final guestBuvid = AnonymousAccount().buvid;
     int timestamp = DateTime.now().millisecondsSinceEpoch;
     final data = {
       'build': '2001100',
-      'buvid': buvid,
+      'buvid': guestBuvid,
       'c_locale': 'zh_CN',
       'channel': 'master',
       'cid': cid,
@@ -113,10 +119,10 @@ abstract final class LoginHttp {
       'gee_challenge': ?geeChallenge,
       'gee_seccode': ?geeSeccode,
       'gee_validate': ?geeValidate,
-      'local_id': buvid,
+      'local_id': guestBuvid,
       // https://chinggg.github.io/post/appre/
       'login_session_id': md5
-          .convert(ascii.encode(buvid + timestamp.toString()))
+          .convert(ascii.encode(guestBuvid + timestamp.toString()))
           .toString(),
       'mobi_app': 'android_hd',
       'platform': 'android',
@@ -133,7 +139,12 @@ abstract final class LoginHttp {
       data: data,
       options: Options(
         contentType: Headers.formUrlEncodedContentType,
-        headers: headers,
+        headers: appHeaders(
+          buvid: guestBuvid,
+          appKey: 'android_hd',
+          userAgent: Constants.userAgent,
+          contentType: Headers.formUrlEncodedContentType,
+        ),
       ),
     );
 
@@ -199,6 +210,7 @@ abstract final class LoginHttp {
     String? geeValidate,
     String? recaptchaToken,
   }) async {
+    final guestBuvid = AnonymousAccount().buvid;
     dynamic publicKey = RSAKeyParser().parse(key);
     String passwordEncrypted = Encrypter(
       RSA(publicKey: publicKey),
@@ -207,7 +219,7 @@ abstract final class LoginHttp {
     Map<String, String> data = {
       'bili_local_id': deviceId,
       'build': '2001100',
-      'buvid': buvid,
+      'buvid': guestBuvid,
       'c_locale': 'zh_CN',
       'channel': 'master',
       'device': 'phone',
@@ -226,7 +238,7 @@ abstract final class LoginHttp {
       'gee_challenge': ?geeChallenge,
       'gee_seccode': ?geeSeccode,
       'gee_validate': ?geeValidate,
-      'local_id': buvid, //LoginUtils.generateBuvid(),
+      'local_id': guestBuvid, //LoginUtils.generateBuvid(),
       'mobi_app': 'android_hd',
       'password': passwordEncrypted,
       'permission': 'ALL',
@@ -242,7 +254,12 @@ abstract final class LoginHttp {
       data: data,
       options: Options(
         contentType: Headers.formUrlEncodedContentType,
-        headers: headers,
+        headers: appHeaders(
+          buvid: guestBuvid,
+          appKey: 'android_hd',
+          userAgent: Constants.userAgent,
+          contentType: Headers.formUrlEncodedContentType,
+        ),
         //responseType: ResponseType.plain
       ),
     );
@@ -271,11 +288,12 @@ abstract final class LoginHttp {
     required Object cid,
     required String key,
   }) async {
+    final guestBuvid = AnonymousAccount().buvid;
     dynamic publicKey = RSAKeyParser().parse(key);
     Map<String, Object> data = {
       'bili_local_id': deviceId,
       'build': '2001100',
-      'buvid': buvid,
+      'buvid': guestBuvid,
       'c_locale': 'zh_CN',
       'captcha_key': captchaKey,
       'channel': 'master',
@@ -295,7 +313,7 @@ abstract final class LoginHttp {
       ),
       'from_pv': 'main.my-information.my-login.0.click',
       'from_url': Uri.encodeComponent('bilibili://user_center/mine'),
-      'local_id': buvid,
+      'local_id': guestBuvid,
       'mobi_app': 'android_hd',
       'platform': 'android',
       's_locale': 'zh_CN',
@@ -308,7 +326,12 @@ abstract final class LoginHttp {
       data: data,
       options: Options(
         contentType: Headers.formUrlEncodedContentType,
-        headers: headers,
+        headers: appHeaders(
+          buvid: guestBuvid,
+          appKey: 'android_hd',
+          userAgent: Constants.userAgent,
+          contentType: Headers.formUrlEncodedContentType,
+        ),
         //responseType: ResponseType.plain
       ),
     );
@@ -452,9 +475,10 @@ abstract final class LoginHttp {
   static Future oauth2AccessToken({
     required String code,
   }) async {
+    final guestBuvid = AnonymousAccount().buvid;
     final Map<String, String> data = {
       'build': '2001100',
-      'buvid': buvid,
+      'buvid': guestBuvid,
       // 'c_locale': 'zh_CN',
       // 'channel': 'master',
       'code': code,
@@ -464,7 +488,7 @@ abstract final class LoginHttp {
       // 'device_platform': 'Android14vivo',
       'disable_rcmd': '0',
       'grant_type': 'authorization_code',
-      'local_id': buvid,
+      'local_id': guestBuvid,
       'mobi_app': 'android_hd',
       'platform': 'android',
       // 's_locale': 'zh_CN',
@@ -476,7 +500,12 @@ abstract final class LoginHttp {
       data: data,
       options: Options(
         contentType: Headers.formUrlEncodedContentType,
-        headers: headers,
+        headers: appHeaders(
+          buvid: guestBuvid,
+          appKey: 'android_hd',
+          userAgent: Constants.userAgent,
+          contentType: Headers.formUrlEncodedContentType,
+        ),
       ),
     );
 
@@ -506,7 +535,7 @@ abstract final class LoginHttp {
 
   static Future<LoadingState<LoginDevicesData>> loginDevices() async {
     final account = Accounts.main;
-    final buvid = LoginUtils.buvid;
+    final buvid = account.buvid;
     final params = {
       'local_id': buvid,
       'buvid': buvid,

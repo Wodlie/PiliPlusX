@@ -98,6 +98,7 @@ abstract final class VideoHttp {
   static Future<LoadingState<List<RcmdVideoItemAppModel>>> rcmdVideoListApp({
     required int freshIdx,
   }) async {
+    final account = Accounts.get(AccountType.recommend);
     final params = {
       'build': 2001100,
       'c_locale': 'zh_CN',
@@ -132,19 +133,16 @@ abstract final class VideoHttp {
       queryParameters: params,
       options: Options(
         headers: {
-          'buvid': LoginHttp.buvid,
+          ...LoginHttp.appHeaders(
+            buvid: account.buvid,
+            appKey: 'android_hd',
+            userAgent: Constants.userAgent,
+          ),
           'fp_local':
               '1111111111111111111111111111111111111111111111111111111111111111',
           'fp_remote':
               '1111111111111111111111111111111111111111111111111111111111111111',
           'session_id': '11111111',
-          'env': 'prod',
-          'app-key': 'android_hd',
-          'User-Agent': Constants.userAgent,
-          'x-bili-trace-id': Constants.traceId,
-          'x-bili-aurora-eid': '',
-          'x-bili-aurora-zone': '',
-          'bili-http-engine': 'cronet',
         },
       ),
     );
