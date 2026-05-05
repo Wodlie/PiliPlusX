@@ -67,10 +67,12 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
 
   late final showArgueMsg = Pref.showArgueMsg;
   late final enableAi = Pref.enableAi;
+  late final enableAiSummaryBackground = Pref.enableAiSummaryBackground;
   late final horizontalMemberPage = Pref.horizontalMemberPage;
 
   AiConclusionResult? aiConclusionResult;
   AiSummaryService? aiConclusionResultService;
+  Future<AiSummaryServiceResult>? _aiConclusionFuture;
 
   late final Map<int?, bool> seasonFavState = {};
 
@@ -805,18 +807,45 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
     return AiSummaryServiceSuccess(result);
   }
 
-  Future<AiSummaryServiceResult> aiConclusion() async {
-    aiConclusionResult = null;
-    aiConclusionResultService = null;
-    SmartDialog.showLoading(msg: '正在获取AI总结');
-    final result = await AiSummaryServiceRouter.summarizeUgcVideo(
+  bool get isAiConclusionInProgress => _aiConclusionFuture != null;
+
+  Future<AiSummaryServiceResult> _requestAiConclusion() async {
+    return AiSummaryServiceRouter.summarizeUgcVideo(
       bvid: bvid,
       cid: cid.value,
       title: videoDetail.value.title,
       upMid: videoDetail.value.owner?.mid,
     );
+  }
+
+  Future<AiSummaryServiceResult> aiConclusion() async {
+    if (_aiConclusionFuture != null) {
+      return _aiConclusionFuture!;
+    }
+
+    aiConclusionResult = null;
+    aiConclusionResultService = null;
+
+    if (enableAiSummaryBackground) {
+      final future = _requestAiConclusion();
+      _aiConclusionFuture = future;
+      future.then(_handleAiConclusionResult).whenComplete(() {
+        if (identical(_aiConclusionFuture, future)) {
+          _aiConclusionFuture = null;
+        }
+      });
+      return future;
+    }
+
+    SmartDialog.showLoading(msg: '正在获取AI总结');
+    final future = _requestAiConclusion();
+    _aiConclusionFuture = future;
+    final result = await future;
     SmartDialog.dismiss();
     _handleAiConclusionResult(result);
+    if (identical(_aiConclusionFuture, future)) {
+      _aiConclusionFuture = null;
+    }
     return result;
   }
 }

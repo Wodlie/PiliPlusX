@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/style.dart';
@@ -1026,8 +1028,31 @@ class _UgcIntroPanelState extends State<UgcIntroPanel> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () async {
-          final result = introController.cachedAiConclusionSuccess ??
-              await introController.aiConclusion();
+          final cached = introController.cachedAiConclusionSuccess;
+          if (cached != null) {
+            if (!mounted) {
+              return;
+            }
+            if (AiConclusionPanel.hasContent(cached.data)) {
+              widget.showAiBottomSheet();
+              return;
+            }
+            AiConclusionPanel.showResultMessage(cached);
+            return;
+          }
+
+          if (introController.isAiConclusionInProgress) {
+            SmartDialog.showToast('AI总结正在进行中，请稍后再试');
+            return;
+          }
+
+          if (introController.enableAiSummaryBackground) {
+            unawaited(introController.aiConclusion());
+            SmartDialog.showToast('已开始后台进行AI总结，可继续浏览，完成后再次点击查看');
+            return;
+          }
+
+          final result = await introController.aiConclusion();
           if (!mounted) {
             return;
           }

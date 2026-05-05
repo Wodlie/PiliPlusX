@@ -70,6 +70,7 @@ abstract final class SettingBoxKey {
       enableSearchWord = 'enableSearchWord',
       enableSystemProxy = 'enableSystemProxy',
       enableAi = 'enableAi',
+      enableAiSummaryBackground = 'enableAiSummaryBackground',
       aiSummaryService = 'aiSummaryService',
       aiSummaryBaseUrl = 'aiSummaryBaseUrl',
       aiSummaryApiKey = 'aiSummaryApiKey',

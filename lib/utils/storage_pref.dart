@@ -870,6 +870,9 @@ abstract final class Pref {
   static bool get enableAi =>
       _setting.get(SettingBoxKey.enableAi, defaultValue: false);
 
+  static bool get enableAiSummaryBackground =>
+      _setting.get(SettingBoxKey.enableAiSummaryBackground, defaultValue: false);
+
   static AiSummaryService get aiSummaryService {
     if (_setting.get(SettingBoxKey.aiSummaryService) case final String service) {
       return AiSummaryService.values.firstWhere(
