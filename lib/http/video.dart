@@ -332,12 +332,16 @@ abstract final class VideoHttp {
         return const Error('未获取到 bilibili 360P MP4 durl');
       }
 
-      final String? mediaUrl = firstDurl.playUrls.firstWhereOrNull((item) {
+      String? mediaUrl;
+      for (final item in firstDurl.playUrls) {
         final Uri? uri = Uri.tryParse(item);
-        return uri != null &&
+        if (uri != null &&
             (uri.scheme == 'http' || uri.scheme == 'https') &&
-            uri.host.isNotEmpty;
-      });
+            uri.host.isNotEmpty) {
+          mediaUrl = item;
+          break;
+        }
+      }
       if (mediaUrl == null) {
         return const Error('bilibili 360P MP4 durl 无有效 URL');
       }

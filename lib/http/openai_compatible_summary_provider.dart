@@ -131,7 +131,7 @@ abstract final class OpenAiCompatibleSummaryProvider {
         message: message.isEmpty ? 'Provider 请求过于频繁' : message,
         statusCode: statusCode,
       ),
-      >= 500 => VideoSummaryProviderFailure(
+      500 => VideoSummaryProviderFailure(
         type: VideoSummaryProviderErrorType.server,
         message: message.isEmpty ? 'Provider 服务异常' : message,
         statusCode: statusCode,
