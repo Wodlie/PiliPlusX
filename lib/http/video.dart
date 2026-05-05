@@ -307,6 +307,46 @@ abstract final class VideoHttp {
     }
   }
 
+  static Future<LoadingState<String>> ugcSummaryMp4Url({
+    required String bvid,
+    required int cid,
+  }) async {
+    final params = await WbiSign.makSign({
+      'bvid': bvid,
+      'cid': cid,
+      'qn': 16,
+      'fnval': 1,
+      'fnver': 0,
+      'platform': 'html5',
+    });
+
+    try {
+      final res = await Request().get(Api.ugcUrl, queryParameters: params);
+      if (res.data['code'] != 0) {
+        return Error(_parseVideoErr(res.data['code'], res.data['message']));
+      }
+
+      final PlayUrlModel data = PlayUrlModel.fromJson(res.data['data']);
+      final Durl? firstDurl = data.durl?.firstOrNull;
+      if (firstDurl == null) {
+        return const Error('未获取到 bilibili 360P MP4 durl');
+      }
+
+      final String? mediaUrl = firstDurl.playUrls.firstWhereOrNull((item) {
+        final Uri? uri = Uri.tryParse(item);
+        return uri != null &&
+            (uri.scheme == 'http' || uri.scheme == 'https') &&
+            uri.host.isNotEmpty;
+      });
+      if (mediaUrl == null) {
+        return const Error('bilibili 360P MP4 durl 无有效 URL');
+      }
+      return Success(mediaUrl);
+    } catch (e, s) {
+      return Error('$e\n\n$s');
+    }
+  }
+
   static String _parseVideoErr(int? code, String? msg) {
     return switch (code) {
       -404 => '视频不存在或已被删除',
@@ -897,10 +937,62 @@ abstract final class VideoHttp {
     return sb.toString();
   }
 
-  static Future<String?> vttSubtitles(String subtitleUrl) async {
-    final res = await Request().get("https:$subtitleUrl");
+  static num _subtitleSeconds(dynamic value) {
+    if (value is num) {
+      return value;
+    }
+    return num.tryParse(value.toString()) ?? 0;
+  }
+
+  static String processTranscriptList(List list) {
+    final StringBuffer sb = StringBuffer();
+    String? previousContent;
+    for (final item in list) {
+      if (item is! Map) {
+        continue;
+      }
+      final String content = item['content']?.toString().trim() ?? '';
+      if (content.isEmpty || content == previousContent) {
+        continue;
+      }
+      previousContent = content;
+      final String timecode = _subtitleTimecode(_subtitleSeconds(item['from']));
+      if (sb.length > 0) {
+        sb.writeln();
+      }
+      sb.write('[$timecode] $content');
+    }
+    return sb.toString();
+  }
+
+  static String _normalizeSubtitleUrl(String subtitleUrl) {
+    final String trimmed = subtitleUrl.trim();
+    if (trimmed.startsWith('//')) {
+      return 'https:$trimmed';
+    }
+    return trimmed.http2https;
+  }
+
+  static Future<List?> subtitleBody(String subtitleUrl) async {
+    final res = await Request().get(_normalizeSubtitleUrl(subtitleUrl));
     if (res.data?['body'] case List list) {
+      return list;
+    }
+    return null;
+  }
+
+  static Future<String?> vttSubtitles(String subtitleUrl) async {
+    final list = await subtitleBody(subtitleUrl);
+    if (list != null) {
       return compute<List, String>(processList, list);
+    }
+    return null;
+  }
+
+  static Future<String?> transcriptSubtitles(String subtitleUrl) async {
+    final list = await subtitleBody(subtitleUrl);
+    if (list != null) {
+      return compute<List, String>(processTranscriptList, list);
     }
     return null;
   }

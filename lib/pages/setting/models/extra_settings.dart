@@ -17,6 +17,7 @@ import 'package:PiliPlus/models/common/member/tab_type.dart';
 import 'package:PiliPlus/models/common/reply/reply_sort_type.dart';
 import 'package:PiliPlus/models/common/sponsor_block/skip_type.dart';
 import 'package:PiliPlus/models/common/super_resolution_type.dart';
+import 'package:PiliPlus/models/common/video/ai_summary_service.dart';
 import 'package:PiliPlus/models/dynamics/result.dart'
     show DynamicsDataModel, ItemModulesModel;
 import 'package:PiliPlus/pages/common/slide/common_slide_page.dart';
@@ -652,6 +653,76 @@ List<SettingsModel> get extraSettings => [
     setKey: SettingBoxKey.enableAi,
     defaultVal: false,
   ),
+  PopupModel<AiSummaryService>(
+    title: '视频总结服务',
+    leading: const Icon(Icons.summarize_outlined),
+    value: () => Pref.aiSummaryService,
+    items: AiSummaryService.values,
+    onSelected: (value, setState) => GStorage.setting
+        .put(SettingBoxKey.aiSummaryService, value.name)
+        .whenComplete(setState),
+  ),
+  NormalModel(
+    title: 'AI总结 Base URL',
+    leading: const Icon(Icons.link_outlined),
+    getSubtitle: () => Pref.aiSummaryBaseUrl.isEmpty
+        ? 'OpenAI-compatible 接口地址，字幕总结与多模态总结共享\n当前：未配置'
+        : 'OpenAI-compatible 接口地址，字幕总结与多模态总结共享\n当前：${Pref.aiSummaryBaseUrl}',
+    onTap: (context, setState) => _showAiSummaryTextDialog(
+      context,
+      setState,
+      title: 'AI总结 Base URL',
+      initialValue: Pref.aiSummaryBaseUrl,
+      storageKey: SettingBoxKey.aiSummaryBaseUrl,
+      hintText: '如：https://api.openai.com/v1',
+      keyboardType: TextInputType.url,
+      normalizeValue: _normalizeAiSummaryBaseUrl,
+    ),
+  ),
+  NormalModel(
+    title: 'AI总结 API Key',
+    leading: const Icon(Icons.key_outlined),
+    getSubtitle: () =>
+        'OpenAI-compatible 鉴权密钥，字幕总结与多模态总结共享\n当前：${_aiSummaryApiKeySubtitle(Pref.aiSummaryApiKey)}',
+    onTap: (context, setState) => _showAiSummaryTextDialog(
+      context,
+      setState,
+      title: 'AI总结 API Key',
+      initialValue: Pref.aiSummaryApiKey,
+      storageKey: SettingBoxKey.aiSummaryApiKey,
+      hintText: '请输入 API Key',
+    ),
+  ),
+  NormalModel(
+    title: '文本总结模型',
+    leading: const Icon(Icons.notes_outlined),
+    getSubtitle: () => Pref.aiSummaryTextModel.isEmpty
+        ? '字幕总结服务使用的模型名称\n当前：未配置'
+        : '字幕总结服务使用的模型名称\n当前：${Pref.aiSummaryTextModel}',
+    onTap: (context, setState) => _showAiSummaryTextDialog(
+      context,
+      setState,
+      title: '文本总结模型',
+      initialValue: Pref.aiSummaryTextModel,
+      storageKey: SettingBoxKey.aiSummaryTextModel,
+      hintText: '如：gpt-4.1-mini',
+    ),
+  ),
+  NormalModel(
+    title: '多模态总结模型',
+    leading: const Icon(Icons.video_settings_outlined),
+    getSubtitle: () => Pref.aiSummaryMultimodalModel.isEmpty
+        ? '仅在 bilibili UGC 视频详情页生效，用于 360P MP4 视频总结\n当前：未配置'
+        : '仅在 bilibili UGC 视频详情页生效，用于 360P MP4 视频总结\n当前：${Pref.aiSummaryMultimodalModel}',
+    onTap: (context, setState) => _showAiSummaryTextDialog(
+      context,
+      setState,
+      title: '多模态总结模型',
+      initialValue: Pref.aiSummaryMultimodalModel,
+      storageKey: SettingBoxKey.aiSummaryMultimodalModel,
+      hintText: '如：gpt-4.1-mini',
+    ),
+  ),
   const SwitchModel(
     title: '消息页禁用"收到的赞"功能',
     subtitle: '禁止打开入口，降低网络社交依赖',
@@ -914,6 +985,73 @@ Future<void> audioNormalization(
       }
       setState();
     }
+  }
+}
+
+String _aiSummaryApiKeySubtitle(String apiKey) {
+  if (apiKey.isEmpty) {
+    return '未配置';
+  }
+  if (apiKey.length <= 8) {
+    return '已配置';
+  }
+  return '已配置：${apiKey.substring(0, 4)}••••${apiKey.substring(apiKey.length - 4)}';
+}
+
+String _normalizeAiSummaryBaseUrl(String value) {
+  var normalized = value.trim();
+  if (normalized.isEmpty) {
+    return normalized;
+  }
+  final lower = normalized.toLowerCase();
+  if (!lower.startsWith('http://') && !lower.startsWith('https://')) {
+    normalized = 'https://$normalized';
+  }
+  normalized = normalized.replaceFirst(RegExp(r'/+$'), '');
+  return normalized;
+}
+
+Future<void> _showAiSummaryTextDialog(
+  BuildContext context,
+  VoidCallback setState, {
+  required String title,
+  required String initialValue,
+  required String storageKey,
+  String? hintText,
+  TextInputType? keyboardType,
+  String Function(String value)? normalizeValue,
+}) async {
+  String value = initialValue;
+  final result = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: TextFormField(
+        autofocus: true,
+        initialValue: initialValue,
+        onChanged: (newValue) => value = newValue,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(hintText: hintText),
+      ),
+      actions: [
+        TextButton(
+          onPressed: Get.back,
+          child: Text(
+            '取消',
+            style: TextStyle(color: ColorScheme.of(context).outline),
+          ),
+        ),
+        TextButton(
+          onPressed: () => Get.back(result: value),
+          child: const Text('确定'),
+        ),
+      ],
+    ),
+  );
+  if (result != null) {
+    final normalized = normalizeValue?.call(result) ?? result.trim();
+    await GStorage.setting.put(storageKey, normalized);
+    setState();
   }
 }
 

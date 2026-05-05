@@ -17,6 +17,7 @@ import 'package:PiliPlus/models/common/sponsor_block/skip_type.dart';
 import 'package:PiliPlus/models/common/super_chat_type.dart';
 import 'package:PiliPlus/models/common/super_resolution_type.dart';
 import 'package:PiliPlus/models/common/theme/theme_type.dart';
+import 'package:PiliPlus/models/common/video/ai_summary_service.dart';
 import 'package:PiliPlus/models/common/video/audio_quality.dart';
 import 'package:PiliPlus/models/common/video/cdn_type.dart';
 import 'package:PiliPlus/models/common/video/live_quality.dart';
@@ -868,6 +869,31 @@ abstract final class Pref {
 
   static bool get enableAi =>
       _setting.get(SettingBoxKey.enableAi, defaultValue: false);
+
+  static AiSummaryService get aiSummaryService {
+    if (_setting.get(SettingBoxKey.aiSummaryService) case final String service) {
+      return AiSummaryService.values.firstWhere(
+        (item) => item.name == service,
+        orElse: () => AiSummaryService.bilibiliLegacyDeprecated,
+      );
+    }
+    return AiSummaryService.bilibiliLegacyDeprecated;
+  }
+
+  static set aiSummaryService(AiSummaryService value) =>
+      _setting.put(SettingBoxKey.aiSummaryService, value.name);
+
+  static String get aiSummaryBaseUrl =>
+      _setting.get(SettingBoxKey.aiSummaryBaseUrl, defaultValue: '');
+
+  static String get aiSummaryApiKey =>
+      _setting.get(SettingBoxKey.aiSummaryApiKey, defaultValue: '');
+
+  static String get aiSummaryTextModel =>
+      _setting.get(SettingBoxKey.aiSummaryTextModel, defaultValue: '');
+
+  static String get aiSummaryMultimodalModel =>
+      _setting.get(SettingBoxKey.aiSummaryMultimodalModel, defaultValue: '');
 
   static bool get enableCommentTranslate =>
       _setting.get(SettingBoxKey.enableCommentTranslate, defaultValue: true);

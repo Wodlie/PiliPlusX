@@ -11,12 +11,13 @@ import 'package:PiliPlus/common/widgets/stat/stat.dart';
 import 'package:PiliPlus/http/sponsor_block.dart';
 import 'package:PiliPlus/models/common/image_type.dart';
 import 'package:PiliPlus/models/common/stat_type.dart';
-import 'package:PiliPlus/models_new/video/video_ai_conclusion/model_result.dart';
+import 'package:PiliPlus/models_new/video/video_ai_conclusion/service_result.dart';
 import 'package:PiliPlus/models_new/video/video_detail/data.dart';
 import 'package:PiliPlus/models_new/video/video_detail/staff.dart';
 import 'package:PiliPlus/models_new/video/video_tag/data.dart';
 import 'package:PiliPlus/pages/mine/controller.dart';
 import 'package:PiliPlus/pages/search/widgets/search_text.dart';
+import 'package:PiliPlus/pages/video/ai_conclusion/view.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/pages/video/introduction/ugc/controller.dart';
 import 'package:PiliPlus/pages/video/introduction/ugc/widgets/action_item.dart';
@@ -1025,19 +1026,20 @@ class _UgcIntroPanelState extends State<UgcIntroPanel> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () async {
-          if (introController.aiConclusionResult == null) {
-            await introController.aiConclusion();
+          final result = introController.cachedAiConclusionSuccess ??
+              await introController.aiConclusion();
+          if (!mounted) {
+            return;
           }
-          if (introController.aiConclusionResult case AiConclusionResult(
-            :final summary,
-            :final outline,
-          )) {
-            if (summary?.isNotEmpty == true || outline?.isNotEmpty == true) {
+
+          if (result case AiSummaryServiceSuccess(:final data)) {
+            if (AiConclusionPanel.hasContent(data)) {
               widget.showAiBottomSheet();
-            } else {
-              SmartDialog.showToast("当前视频不支持AI视频总结");
+              return;
             }
           }
+
+          AiConclusionPanel.showResultMessage(result);
         },
         child: Image.asset(
           semanticLabel: 'AI总结',
