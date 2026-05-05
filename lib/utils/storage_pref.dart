@@ -895,6 +895,14 @@ abstract final class Pref {
   static String get aiSummaryMultimodalModel =>
       _setting.get(SettingBoxKey.aiSummaryMultimodalModel, defaultValue: '');
 
+  static int get aiSummaryTimeoutSeconds {
+    final int value = _setting.get(
+      SettingBoxKey.aiSummaryTimeoutSeconds,
+      defaultValue: 20,
+    );
+    return value.clamp(5, 600);
+  }
+
   static bool get enableCommentTranslate =>
       _setting.get(SettingBoxKey.enableCommentTranslate, defaultValue: true);
 

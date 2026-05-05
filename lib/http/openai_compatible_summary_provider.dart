@@ -9,7 +9,6 @@ import 'package:dio/dio.dart';
 /// - 多模态路径只读取 `multimodalModel`
 /// - 多模态输入只接受完整 MP4 视频输入，不接受拆分的 DASH video/audio URL
 abstract final class OpenAiCompatibleSummaryProvider {
-  static const Duration _timeout = Duration(seconds: 20);
   static const String _chatCompletionsPath = 'chat/completions';
   static final RegExp _unsupportedCapabilityPattern = RegExp(
     r'unsupported|not\s+support|capability|multimodal|video|vision|input_video|media\s+type|not\s+implemented',
@@ -38,6 +37,7 @@ abstract final class OpenAiCompatibleSummaryProvider {
     required Map<String, dynamic> Function(String model) payloadBuilder,
   }) async {
     final config = VideoSummaryProviderConfig.fromPref();
+    final Duration timeout = Duration(seconds: config.timeoutSeconds);
     final validationFailure = config.validateFor(path);
     if (validationFailure != null) {
       return VideoSummaryProviderErrorResult(validationFailure);
@@ -46,9 +46,9 @@ abstract final class OpenAiCompatibleSummaryProvider {
     final Dio dio = Dio(
       BaseOptions(
         baseUrl: config.parsedBaseUrl.toString(),
-        connectTimeout: _timeout,
-        receiveTimeout: _timeout,
-        sendTimeout: _timeout,
+        connectTimeout: timeout,
+        receiveTimeout: timeout,
+        sendTimeout: timeout,
         responseType: ResponseType.json,
         headers: {
           HttpHeaders.authorizationHeader: 'Bearer ${config.apiKey.trim()}',
@@ -115,6 +115,14 @@ abstract final class OpenAiCompatibleSummaryProvider {
       );
     }
 
+    if (statusCode != null && statusCode >= 500) {
+      return VideoSummaryProviderFailure(
+        type: VideoSummaryProviderErrorType.server,
+        message: message.isEmpty ? 'Provider 服务异常' : message,
+        statusCode: statusCode,
+      );
+    }
+
     return switch (statusCode) {
       401 => VideoSummaryProviderFailure(
         type: VideoSummaryProviderErrorType.auth,
@@ -129,11 +137,6 @@ abstract final class OpenAiCompatibleSummaryProvider {
       429 => VideoSummaryProviderFailure(
         type: VideoSummaryProviderErrorType.throttled,
         message: message.isEmpty ? 'Provider 请求过于频繁' : message,
-        statusCode: statusCode,
-      ),
-      500 => VideoSummaryProviderFailure(
-        type: VideoSummaryProviderErrorType.server,
-        message: message.isEmpty ? 'Provider 服务异常' : message,
         statusCode: statusCode,
       ),
       _ => VideoSummaryProviderFailure(

@@ -75,6 +75,7 @@ abstract final class SettingBoxKey {
       aiSummaryApiKey = 'aiSummaryApiKey',
       aiSummaryTextModel = 'aiSummaryTextModel',
       aiSummaryMultimodalModel = 'aiSummaryMultimodalModel',
+      aiSummaryTimeoutSeconds = 'aiSummaryTimeoutSeconds',
       enableCommentTranslate = 'enableCommentTranslate',
       disableLikeMsg = 'disableLikeMsg',
       defaultHomePage = 'defaultHomePage',

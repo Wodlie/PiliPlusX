@@ -86,12 +86,14 @@ class VideoSummaryProviderConfig {
   final String apiKey;
   final String textModel;
   final String multimodalModel;
+  final int timeoutSeconds;
 
   const VideoSummaryProviderConfig({
     required this.baseUrl,
     required this.apiKey,
     required this.textModel,
     required this.multimodalModel,
+    required this.timeoutSeconds,
   });
 
   factory VideoSummaryProviderConfig.fromPref() {
@@ -100,6 +102,7 @@ class VideoSummaryProviderConfig {
       apiKey: Pref.aiSummaryApiKey,
       textModel: Pref.aiSummaryTextModel,
       multimodalModel: Pref.aiSummaryMultimodalModel,
+      timeoutSeconds: Pref.aiSummaryTimeoutSeconds,
     );
   }
 

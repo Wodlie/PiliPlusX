@@ -723,6 +723,16 @@ List<SettingsModel> get extraSettings => [
       hintText: '如：gpt-4.1-mini',
     ),
   ),
+  NormalModel(
+    title: 'AI总结超时时间',
+    leading: const Icon(Icons.timer_outlined),
+    getSubtitle: () =>
+        'OpenAI-compatible 请求超时时间，字幕总结与多模态总结共享\n当前：${Pref.aiSummaryTimeoutSeconds} 秒',
+    onTap: (context, setState) => _showAiSummaryTimeoutDialog(
+      context,
+      setState,
+    ),
+  ),
   const SwitchModel(
     title: '消息页禁用"收到的赞"功能',
     subtitle: '禁止打开入口，降低网络社交依赖',
@@ -1051,6 +1061,49 @@ Future<void> _showAiSummaryTextDialog(
   if (result != null) {
     final normalized = normalizeValue?.call(result) ?? result.trim();
     await GStorage.setting.put(storageKey, normalized);
+    setState();
+  }
+}
+
+Future<void> _showAiSummaryTimeoutDialog(
+  BuildContext context,
+  VoidCallback setState,
+) async {
+  String value = Pref.aiSummaryTimeoutSeconds.toString();
+  final String? result = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('AI总结超时时间'),
+      content: TextFormField(
+        autofocus: true,
+        initialValue: value,
+        onChanged: (newValue) => value = newValue,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: const InputDecoration(hintText: '请输入秒数，范围 5-600'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: Get.back,
+          child: Text(
+            '取消',
+            style: TextStyle(color: ColorScheme.of(context).outline),
+          ),
+        ),
+        TextButton(
+          onPressed: () => Get.back(result: value),
+          child: const Text('确定'),
+        ),
+      ],
+    ),
+  );
+  if (result != null) {
+    final int? seconds = int.tryParse(result.trim());
+    if (seconds == null || seconds < 5 || seconds > 600) {
+      SmartDialog.showToast('请输入 5 到 600 之间的秒数');
+      return;
+    }
+    await GStorage.setting.put(SettingBoxKey.aiSummaryTimeoutSeconds, seconds);
     setState();
   }
 }
