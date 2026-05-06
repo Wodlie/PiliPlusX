@@ -152,6 +152,60 @@ void main() {
       expect(Accounts.get(AccountType.video).buvid, 'ACCOUNT_BUVID_NEW');
       expect(Accounts.get(AccountType.video).buvid, isNot(oldAccount.buvid));
     });
+
+    test('startup guest snapshot stays guest until login replaces the main owner snapshot', () async {
+      await Accounts.refresh();
+
+      final startupSnapshot = Accounts.mainIdentity;
+      final startupAccount = Accounts.main;
+
+      expect(startupSnapshot.isLogin, isFalse);
+      expect(startupSnapshot.owner.key, 'guest');
+      expect(startupSnapshot.profile.buvid, Pref.guestBuvid);
+      expect(startupAccount.buvid, Pref.guestBuvid);
+
+      final loggedIn = _createLoginAccount(
+        mid: 1101,
+        buvid: 'LOGIN_OWNER_BUVID_1101',
+        type: {AccountType.main},
+      )..activated = true;
+
+      await Accounts.account.put(loggedIn.mid.toString(), loggedIn);
+      await Accounts.refresh();
+
+      expect(Accounts.mainIdentity.isLogin, isTrue);
+      expect(Accounts.mainIdentity.owner.key, 'account:1101');
+      expect(Accounts.mainIdentity.profile.buvid, 'LOGIN_OWNER_BUVID_1101');
+      expect(Accounts.main.buvid, 'LOGIN_OWNER_BUVID_1101');
+      expect(Accounts.mainIdentity.profile.buvid, isNot(startupSnapshot.profile.buvid));
+      expect(Accounts.main.buvid, isNot(startupAccount.buvid));
+    });
+
+    test('account switch updates the published snapshot and active role together', () async {
+      final first = _createLoginAccount(
+        mid: 1201,
+        buvid: 'ACCOUNT_SWITCH_A',
+      )..activated = true;
+      final second = _createLoginAccount(
+        mid: 1202,
+        buvid: 'ACCOUNT_SWITCH_B',
+      )..activated = true;
+
+      await Accounts.set(AccountType.recommend, first);
+      final firstSnapshot = Accounts.snapshot(AccountType.recommend);
+
+      await Accounts.set(AccountType.recommend, second);
+      final secondSnapshot = Accounts.snapshot(AccountType.recommend);
+
+      expect(firstSnapshot.owner.key, 'account:1201');
+      expect(firstSnapshot.profile.buvid, 'ACCOUNT_SWITCH_A');
+      expect(Accounts.get(AccountType.recommend).mid, 1202);
+      expect(secondSnapshot.owner.key, 'account:1202');
+      expect(secondSnapshot.profile.buvid, 'ACCOUNT_SWITCH_B');
+      expect(secondSnapshot.profile.buvid, isNot(firstSnapshot.profile.buvid));
+      expect(Accounts.get(AccountType.recommend).buvid, 'ACCOUNT_SWITCH_B');
+      expect(Accounts.snapshot(AccountType.recommend).profile.buvid, 'ACCOUNT_SWITCH_B');
+    });
   });
 
   group('BUVID header builders', () {

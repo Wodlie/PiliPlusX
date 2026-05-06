@@ -37,10 +37,10 @@ class Request {
   factory Request() => _instance;
 
   /// 设置cookie
-  static void setCookie() {
+  static Future<void> setCookie() async {
     accountManager = AccountManager();
     dio.interceptors.add(accountManager);
-    Accounts.refresh();
+    await Accounts.refresh();
     LoginUtils.setWebCookie();
 
     if (Accounts.main.isLogin) {

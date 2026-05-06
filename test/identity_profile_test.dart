@@ -1,7 +1,9 @@
 import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/identity_core.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/login_utils.dart';
+import 'package:cookie_jar/cookie_jar.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -137,5 +139,36 @@ void main() {
         isNot('11111111111111111111111111111111:1111111111111111:0:0'),
       );
     });
+
+    test('owner snapshot keeps guest/login and account-to-account transitions isolated', () {
+      final guest = OwnerScopedIdentitySnapshot.fromAccount(AnonymousAccount());
+      final accountA = OwnerScopedIdentitySnapshot.fromAccount(
+        _loginAccount(mid: 2201, buvid: 'ACCOUNT_SNAPSHOT_A'),
+      );
+      final accountB = OwnerScopedIdentitySnapshot.fromAccount(
+        _loginAccount(mid: 2202, buvid: 'ACCOUNT_SNAPSHOT_B'),
+      );
+
+      expect(guest.owner.key, 'guest');
+      expect(guest.isLogin, isFalse);
+      expect(accountA.owner.key, 'account:2201');
+      expect(accountA.isLogin, isTrue);
+      expect(accountB.owner.key, 'account:2202');
+      expect(accountB.isLogin, isTrue);
+      expect(accountA.profile.buvid, isNot(guest.profile.buvid));
+      expect(accountB.profile.buvid, isNot(accountA.profile.buvid));
+    });
   });
+}
+
+LoginAccount _loginAccount({required int mid, required String buvid}) {
+  final cookieJar = DefaultCookieJar(ignoreExpires: true)
+    ..domainCookies['bilibili.com'] = {
+      '/': {
+        'DedeUserID': SerializableCookie(Cookie('DedeUserID', '$mid')..setBiliDomain()),
+        'bili_jct': SerializableCookie(Cookie('bili_jct', 'csrf_$mid')..setBiliDomain()),
+        'SESSDATA': SerializableCookie(Cookie('SESSDATA', 'sess_$mid')..setBiliDomain()),
+      },
+    };
+  return LoginAccount(cookieJar, 'ACCESS_KEY_$mid', 'REFRESH_$mid', {}, buvid);
 }
