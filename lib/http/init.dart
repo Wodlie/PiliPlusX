@@ -217,7 +217,7 @@ class Request {
       receiveTimeout: const Duration(milliseconds: 10000),
       //Http请求头.
       headers: {
-        'user-agent': 'Dart/3.6 (dart:io)', // Http2Adapter不会自动添加标头
+        'user-agent': 'grpc-go/1.61.1', // Http2Adapter不会自动添加标头
         if (!_enableHttp2) 'connection': 'keep-alive',
         'accept-encoding': 'br,gzip',
       },
