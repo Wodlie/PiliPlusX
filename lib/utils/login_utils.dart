@@ -63,6 +63,9 @@ abstract final class LoginUtils {
         if (response != Pref.userInfoCache) {
           await GStorage.userInfo.put('userInfoCache', response);
         }
+        if (response.mid != null && response.uname != null) {
+          Pref.setAccountUname(response.mid!, response.uname!);
+        }
       }
     } else {
       // 获取用户信息失败

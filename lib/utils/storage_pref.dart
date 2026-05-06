@@ -85,6 +85,28 @@ abstract final class Pref {
     GlobalData().blackMids..remove(mid),
   );
 
+  static bool get accountDisplayName =>
+      _setting.get(SettingBoxKey.accountDisplayName, defaultValue: false);
+
+  static Map<int, String> get accountUnameMap =>
+      Map<int, String>.from(
+        _localCache.get(LocalCacheKey.accountUnameMap, defaultValue: {}),
+      );
+
+  static void setAccountUname(int mid, String uname) {
+    if (mid <= 0) return;
+    final map = accountUnameMap;
+    map[mid] = uname;
+    _localCache.put(LocalCacheKey.accountUnameMap, map);
+  }
+
+  static String getAccountDisplayName(int mid) {
+    if (!accountDisplayName || mid <= 0) return mid.toString();
+    final uname = accountUnameMap[mid];
+    if (uname == null || uname.isEmpty) return mid.toString();
+    return uname.length > 10 ? uname.substring(0, 10) : uname;
+  }
+
   static MemberTabType get memberTab =>
       MemberTabType.values[_setting.get(
         SettingBoxKey.memberTab,

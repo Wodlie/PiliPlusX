@@ -108,6 +108,9 @@ class MineController extends CommonDataController<FavFolderData, FavFolderData>
         if (response != Pref.userInfoCache) {
           GStorage.userInfo.put('userInfoCache', response);
         }
+        if (response.mid != null && response.uname != null) {
+          Pref.setAccountUname(response.mid!, response.uname!);
+        }
         accountService
           ..face.value = response.face!
           ..isLogin.value = true;

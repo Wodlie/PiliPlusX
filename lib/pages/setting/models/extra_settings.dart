@@ -71,6 +71,13 @@ List<SettingsModel> get extraSettings => [
       onTap: _showDownPathDialog,
     ),
   ],
+  const SwitchModel(
+    title: '账号选择器显示昵称',
+    subtitle: '显示10字符以内的用户昵称',
+    leading: Icon(Icons.person_outline),
+    setKey: SettingBoxKey.accountDisplayName,
+    defaultVal: false,
+  ),
   SplitModel(
     normalModel: const NormalModel.split(
       title: '空降助手',
