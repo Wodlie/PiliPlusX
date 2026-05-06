@@ -33,10 +33,11 @@ import 'package:PiliPlus/plugin/pl_player/models/bottom_progress_behavior.dart';
 import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/models/hwdec_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
+import 'package:PiliPlus/utils/accounts/identity_core.dart';
+import 'package:PiliPlus/utils/accounts/identity_persistence.dart';
 import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/global_data.dart';
-import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -987,13 +988,36 @@ abstract final class Pref {
   static bool get silentDownImg =>
       _setting.get(SettingBoxKey.silentDownImg, defaultValue: false);
 
-  static String get guestBuvid {
-    String? buvid = _localCache.get(LocalCacheKey.guestBuvid);
-    if (buvid == null) {
-      buvid = LoginUtils.generateBuvid();
-      _localCache.put(LocalCacheKey.guestBuvid, buvid);
+  static String? _cachedGuestBuvid;
+
+  static IdentityPersistenceResolution _resolveGuestIdentity() {
+    return OwnerScopedIdentityPersistence.resolve(
+      owner: const IdentityOwnerKey.guest(),
+      storedBuvid: _localCache.get(LocalCacheKey.guestBuvid) as String?,
+      legacyBuvid: _localCache.get(LocalCacheKey.legacyBuvid) as String?,
+    );
+  }
+
+  static void _persistGuestIdentityResolution(
+    IdentityPersistenceResolution resolution,
+  ) {
+    _cachedGuestBuvid = resolution.profile.buvid;
+    if (resolution.shouldPersist) {
+      _localCache.put(LocalCacheKey.guestBuvid, resolution.profile.buvid);
     }
-    return buvid;
+    if (resolution.shouldDeleteLegacy) {
+      _localCache.delete(LocalCacheKey.legacyBuvid);
+    }
+  }
+
+  static String get guestBuvid {
+    final cached = _cachedGuestBuvid;
+    if (cached != null) {
+      return cached;
+    }
+    final resolution = _resolveGuestIdentity();
+    _persistGuestIdentityResolution(resolution);
+    return resolution.profile.buvid;
   }
 
   /// Compatibility-only view of the orphaned legacy global 'buvid' key.
@@ -1004,9 +1028,10 @@ abstract final class Pref {
   @Deprecated('Legacy cleanup only. Use guestBuvid or Account.buvid instead.')
   static String? get legacyBuvid => _localCache.get(LocalCacheKey.legacyBuvid);
 
-  static Future<void> deleteGuestBuvid() => _localCache.delete(
-    LocalCacheKey.guestBuvid,
-  );
+  static Future<void> deleteGuestBuvid() {
+    _cachedGuestBuvid = null;
+    return _localCache.delete(LocalCacheKey.guestBuvid);
+  }
 
   /// Deletes the legacy global 'buvid' key from local cache.
   /// No code path reads this key anymore — guest paths use [guestBuvid]

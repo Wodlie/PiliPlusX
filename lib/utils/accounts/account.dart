@@ -2,8 +2,9 @@ import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/grpc_headers.dart';
+import 'package:PiliPlus/utils/accounts/identity_core.dart';
+import 'package:PiliPlus/utils/accounts/identity_persistence.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
-import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:hive_ce/hive.dart';
@@ -114,22 +115,39 @@ class LoginAccount extends Account {
     'buvid': buvid,
   };
 
-  late final String _midStr = cookieJar
-      .domainCookies['bilibili.com']!['/']!['DedeUserID']!
-      .cookie
-      .value;
+  final String _midStr;
 
   late final Box<LoginAccount> _box = Accounts.account;
 
-  LoginAccount(
-    this.cookieJar,
-    this.accessKey,
-    this.refresh, [
+  factory LoginAccount(
+    DefaultCookieJar cookieJar,
+    String? accessKey,
+    String? refresh, [
     Set<AccountType>? type,
     String? buvid,
-  ]) : _needsBuvidPersist = buvid == null,
-       type = type ?? {},
-       buvid = buvid ?? LoginUtils.generateBuvid() {
+  ]) {
+    final resolved = _resolveLoginAccountIdentity(cookieJar, buvid);
+    return LoginAccount._(
+      cookieJar,
+      accessKey,
+      refresh,
+      type ?? {},
+      resolved.midStr,
+      resolved.resolution.profile.buvid,
+      resolved.resolution.source == IdentityPersistenceSource.generated ||
+          resolved.resolution.source == IdentityPersistenceSource.legacy,
+    );
+  }
+
+  LoginAccount._(
+    this.cookieJar,
+    this.accessKey,
+    this.refresh,
+    this.type,
+    this._midStr,
+    this.buvid,
+    this._needsBuvidPersist,
+  ) {
     cookieJar.setBuvid3();
   }
 
@@ -197,6 +215,26 @@ class AnonymousAccount extends Account {
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is AnonymousAccount && cookieJar == other.cookieJar);
+}
+
+({
+  String midStr,
+  IdentityPersistenceResolution resolution,
+}) _resolveLoginAccountIdentity(
+  DefaultCookieJar cookieJar,
+  String? storedBuvid,
+) {
+  final midStr = cookieJar
+      .domainCookies['bilibili.com']!['/']!['DedeUserID']!
+      .cookie
+      .value;
+  return (
+    midStr: midStr,
+    resolution: OwnerScopedIdentityPersistence.resolve(
+      owner: IdentityOwnerKey.account(int.parse(midStr)),
+      storedBuvid: storedBuvid,
+    ),
+  );
 }
 
 extension BiliCookie on Cookie {
