@@ -177,6 +177,7 @@ abstract final class ReplyUtils {
             root: id,
             pageNum: 1,
             type: type,
+            account: Accounts.reply,
           );
 
           if (res1 is Error) {
@@ -255,6 +256,7 @@ https://api.bilibili.com/x/v2/reply/reply?oid=$oid&pn=1&ps=20&root=$id&type=$typ
           pageNum: i,
           type: type,
           isCheck: true,
+          account: Accounts.reply,
         );
         if (res4 is Error) {
           break;

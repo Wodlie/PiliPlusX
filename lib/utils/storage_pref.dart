@@ -17,6 +17,7 @@ import 'package:PiliPlus/models/common/sponsor_block/skip_type.dart';
 import 'package:PiliPlus/models/common/super_chat_type.dart';
 import 'package:PiliPlus/models/common/super_resolution_type.dart';
 import 'package:PiliPlus/models/common/theme/theme_type.dart';
+import 'package:PiliPlus/models/common/video/ai_summary_service.dart';
 import 'package:PiliPlus/models/common/video/audio_quality.dart';
 import 'package:PiliPlus/models/common/video/cdn_type.dart';
 import 'package:PiliPlus/models/common/video/live_quality.dart';
@@ -32,10 +33,11 @@ import 'package:PiliPlus/plugin/pl_player/models/bottom_progress_behavior.dart';
 import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/models/hwdec_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
+import 'package:PiliPlus/utils/accounts/identity_core.dart';
+import 'package:PiliPlus/utils/accounts/identity_persistence.dart';
 import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/global_data.dart';
-import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -792,6 +794,32 @@ abstract final class Pref {
   static bool get suppressSponsorBlockIncognito =>
       _setting.get(SettingBoxKey.suppressSponsorBlockIncognito, defaultValue: false);
 
+  // ===== @评论过滤 (At-filter) =====
+
+  static bool get enableAtFilter =>
+      _setting.get(SettingBoxKey.enableAtFilter, defaultValue: false);
+
+  static bool get enableAtFilterPureAt =>
+      _setting.get(SettingBoxKey.enableAtFilterPureAt, defaultValue: false);
+
+  static bool get enableAtFilterBodyLength =>
+      _setting.get(SettingBoxKey.enableAtFilterBodyLength, defaultValue: false);
+
+  static int get atFilterBodyLengthThreshold =>
+      _setting.get(SettingBoxKey.atFilterBodyLengthThreshold, defaultValue: 10);
+
+  static bool get enableAtFilterAtCount =>
+      _setting.get(SettingBoxKey.enableAtFilterAtCount, defaultValue: false);
+
+  static int get atFilterAtCountThreshold =>
+      _setting.get(SettingBoxKey.atFilterAtCountThreshold, defaultValue: 5);
+
+  static bool get enableAtFilterLikeExempt =>
+      _setting.get(SettingBoxKey.enableAtFilterLikeExempt, defaultValue: false);
+
+  static int get atFilterLikeExemptThreshold =>
+      _setting.get(SettingBoxKey.atFilterLikeExemptThreshold, defaultValue: 50);
+
   static bool get enableHA =>
       _setting.get(SettingBoxKey.enableHA, defaultValue: true);
 
@@ -842,6 +870,42 @@ abstract final class Pref {
 
   static bool get enableAi =>
       _setting.get(SettingBoxKey.enableAi, defaultValue: false);
+
+  static bool get enableAiSummaryBackground =>
+      _setting.get(SettingBoxKey.enableAiSummaryBackground, defaultValue: false);
+
+  static AiSummaryService get aiSummaryService {
+    if (_setting.get(SettingBoxKey.aiSummaryService) case final String service) {
+      return AiSummaryService.values.firstWhere(
+        (item) => item.name == service,
+        orElse: () => AiSummaryService.bilibiliLegacyDeprecated,
+      );
+    }
+    return AiSummaryService.bilibiliLegacyDeprecated;
+  }
+
+  static set aiSummaryService(AiSummaryService value) =>
+      _setting.put(SettingBoxKey.aiSummaryService, value.name);
+
+  static String get aiSummaryBaseUrl =>
+      _setting.get(SettingBoxKey.aiSummaryBaseUrl, defaultValue: '');
+
+  static String get aiSummaryApiKey =>
+      _setting.get(SettingBoxKey.aiSummaryApiKey, defaultValue: '');
+
+  static String get aiSummaryTextModel =>
+      _setting.get(SettingBoxKey.aiSummaryTextModel, defaultValue: '');
+
+  static String get aiSummaryMultimodalModel =>
+      _setting.get(SettingBoxKey.aiSummaryMultimodalModel, defaultValue: '');
+
+  static int get aiSummaryTimeoutSeconds {
+    final int value = _setting.get(
+      SettingBoxKey.aiSummaryTimeoutSeconds,
+      defaultValue: 20,
+    );
+    return value.clamp(5, 600);
+  }
 
   static bool get enableCommentTranslate =>
       _setting.get(SettingBoxKey.enableCommentTranslate, defaultValue: true);
@@ -924,14 +988,67 @@ abstract final class Pref {
   static bool get silentDownImg =>
       _setting.get(SettingBoxKey.silentDownImg, defaultValue: false);
 
-  static String get buvid {
-    String? buvid = _localCache.get(LocalCacheKey.buvid);
-    if (buvid == null) {
-      buvid = LoginUtils.generateBuvid();
-      _localCache.put(LocalCacheKey.buvid, buvid);
-    }
-    return buvid;
+  static String? _cachedGuestBuvid;
+
+  static IdentityPersistenceResolution _resolveGuestIdentity() {
+    return OwnerScopedIdentityPersistence.resolve(
+      owner: const IdentityOwnerKey.guest(),
+      storedBuvid: _localCache.get(LocalCacheKey.guestBuvid) as String?,
+      legacyBuvid: _localCache.get(LocalCacheKey.legacyBuvid) as String?,
+    );
   }
+
+  static void _persistGuestIdentityResolution(
+    IdentityPersistenceResolution resolution,
+  ) {
+    _cachedGuestBuvid = resolution.profile.buvid;
+    if (resolution.shouldPersist) {
+      _localCache.put(LocalCacheKey.guestBuvid, resolution.profile.buvid);
+    }
+    if (resolution.shouldDeleteLegacy) {
+      _localCache.delete(LocalCacheKey.legacyBuvid);
+    }
+  }
+
+  static String get guestBuvid {
+    final cached = _cachedGuestBuvid;
+    if (cached != null) {
+      return cached;
+    }
+    final resolution = _resolveGuestIdentity();
+    _persistGuestIdentityResolution(resolution);
+    return resolution.profile.buvid;
+  }
+
+  /// Compatibility-only view of the orphaned legacy global 'buvid' key.
+  ///
+  /// This is retained only so cleanup/migration code can inspect or delete the
+  /// old cache entry. Guest traffic must use [guestBuvid], and logged-in
+  /// business paths must use account-owned BUVID (`Account.buvid`).
+  @Deprecated('Legacy cleanup only. Use guestBuvid or Account.buvid instead.')
+  static String? get legacyBuvid => _localCache.get(LocalCacheKey.legacyBuvid);
+
+  static Future<void> deleteGuestBuvid() {
+    _cachedGuestBuvid = null;
+    return _localCache.delete(LocalCacheKey.guestBuvid);
+  }
+
+  /// Deletes the legacy global 'buvid' key from local cache.
+  /// No code path reads this key anymore — guest paths use [guestBuvid]
+  /// and logged-in paths use [LoginAccount.buvid].
+  /// Safe to call unconditionally (Hive delete is a no-op for missing keys).
+  static Future<void> deleteLegacyBuvid() => _localCache.delete(
+    LocalCacheKey.legacyBuvid,
+  );
+
+  /// Guest-compatibility wrapper kept only for deprecated callers.
+  ///
+  /// Core login/request paths must not read this getter. Use [guestBuvid] for
+  /// anonymous flows or `Account.buvid` for logged-in flows instead.
+  @Deprecated(
+    'Guest-compatibility wrapper only. Use guestBuvid or Account.buvid instead.',
+  )
+  static String get buvid => guestBuvid;
 
   static bool get showMemberShop =>
       _setting.get(SettingBoxKey.showMemberShop, defaultValue: false);

@@ -3,7 +3,6 @@ import 'package:PiliPlus/http/api.dart';
 import 'package:PiliPlus/http/browser_ua.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/http/login.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/models/common/live/live_contribution_rank_type.dart';
 import 'package:PiliPlus/models/common/live/live_search_type.dart';
@@ -27,12 +26,26 @@ import 'package:PiliPlus/models_new/live/live_second_list/data.dart';
 import 'package:PiliPlus/models_new/live/live_superchat/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
 import 'package:PiliPlus/utils/wbi_sign.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 abstract final class LiveHttp {
   static Account get recommend => Accounts.get(AccountType.recommend);
+
+  @visibleForTesting
+  static Map<String, String> appIdentityHeaders(Account account) {
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: account,
+      userAgent: Constants.userAgentApp,
+    );
+    return {
+      ...identity.appHeaders(appKey: 'android', userAgent: Constants.userAgentApp),
+      ...identity.appIdentityHeaders,
+    };
+  }
 
   static Future<LoadingState<void>> sendLiveMsg({
     required Object roomId,
@@ -190,8 +203,9 @@ abstract final class LiveHttp {
     required int pn,
     bool moduleSelect = false,
   }) async {
+    final account = recommend;
     final params = {
-      'access_key': ?recommend.accessKey,
+      'access_key': ?account.accessKey,
       'channel': 'master',
       'actionKey': 'appkey',
       'build': 8430300,
@@ -208,7 +222,7 @@ abstract final class LiveHttp {
       'network': 'wifi',
       'page': pn,
       'platform': 'android',
-      if (recommend.isLogin) 'relation_page': 1,
+      if (account.isLogin) 'relation_page': 1,
       's_locale': 'zh_CN',
       'scale': 2,
       'statistics': Constants.statisticsApp,
@@ -218,21 +232,7 @@ abstract final class LiveHttp {
       Api.liveFeedIndex,
       queryParameters: params,
       options: Options(
-        headers: {
-          'buvid': LoginHttp.buvid,
-          'fp_local':
-              '1111111111111111111111111111111111111111111111111111111111111111',
-          'fp_remote':
-              '1111111111111111111111111111111111111111111111111111111111111111',
-          'session_id': '11111111',
-          'env': 'prod',
-          'app-key': 'android',
-          'User-Agent': Constants.userAgentApp,
-          'x-bili-trace-id': Constants.traceId,
-          'x-bili-aurora-eid': '',
-          'x-bili-aurora-zone': '',
-          'bili-http-engine': 'cronet',
-        },
+        headers: appIdentityHeaders(account),
       ),
     );
     if (res.data['code'] == 0) {
@@ -265,8 +265,9 @@ abstract final class LiveHttp {
     required Object? parentAreaId,
     String? sortType,
   }) async {
+    final account = recommend;
     final params = {
-      'access_key': ?recommend.accessKey,
+      'access_key': ?account.accessKey,
       'actionKey': 'appkey',
       'channel': 'master',
       'area_id': ?areaId,
@@ -298,21 +299,7 @@ abstract final class LiveHttp {
       Api.liveSecondList,
       queryParameters: params,
       options: Options(
-        headers: {
-          'buvid': LoginHttp.buvid,
-          'fp_local':
-              '1111111111111111111111111111111111111111111111111111111111111111',
-          'fp_remote':
-              '1111111111111111111111111111111111111111111111111111111111111111',
-          'session_id': '11111111',
-          'env': 'prod',
-          'app-key': 'android',
-          'User-Agent': Constants.userAgentApp,
-          'x-bili-trace-id': Constants.traceId,
-          'x-bili-aurora-eid': '',
-          'x-bili-aurora-zone': '',
-          'bili-http-engine': 'cronet',
-        },
+        headers: appIdentityHeaders(account),
       ),
     );
     if (res.data['code'] == 0) {

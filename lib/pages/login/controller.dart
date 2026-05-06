@@ -715,6 +715,12 @@ class LoginPageController extends GetxController
         Accounts.accountMode[i] = account;
       }
     }
+    // Activate the new account's BUVID in the same session so the
+    // lifecycle transition (anonymous → logged-in) is reflected
+    // immediately.  Non-blocking: if activation fails, activated
+    // stays false and will be retried on next Accounts.refresh or
+    // Accounts.set (see buvidActive fix).
+    Request.buvidActive(account);
     if (Accounts.main.isLogin) {
       SmartDialog.showToast('登录成功');
     } else {

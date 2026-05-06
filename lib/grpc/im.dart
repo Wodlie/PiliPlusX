@@ -4,9 +4,9 @@ import 'package:PiliPlus/grpc/bilibili/im/type.pb.dart';
 import 'package:PiliPlus/grpc/grpc_req.dart';
 import 'package:PiliPlus/grpc/url.dart';
 import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/utils/accounts/grpc_headers.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:protobuf/protobuf.dart' show PbMap;
-import 'package:uuid/v4.dart';
 
 abstract final class ImGrpc {
   static Future<LoadingState<RspSendMsg>> sendMsg({
@@ -17,20 +17,34 @@ abstract final class ImGrpc {
   }) {
     return GrpcReq.request(
       GrpcUrl.sendMsg,
-      ReqSendMsg(
-        msg: Msg(
-          senderUid: Int64(senderUid),
-          receiverType: 1,
-          receiverId: Int64(receiverId),
-          msgType: msgType.value,
-          content: content,
-          timestamp: Int64(DateTime.now().millisecondsSinceEpoch ~/ 1000),
-          msgStatus: 0,
-          newFaceVersion: 1,
-        ),
-        devId: const UuidV4().generate(),
+      buildSendMsgRequest(
+        senderUid: senderUid,
+        receiverId: receiverId,
+        content: content,
+        msgType: msgType,
       ),
       RspSendMsg.fromBuffer,
+    );
+  }
+
+  static ReqSendMsg buildSendMsgRequest({
+    required int senderUid,
+    required int receiverId,
+    required String content,
+    MsgType msgType = MsgType.EN_MSG_TYPE_TEXT,
+  }) {
+    return ReqSendMsg(
+      msg: Msg(
+        senderUid: Int64(senderUid),
+        receiverType: 1,
+        receiverId: Int64(receiverId),
+        msgType: msgType.value,
+        content: content,
+        timestamp: Int64(DateTime.now().millisecondsSinceEpoch ~/ 1000),
+        msgStatus: 0,
+        newFaceVersion: 1,
+      ),
+      devId: GrpcHeaders.currentImDeviceId(),
     );
   }
 
@@ -49,15 +63,27 @@ abstract final class ImGrpc {
   }) {
     return GrpcReq.request(
       GrpcUrl.syncFetchSessionMsgs,
-      ReqSessionMsg(
-        talkerId: Int64(talkerId),
-        sessionType: 1,
+      buildSyncFetchSessionMsgsRequest(
+        talkerId: talkerId,
         endSeqno: endSeqno,
         beginSeqno: beginSeqno,
-        size: 20,
-        devId: '1',
       ),
       RspSessionMsg.fromBuffer,
+    );
+  }
+
+  static ReqSessionMsg buildSyncFetchSessionMsgsRequest({
+    required int talkerId,
+    Int64? endSeqno,
+    Int64? beginSeqno,
+  }) {
+    return ReqSessionMsg(
+      talkerId: Int64(talkerId),
+      sessionType: 1,
+      endSeqno: endSeqno,
+      beginSeqno: beginSeqno,
+      size: 20,
+      devId: GrpcHeaders.currentImDeviceId(),
     );
   }
 

@@ -37,6 +37,7 @@ jobs:
 
       - name: Build Mac
         run: |
+          sudo xcodebuild -license accept
           flutter build macos --release --dart-define-from-file=pili_release.json
 
       - name: Prepare Upload

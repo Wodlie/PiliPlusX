@@ -1,11 +1,13 @@
 import 'package:PiliPlus/common/widgets/gesture/tap_gesture_recognizer.dart';
 import 'package:PiliPlus/common/widgets/selectable_text.dart';
 import 'package:PiliPlus/models_new/video/video_ai_conclusion/model_result.dart';
+import 'package:PiliPlus/models_new/video/video_ai_conclusion/service_result.dart';
 import 'package:PiliPlus/pages/common/slide/common_slide_page.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 
 class AiConclusionPanel extends CommonSlidePage {
@@ -130,6 +132,35 @@ class AiConclusionPanel extends CommonSlidePage {
           ),
       ],
     );
+  }
+
+  static bool hasContent(AiConclusionResult res) {
+    return res.summary?.isNotEmpty == true || res.outline?.isNotEmpty == true;
+  }
+
+  static String messageForResult(AiSummaryServiceResult result) {
+    return switch (result) {
+      AiSummaryServiceSuccess(:final data) =>
+        hasContent(data) ? '' : '当前视频暂不支持 AI 视频总结',
+      AiSummaryServiceNoSubtitle(:final message) =>
+        message ?? '当前视频暂无可用字幕',
+      AiSummaryServiceMisconfigured(:final message) =>
+        message ?? '请先完成 AI 总结服务配置',
+      AiSummaryServiceProviderError(:final message) =>
+        message ?? 'AI 总结生成失败',
+      AiSummaryServiceLegacyError(:final message) =>
+        message ?? '哔哩哔哩 AI 总结生成失败',
+      AiSummaryServiceUnavailable(:final message) =>
+        message ?? '当前视频暂不支持 AI 视频总结',
+      _ => '当前视频暂不支持 AI 视频总结',
+    };
+  }
+
+  static void showResultMessage(AiSummaryServiceResult result) {
+    final String message = messageForResult(result);
+    if (message.isNotEmpty) {
+      SmartDialog.showToast(message);
+    }
   }
 }
 

@@ -63,7 +63,9 @@ abstract final class ReplyHttp {
     required int pageNum,
     required int type,
     bool isCheck = false,
+    Account? account,
   }) async {
+    final loginAccount = account ?? Accounts.reply;
     final res = await Request().get(
       Api.replyReplyList,
       queryParameters: {
@@ -72,9 +74,11 @@ abstract final class ReplyHttp {
         'pn': pageNum,
         'type': type,
         'sort': 1,
-        if (isLogin) 'csrf': Accounts.main.csrf,
+        if (isLogin) 'csrf': loginAccount.csrf,
       },
-      options: !isLogin ? options : null,
+      options: !isLogin
+          ? options
+          : Options(extra: {'account': loginAccount}),
     );
     if (res.data['code'] == 0) {
       ReplyReplyData replyData = ReplyReplyData.fromJson(res.data['data']);

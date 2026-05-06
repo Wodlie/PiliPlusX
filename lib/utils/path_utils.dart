@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart' as path;
 
 late final String tmpDirPath;
@@ -7,6 +8,11 @@ late final String tmpDirPath;
 late final String appSupportDirPath;
 
 late String downloadPath;
+
+@visibleForTesting
+void debugSetAppSupportDirPath(String value) {
+  appSupportDirPath = value;
+}
 
 String get defDownloadPath =>
     path.join(appSupportDirPath, PathUtils.downloadDir);

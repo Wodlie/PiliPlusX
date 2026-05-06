@@ -151,5 +151,8 @@ pili_release.json
 
 dist
 
+.sisyphus/
 test*
+!test/
+!test/**
 AGENTS.md

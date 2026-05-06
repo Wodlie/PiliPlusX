@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/style.dart';
@@ -11,12 +13,13 @@ import 'package:PiliPlus/common/widgets/stat/stat.dart';
 import 'package:PiliPlus/http/sponsor_block.dart';
 import 'package:PiliPlus/models/common/image_type.dart';
 import 'package:PiliPlus/models/common/stat_type.dart';
-import 'package:PiliPlus/models_new/video/video_ai_conclusion/model_result.dart';
+import 'package:PiliPlus/models_new/video/video_ai_conclusion/service_result.dart';
 import 'package:PiliPlus/models_new/video/video_detail/data.dart';
 import 'package:PiliPlus/models_new/video/video_detail/staff.dart';
 import 'package:PiliPlus/models_new/video/video_tag/data.dart';
 import 'package:PiliPlus/pages/mine/controller.dart';
 import 'package:PiliPlus/pages/search/widgets/search_text.dart';
+import 'package:PiliPlus/pages/video/ai_conclusion/view.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/pages/video/introduction/ugc/controller.dart';
 import 'package:PiliPlus/pages/video/introduction/ugc/widgets/action_item.dart';
@@ -1025,19 +1028,43 @@ class _UgcIntroPanelState extends State<UgcIntroPanel> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () async {
-          if (introController.aiConclusionResult == null) {
-            await introController.aiConclusion();
-          }
-          if (introController.aiConclusionResult case AiConclusionResult(
-            :final summary,
-            :final outline,
-          )) {
-            if (summary?.isNotEmpty == true || outline?.isNotEmpty == true) {
+          final cached = introController.cachedAiConclusionSuccess;
+          if (cached != null) {
+            if (!mounted) {
+              return;
+            }
+            if (AiConclusionPanel.hasContent(cached.data)) {
               widget.showAiBottomSheet();
-            } else {
-              SmartDialog.showToast("当前视频不支持AI视频总结");
+              return;
+            }
+            AiConclusionPanel.showResultMessage(cached);
+            return;
+          }
+
+          if (introController.isAiConclusionInProgress) {
+            SmartDialog.showToast('AI总结正在进行中，请稍后再试');
+            return;
+          }
+
+          if (introController.enableAiSummaryBackground) {
+            unawaited(introController.aiConclusion());
+            SmartDialog.showToast('已开始后台进行AI总结，可继续浏览，完成后再次点击查看');
+            return;
+          }
+
+          final result = await introController.aiConclusion();
+          if (!mounted) {
+            return;
+          }
+
+          if (result case AiSummaryServiceSuccess(:final data)) {
+            if (AiConclusionPanel.hasContent(data)) {
+              widget.showAiBottomSheet();
+              return;
             }
           }
+
+          AiConclusionPanel.showResultMessage(result);
         },
         child: Image.asset(
           semanticLabel: 'AI总结',

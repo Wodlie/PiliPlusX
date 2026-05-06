@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:PiliPlus/common/widgets/button/icon_button.dart';
+import 'package:PiliPlus/http/ai_summary_service_router.dart';
 import 'package:PiliPlus/common/widgets/scroll_physics.dart';
 import 'package:PiliPlus/http/api.dart';
 import 'package:PiliPlus/http/constants.dart';
@@ -11,10 +12,12 @@ import 'package:PiliPlus/http/member.dart';
 import 'package:PiliPlus/http/search.dart';
 import 'package:PiliPlus/http/user.dart';
 import 'package:PiliPlus/http/video.dart';
+import 'package:PiliPlus/models/common/video/ai_summary_service.dart';
 import 'package:PiliPlus/models/common/video/source_type.dart';
 import 'package:PiliPlus/models_new/member_card_info/data.dart';
 import 'package:PiliPlus/models_new/relation/data.dart';
 import 'package:PiliPlus/models_new/video/video_ai_conclusion/model_result.dart';
+import 'package:PiliPlus/models_new/video/video_ai_conclusion/service_result.dart';
 import 'package:PiliPlus/models_new/video/video_detail/dimension.dart';
 import 'package:PiliPlus/models_new/video/video_detail/episode.dart';
 import 'package:PiliPlus/models_new/video/video_detail/page.dart';
@@ -64,9 +67,12 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
 
   late final showArgueMsg = Pref.showArgueMsg;
   late final enableAi = Pref.enableAi;
+  late final enableAiSummaryBackground = Pref.enableAiSummaryBackground;
   late final horizontalMemberPage = Pref.horizontalMemberPage;
 
   AiConclusionResult? aiConclusionResult;
+  AiSummaryService? aiConclusionResultService;
+  Future<AiSummaryServiceResult>? _aiConclusionFuture;
 
   late final Map<int?, bool> seasonFavState = {};
 
@@ -533,6 +539,7 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
       if (this.bvid != bvid) {
         reload = true;
         aiConclusionResult = null;
+        aiConclusionResultService = null;
 
         if (cover != null && cover.isNotEmpty) {
           videoDetailCtr.cover.value = cover;
@@ -778,38 +785,67 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
     return false;
   }
 
-  // ai总结
-  static Future<AiConclusionResult?> getAiConclusion(
-    String bvid,
-    int cid,
-    int? mid,
-  ) async {
-    if (!Accounts.heartbeat.isLogin) {
-      SmartDialog.showToast("账号未登录");
-      return null;
+  void _handleAiConclusionResult(AiSummaryServiceResult result) {
+    if (result case AiSummaryServiceSuccess(:final data)) {
+      aiConclusionResult = data;
+      aiConclusionResultService = Pref.aiSummaryService;
+      return;
     }
-    SmartDialog.showLoading(msg: '正在获取AI总结');
-    final res = await VideoHttp.aiConclusion(
-      bvid: bvid,
-      cid: cid,
-      upMid: mid,
-    );
-    SmartDialog.dismiss();
-    if (res case Success(:final response)) {
-      return response.modelResult;
-    } else if (res is Error && res.code == 1) {
-      SmartDialog.showToast("AI处理中，请稍后再试");
-    } else {
-      SmartDialog.showToast("当前视频暂不支持AI视频总结");
-    }
-    return null;
+
+    aiConclusionResult = null;
+    aiConclusionResultService = null;
   }
 
-  Future<void> aiConclusion() async {
-    aiConclusionResult = await getAiConclusion(
-      bvid,
-      cid.value,
-      videoDetail.value.owner?.mid,
+  bool get canReuseAiConclusionResult =>
+      aiConclusionResult != null && aiConclusionResultService == Pref.aiSummaryService;
+
+  AiSummaryServiceSuccess? get cachedAiConclusionSuccess {
+    final result = aiConclusionResult;
+    if (result == null || aiConclusionResultService != Pref.aiSummaryService) {
+      return null;
+    }
+    return AiSummaryServiceSuccess(result);
+  }
+
+  bool get isAiConclusionInProgress => _aiConclusionFuture != null;
+
+  Future<AiSummaryServiceResult> _requestAiConclusion() async {
+    return AiSummaryServiceRouter.summarizeUgcVideo(
+      bvid: bvid,
+      cid: cid.value,
+      title: videoDetail.value.title,
+      upMid: videoDetail.value.owner?.mid,
     );
+  }
+
+  Future<AiSummaryServiceResult> aiConclusion() async {
+    if (_aiConclusionFuture != null) {
+      return _aiConclusionFuture!;
+    }
+
+    aiConclusionResult = null;
+    aiConclusionResultService = null;
+
+    if (enableAiSummaryBackground) {
+      final future = _requestAiConclusion();
+      _aiConclusionFuture = future;
+      future.then(_handleAiConclusionResult).whenComplete(() {
+        if (identical(_aiConclusionFuture, future)) {
+          _aiConclusionFuture = null;
+        }
+      });
+      return future;
+    }
+
+    SmartDialog.showLoading(msg: '正在获取AI总结');
+    final future = _requestAiConclusion();
+    _aiConclusionFuture = future;
+    final result = await future;
+    SmartDialog.dismiss();
+    _handleAiConclusionResult(result);
+    if (identical(_aiConclusionFuture, future)) {
+      _aiConclusionFuture = null;
+    }
+    return result;
   }
 }
