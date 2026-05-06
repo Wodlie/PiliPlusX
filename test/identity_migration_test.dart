@@ -39,7 +39,7 @@ void main() {
   });
 
   group('identity migration', () {
-    test('malformed guest buvid is repaired once and remains stable on repeated reads', () {
+    test('guest migration repairs a malformed stored BUVID once and keeps repeated reads stable', () {
       GStorage.localCache.put(LocalCacheKey.guestBuvid, 'broken-guest');
 
       final repaired = Pref.guestBuvid;
@@ -53,7 +53,7 @@ void main() {
       expect(GStorage.localCache.get(LocalCacheKey.guestBuvid), repaired);
     });
 
-    test('valid guest buvid is preserved', () {
+    test('guest migration preserves a valid stored BUVID', () {
       final validGuest = IdentityCoreGenerators.deriveBuvidFromSeed('guest-valid');
       GStorage.localCache.put(LocalCacheKey.guestBuvid, validGuest);
 
@@ -61,7 +61,27 @@ void main() {
       expect(GStorage.localCache.get(LocalCacheKey.guestBuvid), validGuest);
     });
 
-    test('malformed account buvid is repaired and marked for persistence', () async {
+    test('guest migration recovers from a corrupt stored BUVID by promoting a valid legacy entry', () {
+      final validLegacyGuest = IdentityCoreGenerators.deriveBuvidFromSeed(
+        'guest-legacy-valid',
+      );
+      GStorage.localCache.put(LocalCacheKey.guestBuvid, 'broken-guest');
+      GStorage.localCache.put(LocalCacheKey.legacyBuvid, validLegacyGuest);
+
+      final recovered = Pref.guestBuvid;
+      final repeated = Pref.guestBuvid;
+
+      expect(recovered, validLegacyGuest);
+      expect(repeated, validLegacyGuest);
+      expect(
+        IdentityCoreGenerators.validateBuvid(recovered).isValid,
+        isTrue,
+      );
+      expect(GStorage.localCache.get(LocalCacheKey.guestBuvid), validLegacyGuest);
+      expect(GStorage.localCache.get(LocalCacheKey.legacyBuvid), isNull);
+    });
+
+    test('account migration repairs a malformed account BUVID and marks it for persistence', () async {
       final account = _createLoginAccount(mid: 2001, buvid: 'broken-account-buvid');
 
       expect(
@@ -78,7 +98,7 @@ void main() {
       expect(persisted.needsBuvidPersist, isFalse);
     });
 
-    test('valid account buvid is preserved', () {
+    test('account migration preserves a valid account BUVID', () {
       final validAccountBuvid = IdentityCoreGenerators.deriveBuvidFromSeed('account-valid');
       final account = _createLoginAccount(mid: 2002, buvid: validAccountBuvid);
 
@@ -86,7 +106,7 @@ void main() {
       expect(account.needsBuvidPersist, isFalse);
     });
 
-    test('logout clears account identity and creates fresh guest profile', () async {
+    test('logout clears account identity and creates a fresh guest profile', () async {
       await Pref.deleteGuestBuvid();
       final account = _createLoginAccount(mid: 2003)..activated = true;
 

@@ -66,7 +66,7 @@ void main() {
     );
   });
 
-  test('video and live app requests derive fp and session from owner identity', () {
+  test('video and live app requests expose validated owner-scoped fp and session fields', () {
     final account = _createLoginAccount(
       mid: 3302,
       buvid: IdentityCoreGenerators.generateBuvid(),
@@ -86,10 +86,22 @@ void main() {
     expect(liveHeaders['fp_local'], identity.fpLocal);
     expect(liveHeaders['fp_remote'], identity.fpRemote);
     expect(liveHeaders['session_id'], identity.sessionId);
+    expect(IdentityCoreGenerators.validateFp(videoHeaders['fp_local']!).isValid, isTrue);
+    expect(IdentityCoreGenerators.validateFp(videoHeaders['fp_remote']!).isValid, isTrue);
+    expect(
+      IdentityCoreGenerators.validateSessionId(videoHeaders['session_id']!).isValid,
+      isTrue,
+    );
+    expect(IdentityCoreGenerators.validateFp(liveHeaders['fp_local']!).isValid, isTrue);
+    expect(IdentityCoreGenerators.validateFp(liveHeaders['fp_remote']!).isValid, isTrue);
+    expect(
+      IdentityCoreGenerators.validateSessionId(liveHeaders['session_id']!).isValid,
+      isTrue,
+    );
     expect(videoHeaders['session_id'], isNot('11111111'));
     expect(
       videoHeaders['fp_local'],
-      isNot('1111111111111111111111111111111111111111111111111111111111111111'),
+        isNot('1111111111111111111111111111111111111111111111111111111111111111'),
     );
     expect(liveHeaders['session_id'], isNot('11111111'));
     expect(
