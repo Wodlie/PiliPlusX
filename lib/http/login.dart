@@ -8,39 +8,47 @@ import 'package:PiliPlus/models/login/model.dart';
 import 'package:PiliPlus/models_new/login_devices/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
-import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:encrypt/encrypt.dart';
 
 abstract final class LoginHttp {
-  static final String deviceId = LoginUtils.genDeviceId();
-
   static Map<String, String> appHeaders({
     required String buvid,
     required String appKey,
     required String userAgent,
     String? contentType,
-  }) => {
-    'buvid': buvid,
-    'env': 'prod',
-    'app-key': appKey,
-    'user-agent': userAgent,
-    'x-bili-trace-id': Constants.traceId,
-    'x-bili-aurora-eid': '',
-    'x-bili-aurora-zone': '',
-    'bili-http-engine': 'cronet',
-    if (contentType != null) 'content-type': contentType,
-  };
+    Account? account,
+  }) {
+    final identity = account == null
+        ? RequestIdentityAdapter.fromBuvid(
+            buvid: buvid,
+            userAgent: userAgent,
+            scope: 'login-http:$appKey',
+          )
+        : RequestIdentityAdapter.fromAccount(
+            account: account,
+            userAgent: userAgent,
+          );
+    return identity.appHeaders(
+      appKey: appKey,
+      userAgent: userAgent,
+      contentType: contentType,
+    );
+  }
 
   @pragma('vm:notify-debugger-on-exception')
   static Future<LoadingState<({String authCode, String url})>>
   getHDcode() async {
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: AnonymousAccount(),
+      userAgent: Constants.userAgent,
+    );
     final params = {
-      // 'local_id': 'Y952A395BB157D305D8A8340FC2AAECECE17',
-      'local_id': '0',
+      'local_id': identity.localId,
       'platform': 'android',
       'mobi_app': 'android_hd',
     };
@@ -60,9 +68,13 @@ abstract final class LoginHttp {
   }
 
   static Future codePoll(String authCode) async {
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: AnonymousAccount(),
+      userAgent: Constants.userAgent,
+    );
     final params = {
       'auth_code': authCode,
-      'local_id': '0',
+      'local_id': identity.localId,
     };
     AppSign.appSign(params);
     final res = await Request().post(Api.qrcodePoll, queryParameters: params);
@@ -107,6 +119,10 @@ abstract final class LoginHttp {
     String? recaptchaToken,
   }) async {
     final guestBuvid = AnonymousAccount().buvid;
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: AnonymousAccount(),
+      userAgent: Constants.userAgent,
+    );
     int timestamp = DateTime.now().millisecondsSinceEpoch;
     final data = {
       'build': '2001100',
@@ -119,7 +135,7 @@ abstract final class LoginHttp {
       'gee_challenge': ?geeChallenge,
       'gee_seccode': ?geeSeccode,
       'gee_validate': ?geeValidate,
-      'local_id': guestBuvid,
+      'local_id': identity.localId,
       // https://chinggg.github.io/post/appre/
       'login_session_id': md5
           .convert(ascii.encode(guestBuvid + timestamp.toString()))
@@ -144,6 +160,7 @@ abstract final class LoginHttp {
           appKey: 'android_hd',
           userAgent: Constants.userAgent,
           contentType: Headers.formUrlEncodedContentType,
+          account: AnonymousAccount(),
         ),
       ),
     );
@@ -211,22 +228,23 @@ abstract final class LoginHttp {
     String? recaptchaToken,
   }) async {
     final guestBuvid = AnonymousAccount().buvid;
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: AnonymousAccount(),
+      userAgent: Constants.userAgent,
+    );
     dynamic publicKey = RSAKeyParser().parse(key);
     String passwordEncrypted = Encrypter(
       RSA(publicKey: publicKey),
     ).encrypt(salt + password).base64;
 
     Map<String, String> data = {
-      'bili_local_id': deviceId,
+      ...identity.loginPayloadFields,
       'build': '2001100',
       'buvid': guestBuvid,
       'c_locale': 'zh_CN',
       'channel': 'master',
       'device': 'phone',
-      'device_id': deviceId,
       //'device_meta': '',
-      'device_name': 'vivo',
-      'device_platform': 'Android14vivo',
       'disable_rcmd': '0',
       'dt': Uri.encodeComponent(
         Encrypter(
@@ -238,7 +256,6 @@ abstract final class LoginHttp {
       'gee_challenge': ?geeChallenge,
       'gee_seccode': ?geeSeccode,
       'gee_validate': ?geeValidate,
-      'local_id': guestBuvid, //LoginUtils.generateBuvid(),
       'mobi_app': 'android_hd',
       'password': passwordEncrypted,
       'permission': 'ALL',
@@ -259,6 +276,7 @@ abstract final class LoginHttp {
           appKey: 'android_hd',
           userAgent: Constants.userAgent,
           contentType: Headers.formUrlEncodedContentType,
+          account: AnonymousAccount(),
         ),
         //responseType: ResponseType.plain
       ),
@@ -289,9 +307,13 @@ abstract final class LoginHttp {
     required String key,
   }) async {
     final guestBuvid = AnonymousAccount().buvid;
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: AnonymousAccount(),
+      userAgent: Constants.userAgent,
+    );
     dynamic publicKey = RSAKeyParser().parse(key);
     Map<String, Object> data = {
-      'bili_local_id': deviceId,
+      ...identity.loginPayloadFields,
       'build': '2001100',
       'buvid': guestBuvid,
       'c_locale': 'zh_CN',
@@ -300,10 +322,7 @@ abstract final class LoginHttp {
       'cid': cid,
       'code': code,
       'device': 'phone',
-      'device_id': deviceId,
       //'device_meta': '',
-      'device_name': 'vivo',
-      'device_platform': 'Android14vivo',
       // 'device_tourist_id': '',
       'disable_rcmd': '0',
       'dt': Uri.encodeComponent(
@@ -313,7 +332,6 @@ abstract final class LoginHttp {
       ),
       'from_pv': 'main.my-information.my-login.0.click',
       'from_url': Uri.encodeComponent('bilibili://user_center/mine'),
-      'local_id': guestBuvid,
       'mobi_app': 'android_hd',
       'platform': 'android',
       's_locale': 'zh_CN',
@@ -331,6 +349,7 @@ abstract final class LoginHttp {
           appKey: 'android_hd',
           userAgent: Constants.userAgent,
           contentType: Headers.formUrlEncodedContentType,
+          account: AnonymousAccount(),
         ),
         //responseType: ResponseType.plain
       ),
@@ -476,19 +495,19 @@ abstract final class LoginHttp {
     required String code,
   }) async {
     final guestBuvid = AnonymousAccount().buvid;
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: AnonymousAccount(),
+      userAgent: Constants.userAgent,
+    );
     final Map<String, String> data = {
       'build': '2001100',
       'buvid': guestBuvid,
       // 'c_locale': 'zh_CN',
       // 'channel': 'master',
       'code': code,
-      // 'device': 'phone',
-      // 'device_id': deviceId,
-      // 'device_name': 'vivo',
-      // 'device_platform': 'Android14vivo',
       'disable_rcmd': '0',
       'grant_type': 'authorization_code',
-      'local_id': guestBuvid,
+      'local_id': identity.localId,
       'mobi_app': 'android_hd',
       'platform': 'android',
       // 's_locale': 'zh_CN',
@@ -505,6 +524,7 @@ abstract final class LoginHttp {
           appKey: 'android_hd',
           userAgent: Constants.userAgent,
           contentType: Headers.formUrlEncodedContentType,
+          account: AnonymousAccount(),
         ),
       ),
     );
@@ -536,11 +556,15 @@ abstract final class LoginHttp {
   static Future<LoadingState<LoginDevicesData>> loginDevices() async {
     final account = Accounts.main;
     final buvid = account.buvid;
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: account,
+      userAgent: Constants.userAgent,
+    );
     final params = {
-      'local_id': buvid,
+      'local_id': identity.localId,
       'buvid': buvid,
-      'device_name': 'android',
-      'device_platform': 'android',
+      'device_name': identity.deviceName,
+      'device_platform': identity.devicePlatform,
       'csrf': account.csrf,
       'mobi_app': 'android_hd',
       'platform': 'android',
