@@ -22,7 +22,7 @@ final class OwnerScopedIdentitySnapshot implements IdentityResolvedSnapshot {
       throw StateError('NoAccount cannot resolve into an owner-scoped identity snapshot.');
     }
 
-    final owner = account.identityOwner;
+    final owner = _ownerFromAccount(account);
     return OwnerScopedIdentitySnapshot(
       owner: owner,
       profile: IdentityCoreProfile(owner: owner, buvid: account.buvid),
@@ -58,4 +58,14 @@ final class OwnerScopedIdentitySnapshot implements IdentityResolvedSnapshot {
 
   @override
   final DefaultCookieJar cookieJar;
+
+  static IdentityOwnerKey _ownerFromAccount(Account account) {
+    if (account is LoginAccount) {
+      return IdentityOwnerKey.account(account.mid);
+    }
+    if (account is AnonymousAccount) {
+      return const IdentityOwnerKey.guest();
+    }
+    throw StateError('No canonical identity owner exists for ${account.runtimeType}.');
+  }
 }

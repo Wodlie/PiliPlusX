@@ -1,5 +1,3 @@
-import 'package:PiliPlus/utils/accounts/account.dart';
-
 enum IdentityOwnerKind { guest, account, workflow }
 
 sealed class IdentityOwnerKey {
@@ -63,17 +61,4 @@ final class WorkflowIdentityOwnerKey extends IdentityOwnerKey {
 
   @override
   String get key => 'workflow:$scope';
-}
-
-extension AccountIdentityOwnerKeyExt on Account {
-  IdentityOwnerKey get identityOwner {
-    final account = this;
-    if (account is LoginAccount) {
-      return IdentityOwnerKey.account(account.mid);
-    }
-    if (account is AnonymousAccount) {
-      return const IdentityOwnerKey.guest();
-    }
-    throw StateError('No canonical identity owner exists for ${account.runtimeType}.');
-  }
 }

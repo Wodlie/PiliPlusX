@@ -35,6 +35,10 @@ abstract interface class IdentityProfileValidator<T extends IdentityProfileView>
   IdentityValidationResult validate(T profile);
 }
 
+abstract interface class IdentityProfileGenerator<T extends IdentityProfileView> {
+  T generate(IdentityGenerationContext context);
+}
+
 abstract interface class IdentityProfileStore<T extends IdentityProfileView> {
   FutureOr<T?> read(IdentityOwnerKey owner);
 

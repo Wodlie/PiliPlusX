@@ -2,8 +2,7 @@
 
 import 'dart:convert' show ascii, base64;
 
-import 'package:PiliPlus/utils/utils.dart';
-import 'package:uuid/v4.dart';
+import 'package:PiliPlus/utils/accounts/identity_core/identity_generators.dart';
 
 abstract final class IdUtils {
   static const XOR_CODE = 23442827791579;
@@ -75,7 +74,7 @@ abstract final class IdUtils {
   }
 
   static String genBuvid3() {
-    return '${const UuidV4().generate().toUpperCase()}${Utils.random.nextInt(100000).toString().padLeft(5, "0")}infoc';
+    return IdentityCoreGenerators.generateBuvid3();
   }
 
   static String genAuroraEid(int uid) {
@@ -97,15 +96,7 @@ abstract final class IdUtils {
 
   // https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/grpc_api/readme.md#x-bili-trace-id-生成算法
   static String genTraceId() {
-    final randomTraceId = StringBuffer(Utils.generateRandomString(24));
-
-    final ts = (DateTime.now().millisecondsSinceEpoch ~/ 1000) >> 8;
-
-    randomTraceId
-      ..write((ts & 0xFFFFFF).toRadixString(16).padLeft(6, '0'))
-      ..write(Utils.generateRandomString(2));
-
-    return '${randomTraceId.toString()}:${randomTraceId.toString().substring(16, 32)}:0:0';
+    return IdentityCoreGenerators.generateTraceId();
   }
 }
 
