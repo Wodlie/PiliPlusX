@@ -1,4 +1,5 @@
 import 'package:PiliPlus/http/api.dart';
+import 'package:PiliPlus/http/browser_ua.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/user/info.dart';
@@ -16,6 +17,7 @@ import 'package:PiliPlus/models_new/user_real_name/data.dart';
 import 'package:PiliPlus/models_new/video/video_tag/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/wbi_sign.dart';
@@ -532,6 +534,10 @@ abstract final class UserHttp {
     required Object mid,
     required int pn,
   }) async {
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: Accounts.main,
+      userAgent: BrowserUa.pc,
+    );
     final res = await Request().get(
       Api.followedUp,
       queryParameters: {
@@ -539,8 +545,7 @@ abstract final class UserHttp {
         'pn': pn,
         'vmid': mid,
         'web_location': 333.789,
-        'x-bili-device-req-json':
-            '{"platform":"web","device":"pc","spmid":"333.789"}',
+        ...identity.webDeviceQueryFields(spmid: '333.789'),
       },
     );
     if (res.data['code'] == 0) {
@@ -554,6 +559,10 @@ abstract final class UserHttp {
     required Object mid,
     int? pn,
   }) async {
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: Accounts.main,
+      userAgent: BrowserUa.pc,
+    );
     final res = await Request().get(
       Api.sameFollowing,
       queryParameters: {
@@ -561,8 +570,7 @@ abstract final class UserHttp {
         'pn': ?pn,
         'vmid': mid,
         'web_location': 333.789,
-        'x-bili-device-req-json':
-            '{"platform":"web","device":"pc","spmid":"333.789"}',
+        ...identity.webDeviceQueryFields(spmid: '333.789'),
       },
     );
     if (res.data['code'] == 0) {

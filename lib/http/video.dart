@@ -7,7 +7,6 @@ import 'package:PiliPlus/http/api.dart';
 import 'package:PiliPlus/http/browser_ua.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/http/login.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/models/common/video/video_type.dart';
 import 'package:PiliPlus/models/home/rcmd/result.dart';
@@ -29,8 +28,11 @@ import 'package:PiliPlus/models_new/video/video_play_info/data.dart';
 import 'package:PiliPlus/models_new/video/video_relation/data.dart';
 import 'package:PiliPlus/models_new/video/video_shot/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
@@ -50,6 +52,21 @@ import 'package:protobuf/protobuf.dart';
 abstract final class VideoHttp {
   static RegExp zoneRegExp = RegExp(Pref.banWordForZone, caseSensitive: false);
   static bool enableFilter = zoneRegExp.pattern.isNotEmpty;
+
+  @visibleForTesting
+  static Map<String, String> recommendAppIdentityHeaders(Account account) {
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: account,
+      userAgent: Constants.userAgent,
+    );
+    return {
+      ...identity.appHeaders(
+        appKey: 'android_hd',
+        userAgent: Constants.userAgent,
+      ),
+      ...identity.appIdentityHeaders,
+    };
+  }
 
   static AccountType _accountTypeForRelationAct(int act) {
     return switch (act) {
@@ -132,18 +149,7 @@ abstract final class VideoHttp {
       Api.recommendListApp,
       queryParameters: params,
       options: Options(
-        headers: {
-          ...LoginHttp.appHeaders(
-            buvid: account.buvid,
-            appKey: 'android_hd',
-            userAgent: Constants.userAgent,
-          ),
-          'fp_local':
-              '1111111111111111111111111111111111111111111111111111111111111111',
-          'fp_remote':
-              '1111111111111111111111111111111111111111111111111111111111111111',
-          'session_id': '11111111',
-        },
+        headers: recommendAppIdentityHeaders(account),
       ),
     );
     if (res.data['code'] == 0) {
@@ -695,12 +701,15 @@ abstract final class VideoHttp {
   }) async {
     final accountType = _accountTypeForRelationAct(act);
     final account = Accounts.get(accountType);
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: account,
+      userAgent: BrowserUa.pc,
+    );
     final res = await Request().post(
       Api.relationMod,
       queryParameters: {
         'statistics': '{"appId":100,"platform":5}',
-        'x-bili-device-req-json':
-            '{"platform":"web","device":"pc","spmid":"333.1387"}',
+        ...identity.webDeviceQueryFields(spmid: '333.1387'),
       },
       data: {
         'fid': mid,
@@ -711,7 +720,7 @@ abstract final class VideoHttp {
         'extend_content': jsonEncode({
           "entity": "user",
           "entity_id": mid,
-          'fp': BrowserUa.pc,
+          'fp': identity.fpLocal,
         }),
         'csrf': account.csrf,
       },

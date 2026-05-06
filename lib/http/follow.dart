@@ -1,9 +1,11 @@
 import 'package:PiliPlus/http/api.dart';
+import 'package:PiliPlus/http/browser_ua.dart';
 import 'package:PiliPlus/http/error_msg.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models_new/follow/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:dio/dio.dart' show Options, Headers;
 
 abstract final class FollowHttp {
@@ -33,11 +35,14 @@ abstract final class FollowHttp {
   static Future<LoadingState<void>> sortFollowTag({
     required String tagids,
   }) async {
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: Accounts.main,
+      userAgent: BrowserUa.pc,
+    );
     final res = await Request().post(
       Api.sortFollowTag,
       queryParameters: {
-        'x-bili-device-req-json':
-            '{"platform":"web","device":"pc","spmid":"333.1387"}',
+        ...identity.webDeviceQueryFields(spmid: '333.1387'),
       },
       data: {
         'tagids': tagids,

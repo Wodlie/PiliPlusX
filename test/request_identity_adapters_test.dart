@@ -111,6 +111,43 @@ void main() {
       Constants.baseHeaders['x-bili-aurora-zone'],
     );
   });
+
+  test('app identity headers expose derived fp and session values', () {
+    final account = _createLoginAccount(
+      mid: 2202,
+      buvid: IdentityCoreGenerators.generateBuvid(),
+    );
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: account,
+      userAgent: Constants.userAgentApp,
+    );
+
+    expect(
+      IdentityCoreGenerators.validateFp(identity.fpLocal).isValid,
+      isTrue,
+    );
+    expect(identity.fpRemote, identity.fpLocal);
+    expect(
+      IdentityCoreGenerators.validateSessionId(identity.sessionId).isValid,
+      isTrue,
+    );
+    expect(identity.appIdentityHeaders, containsPair('fp_local', identity.fpLocal));
+    expect(
+      identity.appIdentityHeaders,
+      containsPair('fp_remote', identity.fpRemote),
+    );
+    expect(
+      identity.appIdentityHeaders,
+      containsPair('session_id', identity.sessionId),
+    );
+    expect(
+      identity.appIdentityHeaders['fp_local'],
+      isNot(
+        '1111111111111111111111111111111111111111111111111111111111111111',
+      ),
+    );
+    expect(identity.appIdentityHeaders['session_id'], isNot('11111111'));
+  });
 }
 
 LoginAccount _createLoginAccount({

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/identity_core/identity_generators.dart';
@@ -8,10 +10,14 @@ import 'package:PiliPlus/utils/id_utils.dart';
 
 final class RequestIdentityAdapter {
   RequestIdentityAdapter._({
+    required this.ownerKey,
     required this.buvid,
     required this.localId,
     required this.biliLocalId,
     required this.deviceId,
+    required this.sessionId,
+    required this.fpLocal,
+    required this.fpRemote,
     required this.deviceName,
     required this.devicePlatform,
     required this.traceId,
@@ -30,6 +36,7 @@ final class RequestIdentityAdapter {
       storedProfile: snapshot.profile,
     );
     return RequestIdentityAdapter._build(
+      ownerKey: snapshot.owner.key,
       buvid: snapshot.profile.buvid,
       userAgent: userAgent,
       isLogin: snapshot.isLogin,
@@ -49,6 +56,7 @@ final class RequestIdentityAdapter {
       storedProfile: IdentityCoreProfile(owner: owner, buvid: buvid),
     );
     return RequestIdentityAdapter._build(
+      ownerKey: owner.key,
       buvid: buvid,
       userAgent: userAgent,
       isLogin: false,
@@ -58,6 +66,7 @@ final class RequestIdentityAdapter {
   }
 
   factory RequestIdentityAdapter._build({
+    required String ownerKey,
     required String buvid,
     required String userAgent,
     required bool isLogin,
@@ -66,10 +75,14 @@ final class RequestIdentityAdapter {
   }) {
     final deviceName = _deviceNameFromUserAgent(userAgent);
     return RequestIdentityAdapter._(
+      ownerKey: ownerKey,
       buvid: buvid,
       localId: derived.localId,
       biliLocalId: derived.biliLocalId,
       deviceId: derived.deviceId,
+      sessionId: derived.sessionId,
+      fpLocal: derived.fpLocal,
+      fpRemote: derived.fpRemote,
       deviceName: deviceName,
       devicePlatform: _devicePlatformFromUserAgent(
         userAgent: userAgent,
@@ -82,10 +95,14 @@ final class RequestIdentityAdapter {
     );
   }
 
+  final String ownerKey;
   final String buvid;
   final String localId;
   final String biliLocalId;
   final String deviceId;
+  final String sessionId;
+  final String fpLocal;
+  final String fpRemote;
   final String deviceName;
   final String devicePlatform;
   final String traceId;
@@ -122,6 +139,64 @@ final class RequestIdentityAdapter {
     'bili-http-engine': 'cronet',
     if (contentType != null) 'content-type': contentType,
   };
+
+  Map<String, String> get appIdentityHeaders => {
+    'fp_local': fpLocal,
+    'fp_remote': fpRemote,
+    'session_id': sessionId,
+  };
+
+  Map<String, String> webDeviceQueryFields({required String spmid}) => {
+    'x-bili-device-req-json': webDeviceReqJson(spmid: spmid),
+  };
+
+  String webDeviceReqJson({required String spmid}) => jsonEncode({
+    'platform': 'web',
+    'device': 'pc',
+    'spmid': spmid,
+  });
+
+  Map<String, String> get webDmImageQueryFields => {
+    'dm_img_list': '[]',
+    'dm_img_str': _deriveWebEncodedField('dm_img_str', targetLength: 32),
+    'dm_cover_img_str': _deriveWebEncodedField(
+      'dm_cover_img_str',
+      targetLength: 64,
+    ),
+    'dm_img_inter': jsonEncode({
+      'ds': <Object>[],
+      'wh': [0, 0, 0],
+      'of': [0, 0, 0],
+    }),
+  };
+
+  static Map<String, String> preserveGaiaFields({
+    String? gaiaVtoken,
+    String? vVoucher,
+    String? griskId,
+  }) => {
+    if (gaiaVtoken?.isNotEmpty == true) 'gaia_vtoken': gaiaVtoken!,
+    if (vVoucher?.isNotEmpty == true) 'v_voucher': vVoucher!,
+    if (griskId?.isNotEmpty == true) 'grisk_id': griskId!,
+  };
+
+  static Map<String, String> gaiaCookieHeaders({String? gaiaVtoken}) => {
+    if (gaiaVtoken?.isNotEmpty == true)
+      'cookie': 'x-bili-gaia-vtoken=$gaiaVtoken',
+  };
+
+  String _deriveWebEncodedField(String label, {required int targetLength}) {
+    final chunks = <String>[];
+    for (var index = 0; chunks.join().length < targetLength; index++) {
+      final encoded = base64
+          .encode(
+            utf8.encode('$label:$ownerKey:$buvid:$deviceId:$index'),
+          )
+          .replaceAll('=', '');
+      chunks.add(encoded);
+    }
+    return chunks.join().substring(0, targetLength);
+  }
 
   static String _deviceNameFromUserAgent(String userAgent) {
     final model = RegExp(r'model/([^\s]+)').firstMatch(userAgent)?.group(1);

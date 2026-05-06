@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/widgets/pair.dart';
 import 'package:PiliPlus/http/api.dart';
+import 'package:PiliPlus/http/browser_ua.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
@@ -25,6 +26,7 @@ import 'package:PiliPlus/models_new/dynamic/dyn_topic_top/top_details.dart';
 import 'package:PiliPlus/models_new/dynamic/dyn_topic_top/topic_item.dart';
 import 'package:PiliPlus/models_new/followee_votes/vote.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:PiliPlus/utils/wbi_sign.dart';
 import 'package:dio/dio.dart';
@@ -170,12 +172,16 @@ abstract final class DynamicsHttp {
     String? title,
     Map? attachCard,
   }) async {
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: Accounts.main,
+      userAgent: BrowserUa.pc,
+    );
     final res = await Request().post(
       Api.createDynamic,
       queryParameters: {
         'platform': 'web',
         'csrf': Accounts.main.csrf,
-        'x-bili-device-req-json': '{"platform": "web", "device": "pc"}',
+        ...identity.webDeviceQueryFields(spmid: '333.999'),
         'x-bili-web-req-json': '{"spm_id": "333.999"}',
       },
       data: {
@@ -249,6 +255,10 @@ abstract final class DynamicsHttp {
     dynamic type,
     bool clearCookie = false,
   }) async {
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: Accounts.main,
+      userAgent: BrowserUa.pc,
+    );
     final res = await Request().get(
       Api.dynamicDetail,
       queryParameters: {
@@ -259,8 +269,7 @@ abstract final class DynamicsHttp {
         'features': Constants.dynFeatures,
         'gaia_source': 'Athena',
         'web_location': '333.1330',
-        'x-bili-device-req-json':
-            '{"platform":"web","device":"pc","spmid":"333.1330"}',
+        ...identity.webDeviceQueryFields(spmid: '333.1330'),
         if (!clearCookie && Accounts.main.isLogin) 'csrf': Accounts.main.csrf,
       },
       options: clearCookie ? ReplyHttp.options : null,
@@ -714,13 +723,16 @@ abstract final class DynamicsHttp {
   }) async {
     final uploadId =
         "${Accounts.main.mid}_${DateTime.now().millisecondsSinceEpoch ~/ 1000}_${Utils.random.nextInt(9000) + 1000}";
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: Accounts.main,
+      userAgent: BrowserUa.pc,
+    );
     final res = await Request().post(
       Api.editDyn,
       queryParameters: await WbiSign.makSign({
         'platform': 'web',
         'csrf': Accounts.main.csrf,
-        'x-bili-device-req-json':
-            '{"platform":"web","device":"pc","spmid":"333.1368"}',
+        ...identity.webDeviceQueryFields(spmid: '333.1368'),
         'w_dyn_req.upload_id': uploadId,
         'w_dyn_req.meta':
             '{"app_meta":{"from":"create.dynamic.web","mobi_app":"web"}}',
@@ -785,6 +797,10 @@ abstract final class DynamicsHttp {
     int? sortType,
     required int page,
   }) async {
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: Accounts.main,
+      userAgent: BrowserUa.pc,
+    );
     final res = await Request().get(
       Api.bubble,
       queryParameters: {
@@ -794,8 +810,7 @@ abstract final class DynamicsHttp {
         'page_size': 20,
         'page_num': page,
         'web_location': 333.40165,
-        'x-bili-device-req-json':
-            '{"platform":"web","device":"pc","spmid":"333.40165"}',
+        ...identity.webDeviceQueryFields(spmid: '333.40165'),
       },
     );
     if (res.data['code'] == 0) {
