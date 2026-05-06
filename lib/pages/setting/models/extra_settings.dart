@@ -656,7 +656,7 @@ List<SettingsModel> get extraSettings => [
   const SwitchModel(
     title: '后台进行AI总结',
     subtitle: '开启后请求 AI 总结时不显示加载框，完成后缓存结果，等待再次点击再展示',
-    leading: Icon(Icons.background_replace_outlined),
+    leading: Icon(Icons.schedule_outlined),
     setKey: SettingBoxKey.enableAiSummaryBackground,
     defaultVal: false,
   ),

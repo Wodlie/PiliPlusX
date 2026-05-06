@@ -42,6 +42,9 @@ final class OwnerScopedIdentitySnapshot implements IdentityResolvedSnapshot {
   final IdentityCoreProfile profile;
 
   @override
+  String get buvid => profile.buvid;
+
+  @override
   final bool isLogin;
 
   @override
