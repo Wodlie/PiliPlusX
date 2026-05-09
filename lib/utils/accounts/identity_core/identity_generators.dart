@@ -135,7 +135,7 @@ abstract final class IdentityCoreGenerators {
   }
 
   static String generateBuvid({String prefix = _defaultBuvidPrefix}) {
-    return deriveBuvidFromSeed(_randomUpperHex(12), prefix: prefix);
+    return generateBuvidForOwner(const IdentityOwnerKey.guest(), prefix: prefix);
   }
 
   static String generateBuvidForOwner(

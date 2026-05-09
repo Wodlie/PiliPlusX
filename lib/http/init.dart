@@ -66,8 +66,9 @@ class Request {
       // final html = await Request().get(Api.dynamicSpmPrefix,
       //     options: Options(extra: {'account': account}));
       // final String spmPrefix = _spmPrefixExp.firstMatch(html.data)!.group(1)!;
+      final randomPngBytes = Utils.generateSecureRandomBytes(36);
       final String randPngEnd = base64.encode([
-        ...Iterable<int>.generate(32, (_) => Utils.random.nextInt(256)),
+        ...randomPngBytes.take(32),
         0,
         0,
         0,
@@ -76,7 +77,7 @@ class Request {
         69,
         78,
         68,
-        ...Iterable<int>.generate(4, (_) => Utils.random.nextInt(256)),
+        ...randomPngBytes.skip(32),
       ]);
 
       final jsonData = json.encode({
