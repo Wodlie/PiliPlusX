@@ -8,6 +8,7 @@ import 'package:PiliPlus/grpc/bilibili/metadata/locale.pb.dart';
 import 'package:PiliPlus/grpc/bilibili/metadata/network.pb.dart' as network;
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/identity_core.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
@@ -24,13 +25,25 @@ abstract final class GrpcHeaders {
     ).writeToBuffer(),
   );
 
-  static Map<String, String> newHeaders([String? accessKey, String? buvid]) {
-    final identity = _resolveHeaderIdentity(accessKey: accessKey, buvid: buvid);
+  static Map<String, String> newHeaders([
+    String? accessKey,
+    String? buvid,
+    AppDeviceProfile? deviceProfile,
+  ]) {
+    final identity = _resolveHeaderIdentity(
+      accessKey: accessKey,
+      buvid: buvid,
+      fallbackDeviceProfile: deviceProfile,
+    );
     final resolvedBuvid = identity.profile.buvid;
+    final profile = AppDeviceProfiles.resolve(
+      userAgent: _profile.userAgent,
+      deviceProfile: deviceProfile ?? identity.deviceProfile,
+    );
     return {
       'grpc-encoding': 'gzip',
       'gzip-accept-encoding': 'gzip,identity',
-      'user-agent': _profile.userAgent,
+      'user-agent': profile.userAgent,
       'x-bili-gaia-vtoken': '',
       'x-bili-aurora-zone': Constants.baseHeaders['x-bili-aurora-zone'] ?? '',
       'x-bili-trace-id': identity.derived.traceId,
@@ -40,17 +53,17 @@ abstract final class GrpcHeaders {
       'x-bili-device-bin': base64Encode(
         Device(
           appId: 5,
-          build: _profile.build,
+          build: profile.build,
           buvid: resolvedBuvid,
-          mobiApp: _profile.mobiApp,
-          platform: _profile.platform,
-          channel: _profile.channel,
-          brand: _profile.brand,
-          model: _profile.model,
-          osver: _profile.osver,
+          mobiApp: profile.mobiApp,
+          platform: profile.platform,
+          channel: profile.channel,
+          brand: profile.brand,
+          model: profile.model,
+          osver: profile.osver,
           fpLocal: identity.derived.fpLocal,
           fpRemote: identity.derived.fpRemote,
-          versionName: _profile.versionName,
+          versionName: profile.versionName,
           fp: identity.derived.fpLocal,
           guestId: identity.derived.deviceId,
         ).writeToBuffer(),
@@ -71,12 +84,12 @@ abstract final class GrpcHeaders {
       'x-bili-metadata-bin': base64Encode(
         Metadata(
           accessKey: accessKey,
-          mobiApp: _profile.mobiApp,
-          device: _profile.platform,
-          build: _profile.build,
-          channel: _profile.channel,
+          mobiApp: profile.mobiApp,
+          device: profile.platform,
+          build: profile.build,
+          channel: profile.channel,
           buvid: resolvedBuvid,
-          platform: _profile.platform,
+          platform: profile.platform,
         ).writeToBuffer(),
       ),
     };
@@ -93,6 +106,7 @@ abstract final class GrpcHeaders {
   static _GrpcResolvedIdentity _resolveHeaderIdentity({
     required String? accessKey,
     required String? buvid,
+    required AppDeviceProfile? fallbackDeviceProfile,
   }) {
     final normalizedBuvid = _normalizeBuvid(accessKey: accessKey, buvid: buvid);
     for (final type in AccountType.values) {
@@ -102,7 +116,8 @@ abstract final class GrpcHeaders {
         accessKey: accessKey,
         buvid: normalizedBuvid,
       )) {
-        return _resolvedIdentityFromSnapshot(snapshot);
+        final account = Accounts.get(type);
+        return _resolvedIdentityFromSnapshot(snapshot, account: account);
       }
     }
 
@@ -114,7 +129,12 @@ abstract final class GrpcHeaders {
       owner: owner,
       storedProfile: profile,
     );
-    return (profile: profile, derived: derived, auroraEid: null);
+    return (
+      profile: profile,
+      derived: derived,
+      deviceProfile: fallbackDeviceProfile,
+      auroraEid: null,
+    );
   }
 
   static bool _matchesSnapshot(
@@ -132,7 +152,8 @@ abstract final class GrpcHeaders {
   }
 
   static _GrpcResolvedIdentity _resolvedIdentityFromSnapshot(
-    OwnerScopedIdentitySnapshot snapshot,
+    OwnerScopedIdentitySnapshot snapshot, {
+    required Account account,
   ) {
     final derived = IdentityCoreGenerators.deriveProfile(
       owner: snapshot.owner,
@@ -141,6 +162,10 @@ abstract final class GrpcHeaders {
     return (
       profile: snapshot.profile,
       derived: derived,
+      deviceProfile: switch (account) {
+        final LoginAccount account => account.deviceProfile,
+        _ => null,
+      },
       auroraEid: snapshot.isLogin && snapshot.mid > 0
           ? IdUtils.genAuroraEid(snapshot.mid)
           : null,
@@ -166,5 +191,6 @@ abstract final class GrpcHeaders {
 typedef _GrpcResolvedIdentity = ({
   IdentityCoreProfile profile,
   IdentityDerivedProfile derived,
+  AppDeviceProfile? deviceProfile,
   String? auroraEid,
 });

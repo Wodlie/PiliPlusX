@@ -71,10 +71,13 @@ abstract final class LiveHttp {
   static Map<String, String> appIdentityHeaders(Account account) {
     final identity = RequestIdentityAdapter.fromAccount(
       account: account,
-      userAgent: Constants.userAgentApp,
+      userAgent: _appProfile.userAgent,
     );
     return {
-      ...identity.appHeaders(appKey: 'android', userAgent: Constants.userAgentApp),
+      ...identity.appHeaders(
+        appKey: _appProfile.mobiApp,
+        userAgent: _appProfile.userAgent,
+      ),
       ...identity.appIdentityHeaders,
     };
   }

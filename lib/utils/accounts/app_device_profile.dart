@@ -1,4 +1,5 @@
 import 'package:PiliPlus/common/constants.dart';
+import 'package:hive_ce/hive.dart';
 
 final class AppDeviceProfile {
   const AppDeviceProfile({
@@ -11,9 +12,61 @@ final class AppDeviceProfile {
   final String model;
   final String osver;
 
+  Map<String, dynamic> toJson() => {
+    'brand': brand,
+    'model': model,
+    'osver': osver,
+  };
+
+  factory AppDeviceProfile.fromJson(Map json) => AppDeviceProfile(
+    brand: json['brand'] as String,
+    model: json['model'] as String,
+    osver: json['osver'] as String,
+  );
+
   String get deviceName => model;
 
   String get devicePlatform => 'Android$osver$model';
+}
+
+class AppDeviceProfileAdapter extends TypeAdapter<AppDeviceProfile> {
+  @override
+  final int typeId = 13;
+
+  @override
+  AppDeviceProfile read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return AppDeviceProfile(
+      brand: fields[0] as String,
+      model: fields[1] as String,
+      osver: fields[2] as String,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, AppDeviceProfile obj) {
+    writer
+      ..writeByte(3)
+      ..writeByte(0)
+      ..write(obj.brand)
+      ..writeByte(1)
+      ..write(obj.model)
+      ..writeByte(2)
+      ..write(obj.osver);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AppDeviceProfileAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }
 
 final class AppRequestProfile {
@@ -48,6 +101,19 @@ final class AppRequestProfile {
   String get deviceName => deviceProfile.deviceName;
 
   String get devicePlatform => deviceProfile.devicePlatform;
+
+  AppRequestProfile copyWithDeviceProfile(AppDeviceProfile value) =>
+      AppRequestProfile(
+        deviceProfile: value,
+        mobiApp: mobiApp,
+        platform: platform,
+        channel: channel,
+        build: build,
+        versionName: versionName,
+        statistics: statistics,
+        requestDevice: requestDevice,
+        userAgent: userAgent,
+      );
 }
 
 abstract final class AppDeviceProfiles {
@@ -81,11 +147,24 @@ abstract final class AppDeviceProfiles {
     userAgent: Constants.userAgentApp,
   );
 
-  static AppRequestProfile resolve({required String userAgent}) {
-    if (userAgent == androidApp.userAgent) {
-      return androidApp;
+  static AppDeviceProfile get defaultDeviceProfile => _sharedDevice;
+
+  static AppRequestProfile resolve({
+    required String userAgent,
+    AppDeviceProfile? deviceProfile,
+  }) {
+    final baseProfile = userAgent == androidApp.userAgent
+        ? androidApp
+        : androidHd;
+    if (deviceProfile == null || identical(deviceProfile, baseProfile.deviceProfile)) {
+      return baseProfile;
     }
-    return androidHd;
+    if (deviceProfile.brand == baseProfile.brand &&
+        deviceProfile.model == baseProfile.model &&
+        deviceProfile.osver == baseProfile.osver) {
+      return baseProfile;
+    }
+    return baseProfile.copyWithDeviceProfile(deviceProfile);
   }
 
   static AppRequestProfile fromUserAgent(String userAgent) =>

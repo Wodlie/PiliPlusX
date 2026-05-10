@@ -163,12 +163,66 @@ void main() {
     );
     expect(identity.appIdentityHeaders['session_id'], isNot('11111111'));
   });
+
+  test('request identity prefers stored login device profile when present', () {
+    const storedProfile = AppDeviceProfile(
+      brand: 'OnePlus',
+      model: 'PJZ110',
+      osver: '16',
+    );
+    final account = _createLoginAccount(
+      mid: 2203,
+      buvid: IdentityCoreGenerators.generateBuvid(),
+      deviceProfile: storedProfile,
+    );
+
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: account,
+      userAgent: Constants.userAgent,
+    );
+
+    expect(identity.profile.deviceProfile.brand, storedProfile.brand);
+    expect(identity.profile.deviceProfile.model, storedProfile.model);
+    expect(identity.profile.deviceProfile.osver, storedProfile.osver);
+    expect(identity.deviceName, storedProfile.deviceName);
+    expect(identity.devicePlatform, storedProfile.devicePlatform);
+    expect(identity.profile.build, AppDeviceProfiles.androidHd.build);
+    expect(identity.profile.mobiApp, AppDeviceProfiles.androidHd.mobiApp);
+  });
+
+  test('video and live app params read shared device profiles', () {
+    const hdProfile = AppDeviceProfiles.androidHd;
+    const appProfile = AppDeviceProfiles.androidApp;
+
+    final videoParams = VideoHttp.recommendAppQueryParameters(freshIdx: 7);
+    final liveParams = LiveHttp.liveFeedIndexQueryParameters(
+      account: AnonymousAccount(),
+      pn: 3,
+    );
+
+    expect(videoParams['build'], hdProfile.build);
+    expect(videoParams['channel'], hdProfile.channel);
+    expect(videoParams['device'], hdProfile.requestDevice);
+    expect(videoParams['device_name'], hdProfile.deviceName);
+    expect(videoParams['mobi_app'], hdProfile.mobiApp);
+    expect(videoParams['platform'], hdProfile.platform);
+    expect(videoParams['statistics'], hdProfile.statistics);
+
+    expect(liveParams['build'], appProfile.build);
+    expect(liveParams['channel'], appProfile.channel);
+    expect(liveParams['device'], appProfile.requestDevice);
+    expect(liveParams['device_name'], appProfile.deviceName);
+    expect(liveParams['mobi_app'], appProfile.mobiApp);
+    expect(liveParams['platform'], appProfile.platform);
+    expect(liveParams['statistics'], appProfile.statistics);
+  });
 }
 
 LoginAccount _createLoginAccount({
   required int mid,
   required String buvid,
   Set<AccountType>? type,
+  AppDeviceProfile? deviceProfile,
 }) {
   return LoginAccount(
     _createCookieJar(mid: mid),
@@ -176,6 +230,7 @@ LoginAccount _createLoginAccount({
     'REFRESH_$mid',
     type,
     buvid,
+    deviceProfile,
   );
 }
 

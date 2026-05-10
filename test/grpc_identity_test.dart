@@ -88,6 +88,7 @@ void main() {
       expect(restIdentity.profile, same(grpcProfile));
       expect(restIdentity.deviceName, grpcProfile.deviceName);
       expect(restIdentity.devicePlatform, grpcProfile.devicePlatform);
+      expect(headers['user-agent'], grpcProfile.userAgent);
       expect(headers['authorization'], 'identify_v1 ACCESS_KEY_2101');
       expect(headers['buvid'], account.buvid);
       expect(headers['x-bili-trace-id'], derived.traceId);
@@ -156,6 +157,7 @@ void main() {
       expect(restIdentity.profile, same(grpcProfile));
       expect(restIdentity.deviceName, grpcProfile.deviceName);
       expect(restIdentity.devicePlatform, grpcProfile.devicePlatform);
+      expect(headers['user-agent'], grpcProfile.userAgent);
       expect(snapshot.profile.buvid, Pref.guestBuvid);
       expect(headers.containsKey('authorization'), isFalse);
       expect(headers.containsKey('x-bili-aurora-eid'), isFalse);
@@ -180,6 +182,54 @@ void main() {
       expect(sendMsgRequest.devId, isNot('1'));
       expect(syncRequest.devId, isNot('1'));
     });
+
+    test('grpc and rest hd identity share one profile source', () {
+      const grpcProfile = AppDeviceProfiles.androidHd;
+      final restIdentity = RequestIdentityAdapter.fromBuvid(
+        buvid: IdentityCoreGenerators.generateBuvid(),
+        userAgent: grpcProfile.userAgent,
+        scope: 'grpc-rest-shared-profile',
+      );
+
+      expect(restIdentity.profile, same(grpcProfile));
+      expect(restIdentity.deviceName, grpcProfile.deviceName);
+      expect(restIdentity.devicePlatform, grpcProfile.devicePlatform);
+      expect(grpcProfile.brand, 'Xiaomi');
+      expect(grpcProfile.model, '23046RP50C');
+      expect(grpcProfile.osver, '15');
+      expect(grpcProfile.mobiApp, 'android_hd');
+      expect(grpcProfile.platform, 'android');
+      expect(grpcProfile.channel, 'master');
+      expect(grpcProfile.build, 2001100);
+      expect(grpcProfile.versionName, '2.0.1');
+    });
+
+    test('grpc headers prefer stored login device profile when present', () async {
+      const storedProfile = AppDeviceProfile(
+        brand: 'HONOR',
+        model: 'ELP-AN10',
+        osver: '16',
+      );
+      final account = _createLoginAccount(
+        mid: 2102,
+        buvid: IdentityCoreGenerators.deriveBuvidFromSeed('grpc-login-owner-2102'),
+        type: {AccountType.main},
+        accessKey: 'ACCESS_KEY_2102',
+        deviceProfile: storedProfile,
+      )..activated = true;
+
+      await Accounts.set(AccountType.main, account);
+
+      final headers = Accounts.main.grpcHeaders;
+      final device = Device.fromBuffer(base64Decode(headers['x-bili-device-bin']!));
+
+      expect(device.brand, storedProfile.brand);
+      expect(device.model, storedProfile.model);
+      expect(device.osver, storedProfile.osver);
+      expect(headers['user-agent'], AppDeviceProfiles.androidHd.userAgent);
+      expect(device.build, AppDeviceProfiles.androidHd.build);
+      expect(device.mobiApp, AppDeviceProfiles.androidHd.mobiApp);
+    });
   });
 }
 
@@ -188,6 +238,7 @@ LoginAccount _createLoginAccount({
   String? buvid,
   Set<AccountType>? type,
   String? accessKey,
+  AppDeviceProfile? deviceProfile,
 }) {
   return LoginAccount(
     _createCookieJar(mid: mid),
@@ -195,6 +246,7 @@ LoginAccount _createLoginAccount({
     'REFRESH_$mid',
     type,
     buvid,
+    deviceProfile,
   );
 }
 

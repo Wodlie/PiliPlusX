@@ -93,12 +93,12 @@ abstract final class VideoHttp {
   static Map<String, String> recommendAppIdentityHeaders(Account account) {
     final identity = RequestIdentityAdapter.fromAccount(
       account: account,
-      userAgent: Constants.userAgent,
+      userAgent: _recommendProfile.userAgent,
     );
     return {
       ...identity.appHeaders(
-        appKey: 'android_hd',
-        userAgent: Constants.userAgent,
+        appKey: _recommendProfile.mobiApp,
+        userAgent: _recommendProfile.userAgent,
       ),
       ...identity.appIdentityHeaders,
     };
