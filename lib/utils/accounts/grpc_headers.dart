@@ -8,24 +8,19 @@ import 'package:PiliPlus/grpc/bilibili/metadata/locale.pb.dart';
 import 'package:PiliPlus/grpc/bilibili/metadata/network.pb.dart' as network;
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/identity_core.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:PiliPlus/utils/utils.dart';
 
 abstract final class GrpcHeaders {
-  static const _build = 2001100;
-  static const _versionName = '2.0.1';
-  static const _biliChannel = 'master';
-  static const _mobiApp = 'android_hd';
-  static const _device = 'android';
-  static String get _sessionId => Utils.generateRandomString(8);
+  static const _profile = AppDeviceProfiles.androidHd;
 
-  static String get fawkes => base64Encode(
+  static String fawkes(String sessionId) => base64Encode(
     FawkesReq(
-      appkey: _mobiApp,
+      appkey: _profile.mobiApp,
       env: 'prod',
-      sessionId: _sessionId,
+      sessionId: sessionId,
     ).writeToBuffer(),
   );
 
@@ -35,7 +30,7 @@ abstract final class GrpcHeaders {
     return {
       'grpc-encoding': 'gzip',
       'gzip-accept-encoding': 'gzip,identity',
-      'user-agent': Constants.userAgent,
+      'user-agent': _profile.userAgent,
       'x-bili-gaia-vtoken': '',
       'x-bili-aurora-zone': Constants.baseHeaders['x-bili-aurora-zone'] ?? '',
       'x-bili-trace-id': identity.derived.traceId,
@@ -45,17 +40,17 @@ abstract final class GrpcHeaders {
       'x-bili-device-bin': base64Encode(
         Device(
           appId: 5,
-          build: _build,
+          build: _profile.build,
           buvid: resolvedBuvid,
-          mobiApp: _mobiApp,
-          platform: _device,
-          channel: _biliChannel,
-          brand: _device,
-          model: _device,
-          osver: '15',
+          mobiApp: _profile.mobiApp,
+          platform: _profile.platform,
+          channel: _profile.channel,
+          brand: _profile.brand,
+          model: _profile.model,
+          osver: _profile.osver,
           fpLocal: identity.derived.fpLocal,
           fpRemote: identity.derived.fpRemote,
-          versionName: _versionName,
+          versionName: _profile.versionName,
           fp: identity.derived.fpLocal,
           guestId: identity.derived.deviceId,
         ).writeToBuffer(),
@@ -72,16 +67,16 @@ abstract final class GrpcHeaders {
       ),
       'x-bili-exps-bin': '',
       if (accessKey != null) 'authorization': 'identify_v1 $accessKey',
-      'x-bili-fawkes-req-bin': fawkes,
+      'x-bili-fawkes-req-bin': fawkes(identity.derived.sessionId),
       'x-bili-metadata-bin': base64Encode(
         Metadata(
           accessKey: accessKey,
-          mobiApp: _mobiApp,
-          device: _device,
-          build: _build,
-          channel: _biliChannel,
+          mobiApp: _profile.mobiApp,
+          device: _profile.platform,
+          build: _profile.build,
+          channel: _profile.channel,
           buvid: resolvedBuvid,
-          platform: _device,
+          platform: _profile.platform,
         ).writeToBuffer(),
       ),
     };

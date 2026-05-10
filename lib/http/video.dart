@@ -29,6 +29,7 @@ import 'package:PiliPlus/models_new/video/video_relation/data.dart';
 import 'package:PiliPlus/models_new/video/video_shot/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
@@ -50,8 +51,43 @@ import 'package:protobuf/protobuf.dart';
 
 /// view层根据 status 判断渲染逻辑
 abstract final class VideoHttp {
+  static const _recommendProfile = AppDeviceProfiles.androidHd;
+
   static RegExp zoneRegExp = RegExp(Pref.banWordForZone, caseSensitive: false);
   static bool enableFilter = zoneRegExp.pattern.isNotEmpty;
+
+  @visibleForTesting
+  static Map<String, dynamic> recommendAppQueryParameters({
+    required int freshIdx,
+  }) => {
+    'build': _recommendProfile.build,
+    'c_locale': 'zh_CN',
+    'channel': _recommendProfile.channel,
+    'column': 4,
+    'device': _recommendProfile.requestDevice,
+    'device_name': _recommendProfile.deviceName,
+    'device_type': 0,
+    'disable_rcmd': 0,
+    'flush': 5,
+    'fnval': 976,
+    'fnver': 0,
+    'force_host': 2,
+    'fourk': 1,
+    'guidance': 0,
+    'https_url_req': 0,
+    'idx': freshIdx,
+    'mobi_app': _recommendProfile.mobiApp,
+    'network': 'wifi',
+    'platform': _recommendProfile.platform,
+    'player_net': 1,
+    'pull': freshIdx == 0 ? 'true' : 'false',
+    'qn': 32,
+    'recsys_mode': 0,
+    's_locale': 'zh_CN',
+    'splash_id': '',
+    'statistics': _recommendProfile.statistics,
+    'voice_balance': 0,
+  };
 
   @visibleForTesting
   static Map<String, String> recommendAppIdentityHeaders(Account account) {
@@ -116,35 +152,7 @@ abstract final class VideoHttp {
     required int freshIdx,
   }) async {
     final account = Accounts.get(AccountType.recommend);
-    final params = {
-      'build': 2001100,
-      'c_locale': 'zh_CN',
-      'channel': 'master',
-      'column': 4,
-      'device': 'pad',
-      'device_name': 'android',
-      'device_type': 0,
-      'disable_rcmd': 0,
-      'flush': 5,
-      'fnval': 976,
-      'fnver': 0,
-      'force_host': 2, //使用https
-      'fourk': 1,
-      'guidance': 0,
-      'https_url_req': 0,
-      'idx': freshIdx,
-      'mobi_app': 'android_hd',
-      'network': 'wifi',
-      'platform': 'android',
-      'player_net': 1,
-      'pull': freshIdx == 0 ? 'true' : 'false',
-      'qn': 32,
-      'recsys_mode': 0,
-      's_locale': 'zh_CN',
-      'splash_id': '',
-      'statistics': Constants.statistics,
-      'voice_balance': 0,
-    };
+    final params = recommendAppQueryParameters(freshIdx: freshIdx);
     final res = await Request().get(
       Api.recommendListApp,
       queryParameters: params,

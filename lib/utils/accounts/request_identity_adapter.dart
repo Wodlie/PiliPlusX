@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/identity_core/identity_generators.dart';
 import 'package:PiliPlus/utils/accounts/identity_core/identity_owner.dart';
 import 'package:PiliPlus/utils/accounts/identity_core/identity_profile.dart';
@@ -18,6 +19,7 @@ final class RequestIdentityAdapter {
     required this.sessionId,
     required this.fpLocal,
     required this.fpRemote,
+    required this.profile,
     required this.deviceName,
     required this.devicePlatform,
     required this.traceId,
@@ -73,7 +75,7 @@ final class RequestIdentityAdapter {
     required int mid,
     required IdentityDerivedProfile derived,
   }) {
-    final deviceName = _deviceNameFromUserAgent(userAgent);
+    final profile = AppDeviceProfiles.resolve(userAgent: userAgent);
     return RequestIdentityAdapter._(
       ownerKey: ownerKey,
       buvid: buvid,
@@ -83,11 +85,9 @@ final class RequestIdentityAdapter {
       sessionId: derived.sessionId,
       fpLocal: derived.fpLocal,
       fpRemote: derived.fpRemote,
-      deviceName: deviceName,
-      devicePlatform: _devicePlatformFromUserAgent(
-        userAgent: userAgent,
-        deviceName: deviceName,
-      ),
+      profile: profile,
+      deviceName: profile.deviceName,
+      devicePlatform: profile.devicePlatform,
       traceId: derived.traceId,
       auroraZone: Constants.baseHeaders['x-bili-aurora-zone'] ?? '',
       isLogin: isLogin,
@@ -103,6 +103,7 @@ final class RequestIdentityAdapter {
   final String sessionId;
   final String fpLocal;
   final String fpRemote;
+  final AppRequestProfile profile;
   final String deviceName;
   final String devicePlatform;
   final String traceId;
@@ -196,31 +197,5 @@ final class RequestIdentityAdapter {
       chunks.add(encoded);
     }
     return chunks.join().substring(0, targetLength);
-  }
-
-  static String _deviceNameFromUserAgent(String userAgent) {
-    final model = RegExp(r'model/([^\s]+)').firstMatch(userAgent)?.group(1);
-    if (model != null && model.trim().isNotEmpty) {
-      return model.trim();
-    }
-    final mobiApp = RegExp(r'mobi_app/([^\s]+)').firstMatch(userAgent)?.group(1);
-    if (mobiApp != null && mobiApp.trim().isNotEmpty) {
-      return mobiApp.trim();
-    }
-    return Constants.appName;
-  }
-
-  static String _devicePlatformFromUserAgent({
-    required String userAgent,
-    required String deviceName,
-  }) {
-    final os = RegExp(r'os/([^\s]+)').firstMatch(userAgent)?.group(1)?.trim();
-    final osVer =
-        RegExp(r'osVer/([^\s]+)').firstMatch(userAgent)?.group(1)?.trim();
-    final normalizedOs = (os == null || os.isEmpty)
-        ? 'Android'
-        : '${os[0].toUpperCase()}${os.substring(1)}';
-    final versionPart = (osVer == null || osVer.isEmpty) ? '' : osVer;
-    return '$normalizedOs$versionPart$deviceName';
   }
 }

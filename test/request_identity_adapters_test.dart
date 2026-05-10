@@ -1,9 +1,12 @@
 import 'dart:io';
 
 import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/http/live.dart';
 import 'package:PiliPlus/http/login.dart';
+import 'package:PiliPlus/http/video.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/accounts/identity_core/identity_generators.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
@@ -36,6 +39,7 @@ void main() {
   });
 
   test('login and app rest requests use normalized identity fields', () {
+    const hdProfile = AppDeviceProfiles.androidHd;
     final account = _createLoginAccount(
       mid: 2201,
       buvid: IdentityCoreGenerators.generateBuvid(),
@@ -67,11 +71,15 @@ void main() {
       IdentityCoreGenerators.validateDeviceLocalId(identity.deviceId).isValid,
       isTrue,
     );
-    expect(identity.deviceName, 'android_hd');
+    expect(identity.profile, same(hdProfile));
+    expect(identity.deviceName, hdProfile.deviceName);
     expect(identity.deviceName, isNot('vivo'));
-    expect(identity.devicePlatform, startsWith('Android15'));
-    expect(identity.devicePlatform, contains(identity.deviceName));
+    expect(identity.devicePlatform, hdProfile.devicePlatform);
     expect(identity.devicePlatform, isNot('Android14vivo'));
+    expect(
+      VideoHttp.recommendAppIdentityHeaders(account)['user-agent'],
+      hdProfile.userAgent,
+    );
     expect(
       IdentityCoreGenerators.validateTraceId(headers['x-bili-trace-id']!).isValid,
       isTrue,
@@ -84,6 +92,7 @@ void main() {
   });
 
   test('guest rest requests do not emit account-only identity fields', () {
+    const hdProfile = AppDeviceProfiles.androidHd;
     final guest = AnonymousAccount();
     final identity = RequestIdentityAdapter.fromAccount(
       account: guest,
@@ -98,8 +107,8 @@ void main() {
 
     expect(IdentityCoreGenerators.validateDeviceLocalId(identity.localId).isValid, isTrue);
     expect(identity.restPayloadFields, containsPair('local_id', identity.localId));
-    expect(identity.restPayloadFields, containsPair('device_name', 'android_hd'));
-    expect(identity.restPayloadFields['device_platform'], startsWith('Android15'));
+    expect(identity.restPayloadFields, containsPair('device_name', hdProfile.deviceName));
+    expect(identity.restPayloadFields, containsPair('device_platform', hdProfile.devicePlatform));
     expect(headers.containsKey('x-bili-aurora-eid'), isFalse);
     expect(headers.containsKey('authorization'), isFalse);
     expect(
@@ -113,6 +122,7 @@ void main() {
   });
 
   test('app identity headers expose derived fp and session values', () {
+    const appProfile = AppDeviceProfiles.androidApp;
     final account = _createLoginAccount(
       mid: 2202,
       buvid: IdentityCoreGenerators.generateBuvid(),
@@ -139,6 +149,11 @@ void main() {
     expect(
       identity.appIdentityHeaders,
       containsPair('session_id', identity.sessionId),
+    );
+    expect(identity.profile, same(appProfile));
+    expect(
+      LiveHttp.appIdentityHeaders(account)['user-agent'],
+      appProfile.userAgent,
     );
     expect(
       identity.appIdentityHeaders['fp_local'],
