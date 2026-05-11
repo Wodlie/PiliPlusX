@@ -48,7 +48,6 @@ void main() {
 
   group('gRPC identity', () {
     test('login metadata and device-bin use the owner-scoped identity source', () async {
-      const grpcProfile = AppDeviceProfiles.androidHd;
       final account = _createLoginAccount(
         mid: 2101,
         buvid: IdentityCoreGenerators.deriveBuvidFromSeed('grpc-login-owner-2101'),
@@ -58,6 +57,7 @@ void main() {
 
       await Accounts.set(AccountType.main, account);
 
+      final grpcProfile = AppDeviceProfiles.defaultDeviceProfileForOwner('account:2101');
       final snapshot = Accounts.mainIdentity;
       final derived = IdentityCoreGenerators.deriveProfile(
         owner: snapshot.owner,
@@ -65,7 +65,7 @@ void main() {
       );
       final restIdentity = RequestIdentityAdapter.fromAccount(
         account: account,
-        userAgent: grpcProfile.userAgent,
+        userAgent: AppDeviceProfiles.androidHd.userAgent,
       );
       final headers = Accounts.main.grpcHeaders;
       final metadata = Metadata.fromBuffer(
@@ -85,10 +85,10 @@ void main() {
       final syncRequest = ImGrpc.buildSyncFetchSessionMsgsRequest(talkerId: 9001);
 
       expect(snapshot.owner.key, 'account:2101');
-      expect(restIdentity.profile, same(grpcProfile));
+      expect(restIdentity.profile.deviceProfile, grpcProfile);
       expect(restIdentity.deviceName, grpcProfile.deviceName);
       expect(restIdentity.devicePlatform, grpcProfile.devicePlatform);
-      expect(headers['user-agent'], grpcProfile.userAgent);
+      expect(headers['user-agent'], AppDeviceProfiles.androidHd.userAgent);
       expect(headers['authorization'], 'identify_v1 ACCESS_KEY_2101');
       expect(headers['buvid'], account.buvid);
       expect(headers['x-bili-trace-id'], derived.traceId);
@@ -99,34 +99,35 @@ void main() {
       expect(fawkes.sessionId, derived.sessionId);
       expect(IdentityCoreGenerators.validateSessionId(fawkes.sessionId).isValid, isTrue);
       expect(device.buvid, account.buvid);
-      expect(device.build, grpcProfile.build);
-      expect(device.mobiApp, grpcProfile.mobiApp);
-      expect(device.platform, grpcProfile.platform);
-      expect(device.channel, grpcProfile.channel);
+      expect(device.build, AppDeviceProfiles.androidHd.build);
+      expect(device.mobiApp, AppDeviceProfiles.androidHd.mobiApp);
+      expect(device.platform, AppDeviceProfiles.androidHd.platform);
+      expect(device.channel, AppDeviceProfiles.androidHd.channel);
       expect(device.brand, grpcProfile.brand);
       expect(device.model, grpcProfile.model);
       expect(device.osver, grpcProfile.osver);
-      expect(device.versionName, grpcProfile.versionName);
+      expect(device.versionName, AppDeviceProfiles.androidHd.versionName);
       expect(device.fpLocal, derived.fpLocal);
       expect(device.fpRemote, derived.fpRemote);
       expect(device.fp, derived.fpLocal);
       expect(device.guestId, derived.deviceId);
-      expect(metadata.mobiApp, grpcProfile.mobiApp);
-      expect(metadata.device, grpcProfile.platform);
-      expect(metadata.build, grpcProfile.build);
-      expect(metadata.channel, grpcProfile.channel);
-      expect(metadata.platform, grpcProfile.platform);
+      expect(metadata.mobiApp, AppDeviceProfiles.androidHd.mobiApp);
+      expect(metadata.device, AppDeviceProfiles.androidHd.platform);
+      expect(metadata.build, AppDeviceProfiles.androidHd.build);
+      expect(metadata.channel, AppDeviceProfiles.androidHd.channel);
+      expect(metadata.platform, AppDeviceProfiles.androidHd.platform);
       expect(sendMsgRequest.devId, derived.deviceId);
       expect(syncRequest.devId, derived.deviceId);
       expect(sendMsgRequest.devId, isNot('1'));
       expect(syncRequest.devId, isNot('1'));
+      expect(device.brand.toLowerCase(), isNot('android'));
     });
 
     test('anonymous grpc and im requests use guest identity without placeholder devId', () async {
-      const grpcProfile = AppDeviceProfiles.androidHd;
       await Accounts.refresh();
 
       final guest = Accounts.main as AnonymousAccount;
+      final grpcProfile = AppDeviceProfiles.defaultDeviceProfileForOwner('guest');
       final snapshot = Accounts.mainIdentity;
       final derived = IdentityCoreGenerators.deriveProfile(
         owner: snapshot.owner,
@@ -134,7 +135,7 @@ void main() {
       );
       final restIdentity = RequestIdentityAdapter.fromAccount(
         account: guest,
-        userAgent: grpcProfile.userAgent,
+        userAgent: AppDeviceProfiles.androidHd.userAgent,
       );
       final headers = guest.grpcHeaders;
       final metadata = Metadata.fromBuffer(
@@ -154,10 +155,10 @@ void main() {
       final syncRequest = ImGrpc.buildSyncFetchSessionMsgsRequest(talkerId: 9002);
 
       expect(snapshot.owner.key, 'guest');
-      expect(restIdentity.profile, same(grpcProfile));
+      expect(restIdentity.profile.deviceProfile, grpcProfile);
       expect(restIdentity.deviceName, grpcProfile.deviceName);
       expect(restIdentity.devicePlatform, grpcProfile.devicePlatform);
-      expect(headers['user-agent'], grpcProfile.userAgent);
+      expect(headers['user-agent'], AppDeviceProfiles.androidHd.userAgent);
       expect(snapshot.profile.buvid, Pref.guestBuvid);
       expect(headers.containsKey('authorization'), isFalse);
       expect(headers.containsKey('x-bili-aurora-eid'), isFalse);
@@ -172,7 +173,7 @@ void main() {
       expect(device.brand, grpcProfile.brand);
       expect(device.model, grpcProfile.model);
       expect(device.osver, grpcProfile.osver);
-      expect(device.versionName, grpcProfile.versionName);
+      expect(device.versionName, AppDeviceProfiles.androidHd.versionName);
       expect(device.fpLocal, derived.fpLocal);
       expect(device.fpRemote, derived.fpRemote);
       expect(device.fp, derived.fpLocal);
@@ -181,31 +182,43 @@ void main() {
       expect(syncRequest.devId, derived.deviceId);
       expect(sendMsgRequest.devId, isNot('1'));
       expect(syncRequest.devId, isNot('1'));
+      expect(device.brand.toLowerCase(), isNot('android'));
     });
 
-    test('grpc and rest hd identity share one profile source', () {
-      const grpcProfile = AppDeviceProfiles.androidHd;
-      final restIdentity = RequestIdentityAdapter.fromBuvid(
-        buvid: IdentityCoreGenerators.generateBuvid(),
-        userAgent: grpcProfile.userAgent,
-        scope: 'grpc-rest-shared-profile',
+    test('grpc and rest hd identity share one profile source for the same stored account', () async {
+      final storedProfile = AppDeviceProfile(
+        brand: 'Samsung',
+        model: 'SM-S9280',
+        osver: '16',
       );
+      final account = _createLoginAccount(
+        mid: 2103,
+        buvid: IdentityCoreGenerators.deriveBuvidFromSeed('grpc-rest-shared-2103'),
+        type: {AccountType.main},
+        accessKey: 'ACCESS_KEY_2103',
+        deviceProfile: storedProfile,
+      )..activated = true;
 
-      expect(restIdentity.profile, same(grpcProfile));
-      expect(restIdentity.deviceName, grpcProfile.deviceName);
-      expect(restIdentity.devicePlatform, grpcProfile.devicePlatform);
-      expect(grpcProfile.brand, 'Xiaomi');
-      expect(grpcProfile.model, '23046RP50C');
-      expect(grpcProfile.osver, '15');
-      expect(grpcProfile.mobiApp, 'android_hd');
-      expect(grpcProfile.platform, 'android');
-      expect(grpcProfile.channel, 'master');
-      expect(grpcProfile.build, 2001100);
-      expect(grpcProfile.versionName, '2.0.1');
+      await Accounts.set(AccountType.main, account);
+
+      final restIdentity = RequestIdentityAdapter.fromAccount(
+        account: account,
+        userAgent: AppDeviceProfiles.androidHd.userAgent,
+      );
+      final headers = account.grpcHeaders;
+      final device = Device.fromBuffer(base64Decode(headers['x-bili-device-bin']!));
+
+      expect(restIdentity.profile.deviceProfile, storedProfile);
+      expect(restIdentity.deviceName, storedProfile.deviceName);
+      expect(restIdentity.devicePlatform, storedProfile.devicePlatform);
+      expect(device.brand, storedProfile.brand);
+      expect(device.model, storedProfile.model);
+      expect(device.osver, storedProfile.osver);
+      expect(storedProfile.hasGenericPlaceholderFields, isFalse);
     });
 
     test('grpc headers prefer stored login device profile when present', () async {
-      const storedProfile = AppDeviceProfile(
+      final storedProfile = AppDeviceProfile(
         brand: 'HONOR',
         model: 'ELP-AN10',
         osver: '16',

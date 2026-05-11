@@ -38,6 +38,7 @@ abstract final class GrpcHeaders {
     final resolvedBuvid = identity.profile.buvid;
     final profile = AppDeviceProfiles.resolve(
       userAgent: _profile.userAgent,
+      ownerKey: identity.profile.owner.key,
       deviceProfile: deviceProfile ?? identity.deviceProfile,
     );
     return {
@@ -154,7 +155,7 @@ abstract final class GrpcHeaders {
   static _GrpcResolvedIdentity _resolvedIdentityFromSnapshot(
     OwnerScopedIdentitySnapshot snapshot, {
     required Account account,
-  ) {
+  }) {
     final derived = IdentityCoreGenerators.deriveProfile(
       owner: snapshot.owner,
       storedProfile: snapshot.profile,

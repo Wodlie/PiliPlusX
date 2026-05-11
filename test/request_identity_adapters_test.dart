@@ -39,11 +39,11 @@ void main() {
   });
 
   test('login and app rest requests use normalized identity fields', () {
-    const hdProfile = AppDeviceProfiles.androidHd;
     final account = _createLoginAccount(
       mid: 2201,
       buvid: IdentityCoreGenerators.generateBuvid(),
     );
+    final hdProfile = AppDeviceProfiles.defaultDeviceProfileForOwner('account:2201');
     final identity = RequestIdentityAdapter.fromAccount(
       account: account,
       userAgent: Constants.userAgent,
@@ -71,14 +71,15 @@ void main() {
       IdentityCoreGenerators.validateDeviceLocalId(identity.deviceId).isValid,
       isTrue,
     );
-    expect(identity.profile, same(hdProfile));
+    expect(identity.profile.deviceProfile, hdProfile);
     expect(identity.deviceName, hdProfile.deviceName);
     expect(identity.deviceName, isNot('vivo'));
     expect(identity.devicePlatform, hdProfile.devicePlatform);
     expect(identity.devicePlatform, isNot('Android14vivo'));
+    expect(identity.profile.deviceProfile.hasGenericPlaceholderFields, isFalse);
     expect(
       VideoHttp.recommendAppIdentityHeaders(account)['user-agent'],
-      hdProfile.userAgent,
+      AppDeviceProfiles.androidHd.userAgent,
     );
     expect(
       IdentityCoreGenerators.validateTraceId(headers['x-bili-trace-id']!).isValid,
@@ -92,7 +93,7 @@ void main() {
   });
 
   test('guest rest requests do not emit account-only identity fields', () {
-    const hdProfile = AppDeviceProfiles.androidHd;
+    final hdProfile = AppDeviceProfiles.defaultDeviceProfileForOwner('guest');
     final guest = AnonymousAccount();
     final identity = RequestIdentityAdapter.fromAccount(
       account: guest,
@@ -109,6 +110,7 @@ void main() {
     expect(identity.restPayloadFields, containsPair('local_id', identity.localId));
     expect(identity.restPayloadFields, containsPair('device_name', hdProfile.deviceName));
     expect(identity.restPayloadFields, containsPair('device_platform', hdProfile.devicePlatform));
+    expect(identity.profile.deviceProfile.hasGenericPlaceholderFields, isFalse);
     expect(headers.containsKey('x-bili-aurora-eid'), isFalse);
     expect(headers.containsKey('authorization'), isFalse);
     expect(
@@ -122,11 +124,11 @@ void main() {
   });
 
   test('app identity headers expose derived fp and session values', () {
-    const appProfile = AppDeviceProfiles.androidApp;
     final account = _createLoginAccount(
       mid: 2202,
       buvid: IdentityCoreGenerators.generateBuvid(),
     );
+    final appProfile = AppDeviceProfiles.defaultDeviceProfileForOwner('account:2202');
     final identity = RequestIdentityAdapter.fromAccount(
       account: account,
       userAgent: Constants.userAgentApp,
@@ -150,10 +152,10 @@ void main() {
       identity.appIdentityHeaders,
       containsPair('session_id', identity.sessionId),
     );
-    expect(identity.profile, same(appProfile));
+    expect(identity.profile.deviceProfile, appProfile);
     expect(
       LiveHttp.appIdentityHeaders(account)['user-agent'],
-      appProfile.userAgent,
+      AppDeviceProfiles.androidApp.userAgent,
     );
     expect(
       identity.appIdentityHeaders['fp_local'],
@@ -165,7 +167,7 @@ void main() {
   });
 
   test('request identity prefers stored login device profile when present', () {
-    const storedProfile = AppDeviceProfile(
+    final storedProfile = AppDeviceProfile(
       brand: 'OnePlus',
       model: 'PJZ110',
       osver: '16',
@@ -181,13 +183,29 @@ void main() {
       userAgent: Constants.userAgent,
     );
 
-    expect(identity.profile.deviceProfile.brand, storedProfile.brand);
-    expect(identity.profile.deviceProfile.model, storedProfile.model);
-    expect(identity.profile.deviceProfile.osver, storedProfile.osver);
+    expect(identity.profile.deviceProfile, storedProfile);
     expect(identity.deviceName, storedProfile.deviceName);
     expect(identity.devicePlatform, storedProfile.devicePlatform);
     expect(identity.profile.build, AppDeviceProfiles.androidHd.build);
     expect(identity.profile.mobiApp, AppDeviceProfiles.androidHd.mobiApp);
+  });
+
+  test('fallback request profile stays deterministic for the same owner context', () {
+    final first = RequestIdentityAdapter.fromBuvid(
+      buvid: IdentityCoreGenerators.deriveBuvidFromSeed('deterministic-fallback'),
+      userAgent: Constants.userAgent,
+      scope: 'same-workflow-context',
+    );
+    final second = RequestIdentityAdapter.fromBuvid(
+      buvid: IdentityCoreGenerators.deriveBuvidFromSeed('deterministic-fallback'),
+      userAgent: Constants.userAgent,
+      scope: 'same-workflow-context',
+    );
+
+    expect(first.profile.deviceProfile, second.profile.deviceProfile);
+    expect(first.deviceName, second.deviceName);
+    expect(first.devicePlatform, second.devicePlatform);
+    expect(first.profile.deviceProfile.hasGenericPlaceholderFields, isFalse);
   });
 
   test('video and live app params read shared device profiles', () {
