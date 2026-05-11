@@ -81,6 +81,7 @@ final class RequestIdentityAdapter {
   }) {
     final profile = AppDeviceProfiles.resolve(
       userAgent: userAgent,
+      ownerKey: ownerKey,
       deviceProfile: storedDeviceProfile,
     );
     return RequestIdentityAdapter._(

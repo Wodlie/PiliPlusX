@@ -116,20 +116,24 @@ void main() {
         {AccountType.main},
         IdentityCoreGenerators.deriveBuvidFromSeed('legacy-device-profile-2004'),
       );
-
+      
       expect(restored.deviceProfile, isNull);
+      final fallbackProfile = AppDeviceProfiles.defaultDeviceProfileForOwner(
+        'account:2004',
+      );
       final identity = RequestIdentityAdapter.fromAccount(
         account: restored,
         userAgent: AppDeviceProfiles.androidHd.userAgent,
       );
-      expect(identity.profile, same(AppDeviceProfiles.androidHd));
-      expect(identity.deviceName, AppDeviceProfiles.androidHd.deviceName);
-      expect(identity.devicePlatform, AppDeviceProfiles.androidHd.devicePlatform);
+      expect(identity.profile.deviceProfile, fallbackProfile);
+      expect(identity.deviceName, fallbackProfile.deviceName);
+      expect(identity.devicePlatform, fallbackProfile.devicePlatform);
+      expect(identity.profile.deviceProfile.hasGenericPlaceholderFields, isFalse);
       expect(restored.needsBuvidPersist, isTrue);
     });
 
     test('new account records persist and reload the device profile', () async {
-      const storedProfile = AppDeviceProfile(
+      final storedProfile = AppDeviceProfile(
         brand: 'Samsung',
         model: 'SM-S9280',
         osver: '16',
@@ -153,6 +157,17 @@ void main() {
       expect(fromJson.deviceProfile!.brand, storedProfile.brand);
       expect(fromJson.deviceProfile!.model, storedProfile.model);
       expect(fromJson.deviceProfile!.osver, storedProfile.osver);
+      expect(fromJson.deviceProfile!.hasGenericPlaceholderFields, isFalse);
+    });
+
+    test('fallback device profile selection is deterministic for the same owner', () {
+      final first = AppDeviceProfiles.defaultDeviceProfileForOwner('account:2333');
+      final second = AppDeviceProfiles.defaultDeviceProfileForOwner('account:2333');
+      final guest = AppDeviceProfiles.defaultDeviceProfileForOwner('guest');
+
+      expect(first, second);
+      expect(first.hasGenericPlaceholderFields, isFalse);
+      expect(guest.hasGenericPlaceholderFields, isFalse);
     });
 
     test('logout clears account identity and creates a fresh guest profile', () async {

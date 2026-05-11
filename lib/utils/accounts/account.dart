@@ -138,7 +138,8 @@ class LoginAccount extends Account {
       refresh,
       type: type,
       buvid: buvid,
-      deviceProfile: deviceProfile ?? AppDeviceProfiles.defaultDeviceProfile,
+      deviceProfile: deviceProfile,
+      persistResolvedDeviceProfile: true,
     );
   }
 
@@ -157,6 +158,7 @@ class LoginAccount extends Account {
       type: type,
       buvid: buvid,
       deviceProfile: deviceProfile,
+      persistResolvedDeviceProfile: false,
     );
   }
 
@@ -167,8 +169,15 @@ class LoginAccount extends Account {
     Set<AccountType>? type,
     String? buvid,
     required AppDeviceProfile? deviceProfile,
+    required bool persistResolvedDeviceProfile,
   }) {
     final resolved = _resolveLoginAccountIdentity(cookieJar, buvid);
+    final resolvedDeviceProfile = deviceProfile ??
+        (persistResolvedDeviceProfile
+            ? AppDeviceProfiles.defaultDeviceProfileForOwner(
+                resolved.resolution.profile.owner.key,
+              )
+            : null);
     return LoginAccount._(
       cookieJar,
       accessKey,
@@ -176,7 +185,7 @@ class LoginAccount extends Account {
       type ?? {},
       resolved.midStr,
       resolved.resolution.profile.buvid,
-      deviceProfile,
+      resolvedDeviceProfile,
       resolved.resolution.source == IdentityPersistenceSource.generated ||
           resolved.resolution.source == IdentityPersistenceSource.legacy,
     );
@@ -216,7 +225,7 @@ class LoginAccount extends Account {
           {...type},
           _midStr,
           buvid,
-          AppDeviceProfiles.defaultDeviceProfile,
+          AppDeviceProfiles.defaultDeviceProfileForOwner('account:$mid'),
           false,
         )
       : this;

@@ -1,8 +1,20 @@
+import 'dart:convert' show utf8;
+
 import 'package:PiliPlus/common/constants.dart';
 import 'package:hive_ce/hive.dart';
 
 final class AppDeviceProfile {
-  const AppDeviceProfile({
+  factory AppDeviceProfile({
+    required String brand,
+    required String model,
+    required String osver,
+  }) => AppDeviceProfile._(
+    brand: _normalizeBrand(brand),
+    model: _normalizeModel(model),
+    osver: _normalizeOsver(osver),
+  );
+
+  const AppDeviceProfile._({
     required this.brand,
     required this.model,
     required this.osver,
@@ -11,6 +23,16 @@ final class AppDeviceProfile {
   final String brand;
   final String model;
   final String osver;
+
+  static const _brandAliases = <String, String>{
+    'honor': 'HONOR',
+    'huawei honor': 'HONOR',
+    'oneplus': 'OnePlus',
+    'oppo': 'OPPO',
+    'redmi': 'Redmi',
+    'samsung': 'Samsung',
+    'xiaomi': 'Xiaomi',
+  };
 
   Map<String, dynamic> toJson() => {
     'brand': brand,
@@ -24,9 +46,57 @@ final class AppDeviceProfile {
     osver: json['osver'] as String,
   );
 
+  static String _normalizeBrand(String value) {
+    final normalized = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(value, 'brand', 'Device brand cannot be empty.');
+    }
+    return _brandAliases[normalized.toLowerCase()] ?? normalized;
+  }
+
+  static String _normalizeModel(String value) {
+    final normalized = value.trim().replaceAll(RegExp(r'\s+'), ' ').toUpperCase();
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(value, 'model', 'Device model cannot be empty.');
+    }
+    return normalized;
+  }
+
+  static String _normalizeOsver(String value) {
+    final normalized = value.trim();
+    if (!RegExp(r'^\d+(?:\.\d+)?$').hasMatch(normalized)) {
+      throw ArgumentError.value(
+        value,
+        'osver',
+        'Device Android version must be a numeric string.',
+      );
+    }
+    return normalized;
+  }
+
   String get deviceName => model;
 
   String get devicePlatform => 'Android$osver$model';
+
+  bool get hasGenericPlaceholderFields {
+    final normalizedBrand = brand.trim().toLowerCase();
+    final normalizedModel = model.trim().toLowerCase();
+    return normalizedBrand == 'android' ||
+        normalizedModel == 'android' ||
+        normalizedModel == 'device' ||
+        normalizedModel == 'phone';
+  }
+
+  @override
+  int get hashCode => Object.hash(brand, model, osver);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AppDeviceProfile &&
+          brand == other.brand &&
+          model == other.model &&
+          osver == other.osver;
 }
 
 class AppDeviceProfileAdapter extends TypeAdapter<AppDeviceProfile> {
@@ -117,7 +187,40 @@ final class AppRequestProfile {
 }
 
 abstract final class AppDeviceProfiles {
-  static const AppDeviceProfile _sharedDevice = AppDeviceProfile(
+  static const List<AppDeviceProfile> _curatedPool = [
+    AppDeviceProfile._(
+      brand: 'Xiaomi',
+      model: '23046RP50C',
+      osver: '15',
+    ),
+    AppDeviceProfile._(
+      brand: 'HONOR',
+      model: 'ELP-AN10',
+      osver: '16',
+    ),
+    AppDeviceProfile._(
+      brand: 'Samsung',
+      model: 'SM-S9280',
+      osver: '16',
+    ),
+    AppDeviceProfile._(
+      brand: 'OnePlus',
+      model: 'PJZ110',
+      osver: '16',
+    ),
+    AppDeviceProfile._(
+      brand: 'Xiaomi',
+      model: '23127PN0CC',
+      osver: '14',
+    ),
+    AppDeviceProfile._(
+      brand: 'Samsung',
+      model: 'SM-A5560',
+      osver: '15',
+    ),
+  ];
+
+  static const AppDeviceProfile _sharedDevice = AppDeviceProfile._(
     brand: 'Xiaomi',
     model: '23046RP50C',
     osver: '15',
@@ -147,26 +250,42 @@ abstract final class AppDeviceProfiles {
     userAgent: Constants.userAgentApp,
   );
 
-  static AppDeviceProfile get defaultDeviceProfile => _sharedDevice;
+  static AppDeviceProfile get defaultDeviceProfile =>
+      defaultDeviceProfileForOwner('guest');
+
+  static List<AppDeviceProfile> get curatedPool => List.unmodifiable(_curatedPool);
+
+  static AppDeviceProfile defaultDeviceProfileForOwner(String ownerKey) {
+    final normalizedOwnerKey = ownerKey.trim().isEmpty ? 'guest' : ownerKey.trim();
+    return _curatedPool[_stableIndex('device-profile:$normalizedOwnerKey')];
+  }
 
   static AppRequestProfile resolve({
     required String userAgent,
+    String? ownerKey,
     AppDeviceProfile? deviceProfile,
   }) {
     final baseProfile = userAgent == androidApp.userAgent
         ? androidApp
         : androidHd;
-    if (deviceProfile == null || identical(deviceProfile, baseProfile.deviceProfile)) {
+    final resolvedDeviceProfile =
+        deviceProfile ?? defaultDeviceProfileForOwner(ownerKey ?? 'guest');
+    if (identical(resolvedDeviceProfile, baseProfile.deviceProfile) ||
+        resolvedDeviceProfile == baseProfile.deviceProfile) {
       return baseProfile;
     }
-    if (deviceProfile.brand == baseProfile.brand &&
-        deviceProfile.model == baseProfile.model &&
-        deviceProfile.osver == baseProfile.osver) {
-      return baseProfile;
-    }
-    return baseProfile.copyWithDeviceProfile(deviceProfile);
+    return baseProfile.copyWithDeviceProfile(resolvedDeviceProfile);
   }
 
   static AppRequestProfile fromUserAgent(String userAgent) =>
       resolve(userAgent: userAgent);
+
+  static int _stableIndex(String seed) {
+    var hash = 0x811c9dc5;
+    for (final value in utf8.encode(seed)) {
+      hash ^= value;
+      hash = (hash * 0x01000193) & 0x7fffffff;
+    }
+    return hash % _curatedPool.length;
+  }
 }
