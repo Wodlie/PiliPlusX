@@ -1,5 +1,6 @@
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:hive_ce/hive.dart';
 
@@ -13,19 +14,20 @@ class LoginAccountAdapter extends TypeAdapter<LoginAccount> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return LoginAccount(
+    return LoginAccount.restored(
       fields[0] as DefaultCookieJar,
       fields[1] as String?,
       fields[2] as String?,
       (fields[3] as List?)?.cast<AccountType>().toSet(),
       fields[4] as String?,
+      fields[5] as AppDeviceProfile?,
     );
   }
 
   @override
   void write(BinaryWriter writer, LoginAccount obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.cookieJar)
       ..writeByte(1)
@@ -35,7 +37,9 @@ class LoginAccountAdapter extends TypeAdapter<LoginAccount> {
       ..writeByte(3)
       ..write(obj.type.toList())
       ..writeByte(4)
-      ..write(obj.buvid);
+      ..write(obj.buvid)
+      ..writeByte(5)
+      ..write(obj.deviceProfile);
   }
 
   @override

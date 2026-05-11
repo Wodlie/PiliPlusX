@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
+import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/accounts/identity_core.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
@@ -106,6 +108,53 @@ void main() {
       expect(account.needsBuvidPersist, isFalse);
     });
 
+    test('old account records without device profile still deserialize and fall back safely', () {
+      final restored = LoginAccount.restored(
+        _createCookieJar(mid: 2004),
+        'ACCESS_KEY_2004',
+        'REFRESH_2004',
+        {AccountType.main},
+        IdentityCoreGenerators.deriveBuvidFromSeed('legacy-device-profile-2004'),
+      );
+
+      expect(restored.deviceProfile, isNull);
+      final identity = RequestIdentityAdapter.fromAccount(
+        account: restored,
+        userAgent: AppDeviceProfiles.androidHd.userAgent,
+      );
+      expect(identity.profile, same(AppDeviceProfiles.androidHd));
+      expect(identity.deviceName, AppDeviceProfiles.androidHd.deviceName);
+      expect(identity.devicePlatform, AppDeviceProfiles.androidHd.devicePlatform);
+      expect(restored.needsBuvidPersist, isTrue);
+    });
+
+    test('new account records persist and reload the device profile', () async {
+      const storedProfile = AppDeviceProfile(
+        brand: 'Samsung',
+        model: 'SM-S9280',
+        osver: '16',
+      );
+      final account = _createLoginAccount(
+        mid: 2005,
+        buvid: IdentityCoreGenerators.deriveBuvidFromSeed('persisted-device-profile-2005'),
+        deviceProfile: storedProfile,
+      );
+
+      await account.onChange();
+
+      final restored = Accounts.account.get(account.mid.toString());
+      expect(restored, isNotNull);
+      expect(restored!.deviceProfile, isNotNull);
+      expect(restored.deviceProfile!.brand, storedProfile.brand);
+      expect(restored.deviceProfile!.model, storedProfile.model);
+      expect(restored.deviceProfile!.osver, storedProfile.osver);
+      expect(restored.toJson()!['deviceProfile'], storedProfile.toJson());
+      final fromJson = LoginAccount.fromJson(restored.toJson()!);
+      expect(fromJson.deviceProfile!.brand, storedProfile.brand);
+      expect(fromJson.deviceProfile!.model, storedProfile.model);
+      expect(fromJson.deviceProfile!.osver, storedProfile.osver);
+    });
+
     test('logout clears account identity and creates a fresh guest profile', () async {
       await Pref.deleteGuestBuvid();
       final account = _createLoginAccount(mid: 2003)..activated = true;
@@ -131,6 +180,7 @@ LoginAccount _createLoginAccount({
   String? buvid,
   Set<AccountType>? type,
   String? accessKey,
+  AppDeviceProfile? deviceProfile,
 }) {
   return LoginAccount(
     _createCookieJar(mid: mid),
@@ -138,6 +188,7 @@ LoginAccount _createLoginAccount({
     'REFRESH_$mid',
     type,
     buvid,
+    deviceProfile,
   );
 }
 

@@ -1,6 +1,7 @@
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/grpc_headers.dart';
 import 'package:PiliPlus/utils/accounts/identity_core.dart';
 import 'package:PiliPlus/utils/accounts/identity_persistence.dart';
@@ -64,13 +65,15 @@ class LoginAccount extends Account {
   @override
   @HiveField(4)
   final String buvid;
+  @HiveField(5)
+  final AppDeviceProfile? deviceProfile;
 
   /// Whether this account's BUVID was auto-generated because the stored Hive
   /// record lacked field 4 (old accounts created before per-account BUVID).
   /// When true, [Accounts.refresh] will persist this account back so the
   /// generated BUVID is durably saved.
   final bool _needsBuvidPersist;
-  bool get needsBuvidPersist => _needsBuvidPersist;
+  bool get needsBuvidPersist => _needsBuvidPersist || deviceProfile == null;
 
   @override
   bool activated = false;
@@ -86,7 +89,8 @@ class LoginAccount extends Account {
   };
 
   @override
-  Map<String, String> get grpcHeaders => GrpcHeaders.newHeaders(accessKey, buvid);
+  Map<String, String> get grpcHeaders =>
+      GrpcHeaders.newHeaders(accessKey, buvid, deviceProfile);
 
   @override
   late final String csrf =
@@ -103,7 +107,7 @@ class LoginAccount extends Account {
   @override
   Future<void> onChange() {
     assert(!_hasDelete);
-    return _box.put(_midStr, this);
+    return _box.put(_midStr, _persistedAccount);
   }
 
   @override
@@ -113,6 +117,7 @@ class LoginAccount extends Account {
     'refresh': refresh,
     'type': type.map((i) => i.index).toList(),
     'buvid': buvid,
+    if (deviceProfile != null) 'deviceProfile': deviceProfile!.toJson(),
   };
 
   final String _midStr;
@@ -125,7 +130,44 @@ class LoginAccount extends Account {
     String? refresh, [
     Set<AccountType>? type,
     String? buvid,
+    AppDeviceProfile? deviceProfile,
   ]) {
+    return LoginAccount._resolve(
+      cookieJar,
+      accessKey,
+      refresh,
+      type: type,
+      buvid: buvid,
+      deviceProfile: deviceProfile ?? AppDeviceProfiles.defaultDeviceProfile,
+    );
+  }
+
+  factory LoginAccount.restored(
+    DefaultCookieJar cookieJar,
+    String? accessKey,
+    String? refresh, [
+    Set<AccountType>? type,
+    String? buvid,
+    AppDeviceProfile? deviceProfile,
+  ]) {
+    return LoginAccount._resolve(
+      cookieJar,
+      accessKey,
+      refresh,
+      type: type,
+      buvid: buvid,
+      deviceProfile: deviceProfile,
+    );
+  }
+
+  factory LoginAccount._resolve(
+    DefaultCookieJar cookieJar,
+    String? accessKey,
+    String? refresh, {
+    Set<AccountType>? type,
+    String? buvid,
+    required AppDeviceProfile? deviceProfile,
+  }) {
     final resolved = _resolveLoginAccountIdentity(cookieJar, buvid);
     return LoginAccount._(
       cookieJar,
@@ -134,6 +176,7 @@ class LoginAccount extends Account {
       type ?? {},
       resolved.midStr,
       resolved.resolution.profile.buvid,
+      deviceProfile,
       resolved.resolution.source == IdentityPersistenceSource.generated ||
           resolved.resolution.source == IdentityPersistenceSource.legacy,
     );
@@ -146,18 +189,37 @@ class LoginAccount extends Account {
     this.type,
     this._midStr,
     this.buvid,
+    this.deviceProfile,
     this._needsBuvidPersist,
   ) {
     cookieJar.setBuvid3();
   }
 
-  factory LoginAccount.fromJson(Map json) => LoginAccount(
-    BiliCookieJar.fromJson(json['cookies']),
-    json['accessKey'],
-    json['refresh'],
-    (json['type'] as Iterable?)?.map((i) => AccountType.values[i]).toSet(),
-    json['buvid'],
+  factory LoginAccount.fromJson(Map json) => LoginAccount.restored(
+      BiliCookieJar.fromJson(json['cookies']),
+      json['accessKey'],
+      json['refresh'],
+      (json['type'] as Iterable?)?.map((i) => AccountType.values[i]).toSet(),
+      json['buvid'],
+      switch (json['deviceProfile']) {
+        final Map deviceProfile => AppDeviceProfile.fromJson(deviceProfile),
+        _ => null,
+      },
   );
+
+  LoginAccount get _persistedAccount =>
+      deviceProfile == null
+      ? LoginAccount._(
+          cookieJar,
+          accessKey,
+          refresh,
+          {...type},
+          _midStr,
+          buvid,
+          AppDeviceProfiles.defaultDeviceProfile,
+          false,
+        )
+      : this;
 
   @override
   int get hashCode => mid.hashCode;

@@ -6,6 +6,7 @@ import 'package:PiliPlus/models/user/danmaku_rule_adapter.dart';
 import 'package:PiliPlus/models/user/info.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account_adapter.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/account_type_adapter.dart';
 import 'package:PiliPlus/utils/accounts/cookie_jar_adapter.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
@@ -102,6 +103,7 @@ abstract final class GStorage {
       ..registerAdapter(UserInfoDataAdapter())
       ..registerAdapter(LevelInfoAdapter())
       ..registerAdapter(BiliCookieJarAdapter())
+      ..registerAdapter(AppDeviceProfileAdapter())
       ..registerAdapter(LoginAccountAdapter())
       ..registerAdapter(AccountTypeAdapter())
       ..registerAdapter(SetIntAdapter())
