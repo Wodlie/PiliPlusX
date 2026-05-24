@@ -61,8 +61,6 @@ dependencies:
   easy_debounce: ^2.0.3
   # 高帧率
   flutter_displaymode: ^0.7.0
-  # scheme跳转
-  app_links: ^7.0.0
   # 弹幕
   # ns_danmaku:
   #   git:
