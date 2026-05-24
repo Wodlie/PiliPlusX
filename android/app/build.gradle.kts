@@ -27,6 +27,10 @@ android {
 
     packagingOptions.jniLibs.useLegacyPackaging = true
 
+    buildFeatures {
+        resValues = true
+    }
+
     val keyProperties = Properties().also {
         val properties = rootProject.file("key.properties")
         if (properties.exists())
