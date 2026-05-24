@@ -173,7 +173,8 @@ abstract final class SettingBoxKey {
       touchSlopH = 'touchSlopH',
       floatingNavBar = 'floatingNavBar',
       removeSafeArea = 'removeSafeArea',
-      accountDisplayName = 'accountDisplayName';
+      accountDisplayName = 'accountDisplayName',
+      angleDegrees = 'angleDegrees';
 
   static const String minimizeOnExit = 'minimizeOnExit',
       windowSize = 'windowSize',

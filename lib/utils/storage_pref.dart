@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:math' show pow, sqrt;
 
+import 'package:PiliPlus/common/widgets/gesture/horizontal_drag_gesture_recognizer.dart'
+    show deviceTouchSlop;
 import 'package:PiliPlus/common/widgets/pair.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/models/common/bar_hide_type.dart';
@@ -1166,8 +1168,10 @@ abstract final class Pref {
   static bool get showDynDispute =>
       _setting.get(SettingBoxKey.showDynDispute, defaultValue: false);
 
-  static double get touchSlopH =>
-      _setting.get(SettingBoxKey.touchSlopH, defaultValue: 24.0);
+  static double get touchSlopH => _setting.get(
+    SettingBoxKey.touchSlopH,
+    defaultValue: deviceTouchSlop + 6.0,
+  );
 
   static bool get saveReply =>
       _setting.get(SettingBoxKey.saveReply, defaultValue: true);
@@ -1177,4 +1181,7 @@ abstract final class Pref {
 
   static bool get removeSafeArea =>
       _setting.get(SettingBoxKey.removeSafeArea, defaultValue: false);
+
+  static int get angleDegrees =>
+      _setting.get(SettingBoxKey.angleDegrees, defaultValue: 30);
 }

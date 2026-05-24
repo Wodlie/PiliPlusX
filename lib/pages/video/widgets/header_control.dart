@@ -41,7 +41,6 @@ import 'package:PiliPlus/services/shutdown_timer_service.dart'
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/connectivity_utils.dart';
-import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
@@ -56,6 +55,7 @@ import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/video_utils.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
+import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:file_picker/file_picker.dart';
@@ -669,48 +669,49 @@ class HeaderControlState extends State<HeaderControl>
                   onTap: () async {
                     Get.back();
                     try {
-                      final result = await FilePicker.pickFiles();
+                      final result = await FilePicker.pickFile(
+                        type: .custom,
+                        allowedExtensions: const ['json', 'vtt', 'srt', 'ass'],
+                      );
                       if (result != null) {
-                        final file = result.files.single;
+                        final file = result.xFile;
                         final path = file.path;
-                        if (path != null) {
-                          final name = file.name;
-                          final length = videoDetailCtr.subtitles.length;
-                          if (name.endsWith('.json')) {
-                            final file = File(path);
-                            final stream = file.openRead().transform(
-                              utf8.decoder,
-                            );
-                            final buffer = StringBuffer();
-                            await for (final chunk in stream) {
-                              if (!mounted) return;
-                              buffer.write(chunk);
-                            }
-                            if (!mounted) return;
-                            String sub = buffer.toString();
-                            sub = await compute<List, String>(
-                              VideoHttp.processList,
-                              jsonDecode(sub)['body'],
-                            );
-                            if (!mounted) return;
-                            videoDetailCtr.vttSubtitles[length] = (
-                              isData: true,
-                              id: sub,
-                            );
-                          } else {
-                            videoDetailCtr.vttSubtitles[length] = (
-                              isData: false,
-                              id: path,
-                            );
-                          }
-                          videoDetailCtr.subtitles.add(
-                            Subtitle(
-                              lan: '',
-                              lanDoc: name.split('.').firstOrNull ?? name,
-                            ),
+                        final name = file.name;
+                        final length = videoDetailCtr.subtitles.length;
+                        if (name.endsWith('.json')) {
+                          final file = File(path);
+                          final stream = file.openRead().transform(
+                            utf8.decoder,
                           );
-                          await videoDetailCtr.setSubtitle(length + 1);
+                          final buffer = StringBuffer();
+                          await for (final chunk in stream) {
+                            if (!mounted) return;
+                            buffer.write(chunk);
+                          }
+                          if (!mounted) return;
+                          String sub = buffer.toString();
+                          sub = await compute<List, String>(
+                            VideoHttp.processList,
+                            jsonDecode(sub)['body'],
+                          );
+                          if (!mounted) return;
+                          videoDetailCtr.vttSubtitles[length] = (
+                            isData: true,
+                            id: sub,
+                          );
+                        } else {
+                          videoDetailCtr.vttSubtitles[length] = (
+                            isData: false,
+                            id: path,
+                          );
                         }
+                        videoDetailCtr.subtitles.add(
+                          Subtitle(
+                            lan: '',
+                            lanDoc: name.split('.').firstOrNull ?? name,
+                          ),
+                        );
+                        await videoDetailCtr.setSubtitle(length + 1);
                       }
                     } catch (e) {
                       SmartDialog.showToast('加载失败: $e');

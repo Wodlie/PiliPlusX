@@ -321,37 +321,27 @@ class _EagerHorizontalDragGestureRecognizer
 class RenderProgressBar extends RenderBox implements MouseTrackerAnnotation {
   RenderProgressBar({
     required Duration progress,
-    required Duration total,
-    required Duration buffered,
-    ValueChanged<Duration>? onSeek,
+    required this._total,
+    required this._buffered,
+    this._onSeek,
     ThumbDragStartCallback? onDragStart,
     ThumbDragUpdateCallback? onDragUpdate,
     VoidCallback? onDragEnd,
-    required double barHeight,
-    required Color baseBarColor,
-    required Color progressBarColor,
-    required Color bufferedBarColor,
+    required this._barHeight,
+    required this._baseBarColor,
+    required this._progressBarColor,
+    required this._bufferedBarColor,
     double thumbRadius = 20.0,
-    required Color thumbColor,
-    required Color thumbGlowColor,
+    required this._thumbColor,
+    required this._thumbGlowColor,
     double thumbGlowRadius = 30.0,
-    bool thumbCanPaintOutsideBar = true,
-  }) : _total = total,
-       _buffered = buffered,
-       _onSeek = onSeek,
-       _onDragStartUserCallback = onDragStart,
+    this._thumbCanPaintOutsideBar = true,
+  }) : _onDragStartUserCallback = onDragStart,
        _onDragUpdateUserCallback = onDragUpdate,
        _onDragEndUserCallback = onDragEnd,
-       _barHeight = barHeight,
-       _baseBarColor = baseBarColor,
-       _progressBarColor = progressBarColor,
-       _bufferedBarColor = bufferedBarColor,
        _thumbRadius = thumbRadius,
-       _thumbColor = thumbColor,
-       _thumbGlowColor = thumbGlowColor,
        _thumbGlowRadius = thumbGlowRadius,
        _paintThumbGlow = thumbGlowRadius > thumbRadius,
-       _thumbCanPaintOutsideBar = thumbCanPaintOutsideBar,
        _hitTestSelf = onDragStart != null {
     if (onDragStart != null) {
       _drag = _EagerHorizontalDragGestureRecognizer()
@@ -744,8 +734,9 @@ class RenderProgressBar extends RenderBox implements MouseTrackerAnnotation {
     final capRadius = _barHeight / 2;
     final adjustedWidth = availableSize.width - barHeight;
     final dx = widthProportion * adjustedWidth + capRadius;
-    final startPoint = Offset(capRadius, availableSize.height / 2);
-    final endPoint = Offset(dx, availableSize.height / 2);
+    final dy = availableSize.height / 2;
+    final startPoint = Offset(capRadius, dy);
+    final endPoint = Offset(dx, dy);
     canvas.drawLine(startPoint, endPoint, baseBarPaint);
   }
 
