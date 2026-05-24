@@ -377,7 +377,7 @@ abstract final class PageUtils {
 
       case 'DYNAMIC_TYPE_COURSES_SEASON':
         PageUtils.viewPugv(
-          seasonId: item.modules.moduleDynamic!.major!.courses!.id,
+          seasonId: item.modules.moduleDynamic?.major?.courses?.id,
         );
         break;
 

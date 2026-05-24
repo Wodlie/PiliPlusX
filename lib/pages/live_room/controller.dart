@@ -206,8 +206,12 @@ class LiveRoomController extends GetxController {
       liveTime.value = response.liveTime;
       startLiveTimer();
       isPortrait.value = response.isPortrait ?? false;
-      List<CodecItem> codec =
-          response.playurlInfo!.playurl!.stream!.first.format!.first.codec!;
+      final codec = response.playurlInfo!.playurl!.stream?.firstOrNull
+          ?.format?.firstOrNull?.codec;
+      if (codec == null || codec.isEmpty) {
+        _showDialog('无法获取播放地址');
+        return;
+      }
       CodecItem item = codec.first;
       // 以服务端返回的码率为准
       currentQn = item.currentQn!;

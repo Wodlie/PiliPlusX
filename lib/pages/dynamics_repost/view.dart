@@ -379,7 +379,7 @@ class _RepostPanelState extends CommonRichTextPubPageState<RepostPanel> {
           "biz_id": item.modules.moduleAuthor!.mid.toString(),
         },
         {"raw_text": ":", "type": 1, "biz_id": ""},
-        ...item.modules.moduleDynamic!.desc!.richTextNodes!.map(
+        ...(item.modules.moduleDynamic?.desc?.richTextNodes?.map(
           (e) {
             int type;
             String bizId;
@@ -401,6 +401,7 @@ class _RepostPanelState extends CommonRichTextPubPageState<RepostPanel> {
               "biz_id": bizId,
             };
           },
+        ) ?? [],
         ),
       ];
     } catch (_) {

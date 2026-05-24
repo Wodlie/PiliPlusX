@@ -11,6 +11,7 @@ import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:hive_ce/hive.dart';
 
 abstract final class WbiSign {
@@ -105,7 +106,11 @@ abstract final class WbiSign {
     } else {
       return _future = _localCache
           .put(LocalCacheKey.timeStamp, nowDate.millisecondsSinceEpoch)
-          .then((_) => _getWbiKeys());
+          .then((_) => _getWbiKeys())
+          .catchError((e) {
+        debugPrint('WBI sign error: $e');
+        return '';
+      });
     }
   }
 

@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:PiliPlus/utils/utils.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart' show MethodChannel;
 
 abstract final class MaxScreenSize {
@@ -24,7 +25,9 @@ abstract final class MaxScreenSize {
   }
 
   static Future<void> _initScreenSize() {
-    return Utils.channel.invokeMethod('maxScreenSize').then(_handleRes);
+    return Utils.channel.invokeMethod('maxScreenSize').then(_handleRes).catchError((e) {
+      debugPrint('maxScreenSize error: $e');
+    });
   }
 
   static void _handleRes(dynamic res) {

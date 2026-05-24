@@ -18,7 +18,11 @@ class JsonFileHandler extends ReportHandler {
   static Future<RandomAccessFile> _future = LoggerUtils.getLogsPath()
       .then((file) => file.open(mode: FileMode.writeOnlyAppend))
       .then((raf) => raf.writeFrom(const []))
-      .then(_flush);
+      .then(_flush)
+      .catchError((e) {
+    debugPrint('JsonFileHandler init error: $e');
+    throw e;
+  });
 
   JsonFileHandler._({
     this.enableDeviceParameters = true,

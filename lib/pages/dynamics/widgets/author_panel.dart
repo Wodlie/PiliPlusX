@@ -202,13 +202,13 @@ class AuthorPanel extends StatelessWidget {
               right: height,
               child: Center(
                 child: Text(
-                  moduleAuthor.decorate!.fan!.numStr!.toString(),
+                  moduleAuthor.decorate?.fan?.numStr?.toString() ?? '',
                   style: TextStyle(
                     height: 1,
                     fontSize: 11,
                     fontFamily: Assets.digitalNum,
                     color: ColourUtils.parseColor(
-                      moduleAuthor.decorate!.fan!.color!,
+                      moduleAuthor.decorate?.fan?.color ?? '#000000',
                     ),
                   ),
                 ),
@@ -344,7 +344,7 @@ class AuthorPanel extends StatelessWidget {
                       final moduleDynamic = item.modules.moduleDynamic!;
                       final title =
                           moduleDynamic.desc?.text ??
-                          moduleDynamic.major!.opus!.summary!.text!;
+                          moduleDynamic.major?.opus?.summary?.text ?? '';
                       String? thumb = isDyn
                           ? moduleAuthor.face
                           : moduleDynamic.major?.opus?.pics?.firstOrNull?.url;
