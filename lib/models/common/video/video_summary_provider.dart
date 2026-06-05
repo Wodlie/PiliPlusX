@@ -274,8 +274,8 @@ class OpenAiCompatibleMultimodalSummaryRequest {
               'text': prompt,
             },
             {
-              'type': 'input_video',
-              'input_video': {
+              'type': 'video_url',
+              'video_url': {
                 'url': video.url.toString(),
               },
             },
