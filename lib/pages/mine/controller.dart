@@ -70,7 +70,7 @@ class MineController extends CommonDataController<FavFolderData, FavFolderData>
           },
         ),
         (
-          size: 22,
+          size: 21,
           icon: Icons.watch_later_outlined,
           title: '稍后再看',
           onTap: () {
@@ -107,6 +107,9 @@ class MineController extends CommonDataController<FavFolderData, FavFolderData>
         userInfo.value = response;
         if (response != Pref.userInfoCache) {
           GStorage.userInfo.put('userInfoCache', response);
+        }
+        if (response.mid != null && response.uname != null) {
+          Pref.setAccountUname(response.mid!, response.uname!);
         }
         accountService
           ..face.value = response.face!

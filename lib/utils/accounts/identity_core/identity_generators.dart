@@ -56,7 +56,7 @@ final class IdentityCoreProfileGenerator
 
     return IdentityCoreProfile(
       owner: context.owner,
-      buvid: IdentityCoreGenerators.generateBuvid(),
+      buvid: IdentityCoreGenerators.generateBuvidForOwner(context.owner),
     );
   }
 }
@@ -135,7 +135,14 @@ abstract final class IdentityCoreGenerators {
   }
 
   static String generateBuvid({String prefix = _defaultBuvidPrefix}) {
-    return deriveBuvidFromSeed(_randomUpperHex(12), prefix: prefix);
+    return generateBuvidForOwner(const IdentityOwnerKey.guest(), prefix: prefix);
+  }
+
+  static String generateBuvidForOwner(
+    IdentityOwnerKey owner, {
+    String prefix = _defaultBuvidPrefix,
+  }) {
+    return deriveBuvidFromSeed('buvid:${owner.key}', prefix: prefix);
   }
 
   static String deriveBuvidFromSeed(String rawId, {String prefix = _defaultBuvidPrefix}) {

@@ -9,7 +9,6 @@ import 'package:PiliPlus/common/widgets/image_viewer/hero.dart';
 import 'package:PiliPlus/common/widgets/stat/stat.dart';
 import 'package:PiliPlus/models/common/image_preview_type.dart';
 import 'package:PiliPlus/models/common/image_type.dart';
-import 'package:PiliPlus/models/common/stat_type.dart';
 import 'package:PiliPlus/models_new/pgc/pgc_info_model/result.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/pages/video/introduction/pgc/controller.dart';
@@ -63,7 +62,7 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+    final colorScheme = ColorScheme.of(context);
     final item = introController.pgcItem;
     final isLandscape = widget.isLandscape;
     Widget sliver = SliverToBoxAdapter(
@@ -74,13 +73,13 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             spacing: 10,
             children: [
-              _buildCover(theme, isLandscape, item),
-              Expanded(child: _buildInfoPanel(isLandscape, theme, item)),
+              _buildCover(colorScheme, isLandscape, item),
+              Expanded(child: _buildInfoPanel(isLandscape, colorScheme, item)),
             ],
           ),
           const SizedBox(height: 6),
           // 点赞收藏转发 布局样式2
-          if (introController.isPgc) actionGrid(theme, item, introController),
+          if (introController.isPgc) actionGrid(item, introController),
           // 番剧分集
           if (item.episodes?.isNotEmpty == true)
             PgcPanel(
@@ -97,18 +96,16 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
     if (!introController.isPgc) {
       final brief = _buildBrief(item);
       if (brief != null) {
-        sliver = SliverMainAxisGroup(
-          slivers: [
-            sliver,
-            brief,
-          ],
-        );
+        sliver = SliverMainAxisGroup(slivers: [sliver, brief]);
       }
     }
     return SliverPadding(
-      padding:
-          const EdgeInsets.all(Style.safeSpace) +
-          const EdgeInsets.only(bottom: 50),
+      padding: const .fromLTRB(
+        Style.safeSpace,
+        Style.safeSpace,
+        Style.safeSpace,
+        Style.safeSpace + 50,
+      ),
       sliver: sliver,
     );
   }
@@ -121,11 +118,7 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
       final imgWidth = maxWidth - padding;
       padding = padding / 2;
       return SliverPadding(
-        padding: EdgeInsetsGeometry.only(
-          top: 10,
-          left: padding,
-          right: padding,
-        ),
+        padding: .only(top: 10, left: padding, right: padding),
         sliver: SliverMainAxisGroup(
           slivers: img.map((e) {
             return SliverToBoxAdapter(
@@ -143,7 +136,11 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
     return null;
   }
 
-  Widget _buildCover(ThemeData theme, bool isLandscape, PgcInfoModel item) {
+  Widget _buildCover(
+    ColorScheme colorScheme,
+    bool isLandscape,
+    PgcInfoModel item,
+  ) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -183,11 +180,11 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
                     ? const Icon(Icons.star_rounded)
                     : const Icon(Icons.star_border_rounded),
                 bgColor: isFav
-                    ? theme.colorScheme.secondaryContainer
-                    : theme.colorScheme.onInverseSurface,
+                    ? colorScheme.secondaryContainer
+                    : colorScheme.onInverseSurface,
                 iconColor: isFav
-                    ? theme.colorScheme.onSecondaryContainer
-                    : theme.colorScheme.onSurfaceVariant,
+                    ? colorScheme.onSecondaryContainer
+                    : colorScheme.onSurfaceVariant,
               );
             }),
           ),
@@ -195,7 +192,11 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
     );
   }
 
-  Widget _buildInfoPanel(bool isLandscape, ThemeData theme, PgcInfoModel item) {
+  Widget _buildInfoPanel(
+    bool isLandscape,
+    ColorScheme colorScheme,
+    PgcInfoModel item,
+  ) {
     if (introController.isPgc) {
       Widget subBtn() => Obx(
         () {
@@ -209,10 +210,8 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
                 vertical: 10,
               ),
               visualDensity: VisualDensity.compact,
-              foregroundColor: isFollowed ? theme.colorScheme.outline : null,
-              backgroundColor: isFollowed
-                  ? theme.colorScheme.onInverseSurface
-                  : null,
+              foregroundColor: isFollowed ? colorScheme.outline : null,
+              backgroundColor: isFollowed ? colorScheme.onInverseSurface : null,
             ),
             onPressed: followStatus == -1
                 ? null
@@ -262,10 +261,7 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
       List<Widget> desc() => [
         Text(
           item.newEp!.desc!,
-          style: TextStyle(
-            fontSize: 12,
-            color: theme.colorScheme.outline,
-          ),
+          style: TextStyle(fontSize: 12, color: colorScheme.outline),
         ),
         Text.rich(
           TextSpan(
@@ -277,24 +273,15 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
               ),
             ],
           ),
-          style: TextStyle(
-            fontSize: 12,
-            color: theme.colorScheme.outline,
-          ),
+          style: TextStyle(fontSize: 12, color: colorScheme.outline),
         ),
       ];
       Widget stat() => Wrap(
         spacing: 6,
         runSpacing: 2,
         children: [
-          StatWidget(
-            type: StatType.play,
-            value: item.stat!.view,
-          ),
-          StatWidget(
-            type: StatType.danmaku,
-            value: item.stat!.danmaku,
-          ),
+          StatWidget(type: .play, value: item.stat!.view),
+          StatWidget(type: .danmaku, value: item.stat!.danmaku),
           if (isLandscape) ...desc(),
         ],
       );
@@ -317,10 +304,7 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
               Expanded(
                 child: Text(
                   '简介：${item.evaluate}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: theme.colorScheme.outline,
-                  ),
+                  style: TextStyle(fontSize: 13, color: colorScheme.outline),
                 ),
               ),
             ],
@@ -354,7 +338,7 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
                       role,
                       style: TextStyle(
                         fontSize: 12,
-                        color: theme.colorScheme.outline,
+                        color: colorScheme.outline,
                       ),
                     ),
                 ],
@@ -394,7 +378,7 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
             item.subtitle!,
             style: TextStyle(
               fontSize: 13,
-              color: theme.colorScheme.onSurfaceVariant,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -403,7 +387,6 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
   }
 
   Widget actionGrid(
-    ThemeData theme,
     PgcInfoModel item,
     PgcIntroController introController,
   ) {

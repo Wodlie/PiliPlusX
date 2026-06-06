@@ -240,14 +240,14 @@ class _SavePanelState extends State<SavePanel> {
         case 'DYNAMIC_TYPE_LIVE_RCMD':
           viewType = '观看';
           itemType = '直播';
-          final roomId = item.modules.moduleDynamic!.major!.liveRcmd!.roomId;
+          final roomId = item.modules.moduleDynamic?.major?.liveRcmd?.roomId;
           uri = 'bilibili://live/$roomId';
           break;
 
         case 'DYNAMIC_TYPE_UGC_SEASON':
           viewType = '观看';
           itemType = '合集';
-          final aid = item.modules.moduleDynamic!.major!.ugcSeason!.aid;
+          final aid = item.modules.moduleDynamic?.major?.ugcSeason?.aid;
           uri = 'bilibili://video/$aid';
           break;
 
@@ -256,14 +256,14 @@ class _SavePanelState extends State<SavePanel> {
           viewType = '观看';
           itemType =
               item.modules.moduleDynamic?.major?.pgc?.badge?.text ?? '番剧';
-          final epid = item.modules.moduleDynamic!.major!.pgc!.epid;
+          final epid = item.modules.moduleDynamic?.major?.pgc?.epid;
           uri = 'bilibili://pgc/season/ep/$epid';
           break;
 
         // https://www.bilibili.com/medialist/detail/ml12345678
         case 'DYNAMIC_TYPE_MEDIALIST':
           itemType = '收藏夹';
-          final mediaId = item.modules.moduleDynamic!.major!.medialist!.id;
+          final mediaId = item.modules.moduleDynamic?.major?.medialist?.id;
           uri = 'bilibili://medialist/detail/$mediaId';
           break;
 

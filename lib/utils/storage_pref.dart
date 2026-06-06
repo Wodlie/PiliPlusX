@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:math' show pow, sqrt;
 
+import 'package:PiliPlus/common/widgets/gesture/horizontal_drag_gesture_recognizer.dart'
+    show deviceTouchSlop;
 import 'package:PiliPlus/common/widgets/pair.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/models/common/bar_hide_type.dart';
@@ -84,6 +86,28 @@ abstract final class Pref {
     LocalCacheKey.blackMids,
     GlobalData().blackMids..remove(mid),
   );
+
+  static bool get accountDisplayName =>
+      _setting.get(SettingBoxKey.accountDisplayName, defaultValue: false);
+
+  static Map<int, String> get accountUnameMap =>
+      Map<int, String>.from(
+        _localCache.get(LocalCacheKey.accountUnameMap, defaultValue: {}),
+      );
+
+  static void setAccountUname(int mid, String uname) {
+    if (mid <= 0) return;
+    final map = accountUnameMap;
+    map[mid] = uname;
+    _localCache.put(LocalCacheKey.accountUnameMap, map);
+  }
+
+  static String getAccountDisplayName(int mid) {
+    if (!accountDisplayName || mid <= 0) return mid.toString();
+    final uname = accountUnameMap[mid];
+    if (uname == null || uname.isEmpty) return mid.toString();
+    return uname.length > 10 ? uname.substring(0, 10) : uname;
+  }
 
   static MemberTabType get memberTab =>
       MemberTabType.values[_setting.get(
@@ -1144,8 +1168,10 @@ abstract final class Pref {
   static bool get showDynDispute =>
       _setting.get(SettingBoxKey.showDynDispute, defaultValue: false);
 
-  static double get touchSlopH =>
-      _setting.get(SettingBoxKey.touchSlopH, defaultValue: 24.0);
+  static double get touchSlopH => _setting.get(
+    SettingBoxKey.touchSlopH,
+    defaultValue: deviceTouchSlop + 6.0,
+  );
 
   static bool get saveReply =>
       _setting.get(SettingBoxKey.saveReply, defaultValue: true);
@@ -1155,4 +1181,7 @@ abstract final class Pref {
 
   static bool get removeSafeArea =>
       _setting.get(SettingBoxKey.removeSafeArea, defaultValue: false);
+
+  static int get angleDegrees =>
+      _setting.get(SettingBoxKey.angleDegrees, defaultValue: 30);
 }

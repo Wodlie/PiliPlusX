@@ -113,6 +113,57 @@ void main() {
       expect(IdentityCoreGenerators.validateTraceId(traceId).isValid, isTrue);
       expect(traceId, isNot('11111111111111111111111111111111:1111111111111111:0:0'));
     });
+
+    test('owner-seeded BUVID is stable for the same owner', () {
+      final owner = IdentityOwnerKey.account(7701);
+      final buvid1 = IdentityCoreGenerators.generateBuvidForOwner(owner);
+      final buvid2 = IdentityCoreGenerators.generateBuvidForOwner(owner);
+      expect(buvid1, equals(buvid2));
+    });
+
+    test('owner-seeded BUVID differs across distinct owners', () {
+      final guestBuvid = IdentityCoreGenerators.generateBuvidForOwner(
+        const IdentityOwnerKey.guest(),
+      );
+      final accountBuvid = IdentityCoreGenerators.generateBuvidForOwner(
+        IdentityOwnerKey.account(7702),
+      );
+      expect(guestBuvid, isNot(equals(accountBuvid)));
+    });
+
+    test('owner-seeded BUVID conforms to structural rule', () {
+      final owner = IdentityOwnerKey.account(7703);
+      final buvid = IdentityCoreGenerators.generateBuvidForOwner(owner);
+
+      expect(buvid.length, 37);
+      expect(buvid, equals(buvid.toUpperCase()));
+      expect(RegExp(r'^X[A-Z]').hasMatch(buvid), isTrue);
+
+      final md5Body = buvid.substring(5);
+      expect(buvid.substring(2, 5), '${md5Body[2]}${md5Body[12]}${md5Body[22]}');
+      expect(IdentityCoreGenerators.validateBuvid(buvid).isValid, isTrue);
+    });
+
+    test('generate() uses owner-seeded BUVID when no stored profile exists', () {
+      final owner = IdentityOwnerKey.account(7704);
+      final generated = const IdentityCoreProfileGenerator().generate(
+        IdentityCoreGenerationContext(owner: owner),
+      );
+
+      final expected = IdentityCoreGenerators.generateBuvidForOwner(owner);
+      expect(generated.buvid, equals(expected));
+      expect(IdentityCoreGenerators.validateBuvid(generated.buvid).isValid, isTrue);
+    });
+
+    test('legacy BUVID compatibility generator now reuses guest owner seed', () {
+      final generated = IdentityCoreGenerators.generateBuvid();
+      final expected = IdentityCoreGenerators.generateBuvidForOwner(
+        const IdentityOwnerKey.guest(),
+      );
+
+      expect(generated, equals(expected));
+      expect(IdentityCoreGenerators.validateBuvid(generated).isValid, isTrue);
+    });
   });
 
   group('legacy-facing wrappers use identity core contracts', () {
@@ -120,16 +171,19 @@ void main() {
       final buvid = LoginUtils.generateBuvid();
       final buvid3 = IdUtils.genBuvid3();
       final traceId = IdUtils.genTraceId();
-      final deviceId = LoginUtils.genDeviceId();
       final runtimeTraceFromConstants = Constants.traceId;
 
       expect(IdentityCoreGenerators.validateBuvid(buvid).isValid, isTrue);
+      expect(
+        buvid,
+        equals(
+          IdentityCoreGenerators.generateBuvidForOwner(
+            const IdentityOwnerKey.guest(),
+          ),
+        ),
+      );
       expect(IdentityCoreGenerators.validateBuvid3(buvid3).isValid, isTrue);
       expect(IdentityCoreGenerators.validateTraceId(traceId).isValid, isTrue);
-      expect(
-        IdentityCoreGenerators.validateDeviceLocalId(deviceId).isValid,
-        isTrue,
-      );
       expect(
         IdentityCoreGenerators.validateTraceId(runtimeTraceFromConstants).isValid,
         isTrue,

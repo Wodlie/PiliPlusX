@@ -15,6 +15,7 @@ import 'package:PiliPlus/pages/webdav/view.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter/material.dart' hide ListTile;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -212,13 +213,17 @@ class _SettingPageState extends State<SettingPage> {
   }
 
   Future<void> _logoutDialog(BuildContext context) async {
+    final useDisplayName = Pref.accountDisplayName;
     final result = await showDialog<Set<LoginAccount>>(
       context: context,
       builder: (context) => MultiSelectDialog<LoginAccount>(
         title: '选择要登出的账号uid',
         initValues: const Iterable.empty(),
         values: {
-          for (final i in Accounts.account.values) i: i.mid.toString(),
+          for (final i in Accounts.account.values)
+            i: useDisplayName
+                ? Pref.getAccountDisplayName(i.mid)
+                : i.mid.toString(),
         },
       ),
     );
@@ -235,7 +240,7 @@ class _SettingPageState extends State<SettingPage> {
         return AlertDialog(
           title: const Text('提示'),
           content: Text(
-            "确认要退出以下账号登录吗\n\n${result.map((i) => i.mid.toString()).join('\n')}",
+            "确认要退出以下账号登录吗\n\n${result.map((i) => useDisplayName ? Pref.getAccountDisplayName(i.mid) : i.mid.toString()).join('\n')}",
           ),
           actions: [
             TextButton(

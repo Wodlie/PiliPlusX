@@ -68,6 +68,7 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:PiliPlus/utils/video_utils.dart';
+import 'package:collection/collection.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
@@ -128,6 +129,7 @@ class VideoDetailController extends GetxController
     ..brightness.value = -1;
   bool get setSystemBrightness => plPlayerController.setSystemBrightness;
   bool get removeSafeArea => plPlayerController.removeSafeArea;
+  double get uiScale => plPlayerController.uiScale;
 
   late VideoItem firstVideo;
   String? videoUrl;
@@ -250,13 +252,15 @@ class VideoDetailController extends GetxController
       if (width == null || height == null) {
         if (isUgc && !isFileSource) {
           final ugcIntroCtr = Get.find<UgcIntroController>(tag: heroTag);
-          final data = ugcIntroCtr.videoDetail.value;
-          if (data.cid == cid.value) {
-            final dimension = data.dimension!;
+          final cid = this.cid.value;
+          final part = ugcIntroCtr.videoDetail.value.pages?.firstWhereOrNull(
+            (e) => e.cid == cid,
+          );
+          if (part != null) {
+            final dimension = part.dimension!;
             width = dimension.width!;
             height = dimension.height!;
           } else {
-            ugcIntroCtr.queryVideoIntro().whenComplete(_setVideoHeight);
             return;
           }
         } else {
@@ -266,7 +270,10 @@ class VideoDetailController extends GetxController
       final isVertical = height > width;
       if (_scrollCtr?.hasClients != true) {
         videoHeight = isVertical ? maxVideoHeight : minVideoHeight;
-        this.isVertical.value = isVertical;
+        if (this.isVertical.value != isVertical) {
+          this.isVertical.value = isVertical;
+          _needAnimOnDimensionChanged(isVertical);
+        }
         return;
       }
       if (this.isVertical.value != isVertical) {
@@ -288,11 +295,11 @@ class VideoDetailController extends GetxController
                 .toPrecision(2);
             double minVideoHeightPrecise = minVideoHeight.toPrecision(2);
             if (currentHeight == minVideoHeightPrecise) {
+              this.videoHeight = minVideoHeight;
               if (_needAnimOnDimensionChanged(isVertical)) {
                 isExpanding = true;
-                this.videoHeight = minVideoHeight;
+                animationController.forward(from: 1);
               }
-              animationController.forward(from: 1);
             } else if (currentHeight < minVideoHeightPrecise) {
               // expand
               if (_needAnimOnDimensionChanged(isVertical)) {
@@ -807,8 +814,8 @@ class VideoDetailController extends GetxController
 
   bool isQuerying = false;
 
-  final Rx<List<LanguageItem>?> languages = Rx<List<LanguageItem>?>(null);
-  final Rx<String?> currLang = Rx<String?>(null);
+  final languages = Rxn<List<LanguageItem>>();
+  final currLang = Rxn<String>();
   void setLanguage(String language) {
     if (currLang.value == language) return;
     if (!isLoginVideo) {

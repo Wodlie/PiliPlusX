@@ -172,7 +172,9 @@ abstract final class SettingBoxKey {
       showDynDispute = 'showDynDispute',
       touchSlopH = 'touchSlopH',
       floatingNavBar = 'floatingNavBar',
-      removeSafeArea = 'removeSafeArea';
+      removeSafeArea = 'removeSafeArea',
+      accountDisplayName = 'accountDisplayName',
+      angleDegrees = 'angleDegrees';
 
   static const String minimizeOnExit = 'minimizeOnExit',
       windowSize = 'windowSize',
@@ -275,7 +277,8 @@ abstract final class LocalCacheKey {
       mixinKey = 'mixinKey',
       timeStamp = 'timeStamp',
       legacyBuvid = 'buvid',
-      guestBuvid = 'guestBuvid';
+      guestBuvid = 'guestBuvid',
+      accountUnameMap = 'accountUnameMap';
 }
 
 abstract final class VideoBoxKey {

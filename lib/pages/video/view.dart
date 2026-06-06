@@ -205,6 +205,11 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     final isResume = state == .resumed;
     final ctr = videoDetailController.plPlayerController..visible = isResume;
     if (isResume) {
+      // TODO: remove
+      // part of https://github.com/flutter/flutter/issues/186723
+      if (Platform.isAndroid && !showSystemBar_) {
+        setEnabledSystemUIMode(.immersiveSticky);
+      }
       if (!ctr.showDanmaku) {
         introController.startTimer();
         ctr.showDanmaku = true;
@@ -216,6 +221,11 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   }
 
   Future<void>? playCallBack() {
+    if (!isShowing) {
+      plPlayerController
+        ?..addStatusLister(playerListener)
+        ..addPositionListener(positionListener);
+    }
     return plPlayerController?.play();
   }
 
@@ -628,8 +638,8 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     maxWidth = size.width;
     maxHeight = size.height;
     isWindowMode = MaxScreenSize.isWindowMode(
-      width: maxWidth,
-      height: maxHeight,
+      width: maxWidth * videoDetailController.uiScale,
+      height: maxHeight * videoDetailController.uiScale,
     );
     videoDetailController.plPlayerController.screenRatio = maxHeight / maxWidth;
 

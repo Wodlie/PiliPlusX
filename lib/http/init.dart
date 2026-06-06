@@ -66,8 +66,9 @@ class Request {
       // final html = await Request().get(Api.dynamicSpmPrefix,
       //     options: Options(extra: {'account': account}));
       // final String spmPrefix = _spmPrefixExp.firstMatch(html.data)!.group(1)!;
+      final randomPngBytes = Utils.generateSecureRandomBytes(36);
       final String randPngEnd = base64.encode([
-        ...Iterable<int>.generate(32, (_) => Utils.random.nextInt(256)),
+        ...randomPngBytes.take(32),
         0,
         0,
         0,
@@ -76,7 +77,7 @@ class Request {
         69,
         78,
         68,
-        ...Iterable<int>.generate(4, (_) => Utils.random.nextInt(256)),
+        ...randomPngBytes.skip(32),
       ]);
 
       final jsonData = json.encode({
@@ -217,7 +218,7 @@ class Request {
       receiveTimeout: const Duration(milliseconds: 10000),
       //Http请求头.
       headers: {
-        'user-agent': 'Dart/3.6 (dart:io)', // Http2Adapter不会自动添加标头
+        'user-agent': 'grpc-go/1.61.1', // Http2Adapter不会自动添加标头
         if (!_enableHttp2) 'connection': 'keep-alive',
         'accept-encoding': 'br,gzip',
       },

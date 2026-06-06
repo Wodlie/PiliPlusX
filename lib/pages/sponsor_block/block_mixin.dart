@@ -12,7 +12,7 @@ import 'package:PiliPlus/models_new/sponsor_block/segment_item.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:easy_debounce/easy_throttle.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -335,7 +335,9 @@ mixin BlockMixin on GetxController {
   void _doVote(String uuid, int type) => SponsorBlock.voteOnSponsorTime(
     uuid: uuid,
     type: type,
-  ).then((i) => SmartDialog.showToast(i.isSuccess ? '投票成功' : '投票失败: $i'));
+  ).then((i) => SmartDialog.showToast(i.isSuccess ? '投票成功' : '投票失败: $i')).catchError((e) {
+    debugPrint('SponsorBlock vote error: $e');
+  });
 
   void _showCategoryDialog(SegmentModel segment) {
     showDialog(

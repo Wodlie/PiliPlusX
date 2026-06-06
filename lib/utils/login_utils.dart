@@ -8,7 +8,6 @@ import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/identity_core/identity_generators.dart';
-import 'package:PiliPlus/utils/accounts/identity_core/identity_owner.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -63,6 +62,9 @@ abstract final class LoginUtils {
         if (response != Pref.userInfoCache) {
           await GStorage.userInfo.put('userInfoCache', response);
         }
+        if (response.mid != null && response.uname != null) {
+          Pref.setAccountUname(response.mid!, response.uname!);
+        }
       }
     } else {
       // 获取用户信息失败
@@ -109,13 +111,4 @@ abstract final class LoginUtils {
   //   String uuid = getUUID() + getUUID();
   //   return 'XY${uuid.substring(0, 35).toUpperCase()}';
   // }
-
-  static String genDeviceId() {
-    final owner = IdentityOwnerKey.workflow('legacy-device-id');
-    final buvid = IdentityCoreGenerators.deriveBuvidFromSeed(owner.key);
-    return IdentityCoreGenerators.generateDeviceLocalId(
-      owner: owner,
-      buvid: buvid,
-    );
-  }
 }

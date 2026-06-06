@@ -11,7 +11,7 @@ import 'package:dio/dio.dart';
 abstract final class OpenAiCompatibleSummaryProvider {
   static const String _chatCompletionsPath = 'chat/completions';
   static final RegExp _unsupportedCapabilityPattern = RegExp(
-    r'unsupported|not\s+support|capability|multimodal|video|vision|input_video|media\s+type|not\s+implemented',
+    r'unsupported|not\s+support|capability|multimodal|video|vision|media\s+type|not\s+implemented',
     caseSensitive: false,
   );
 

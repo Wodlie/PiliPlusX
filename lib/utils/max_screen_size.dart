@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:PiliPlus/utils/utils.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart' show MethodChannel;
 
 abstract final class MaxScreenSize {
@@ -14,17 +15,19 @@ abstract final class MaxScreenSize {
   static Future<void> _initFoldable() async {
     final isFoldable = await Utils.channel.invokeMethod('isFoldable');
     if (isFoldable == true) {
-      const MethodChannel('ScreenChannel').setMethodCallHandler((call) async {
+      const MethodChannel('ScreenChannel').setMethodCallHandler((call) {
         if (call.method == 'onConfigChanged') {
           _handleRes(call.arguments);
         }
+        return Future.syncValue(null);
       });
     }
   }
 
-  static Future<void> _initScreenSize() async {
-    final res = await Utils.channel.invokeMethod('maxScreenSize');
-    _handleRes(res);
+  static Future<void> _initScreenSize() {
+    return Utils.channel.invokeMethod('maxScreenSize').then(_handleRes).catchError((e) {
+      debugPrint('maxScreenSize error: $e');
+    });
   }
 
   static void _handleRes(dynamic res) {

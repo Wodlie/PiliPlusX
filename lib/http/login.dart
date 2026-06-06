@@ -249,7 +249,7 @@ abstract final class LoginHttp {
       'dt': Uri.encodeComponent(
         Encrypter(
           RSA(publicKey: publicKey),
-        ).encrypt(Utils.generateRandomString(16)).base64,
+        ).encrypt(Utils.generateSecureRandomString(16)).base64,
       ),
       'from_pv': 'main.homepage.avatar-nologin.all.click',
       'from_url': Uri.encodeComponent('bilibili://pegasus/promo'),
@@ -328,7 +328,7 @@ abstract final class LoginHttp {
       'dt': Uri.encodeComponent(
         Encrypter(
           RSA(publicKey: publicKey),
-        ).encrypt(Utils.generateRandomString(16)).base64,
+        ).encrypt(Utils.generateSecureRandomString(16)).base64,
       ),
       'from_pv': 'main.my-information.my-login.0.click',
       'from_url': Uri.encodeComponent('bilibili://user_center/mine'),

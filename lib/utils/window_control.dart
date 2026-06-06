@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class WindowControl {
@@ -8,7 +9,7 @@ class WindowControl {
     try {
       await _channel.invokeMethod('restoreWindow');
     } catch (e) {
-      print('Failed to restore window: $e');
+      debugPrint('Failed to restore window: $e');
     }
   }
 
@@ -17,7 +18,7 @@ class WindowControl {
     try {
       await _channel.invokeMethod('minimizeWindow');
     } catch (e) {
-      print('Failed to minimize window: $e');
+      debugPrint('Failed to minimize window: $e');
     }
   }
 
@@ -26,7 +27,7 @@ class WindowControl {
     try {
       await _channel.invokeMethod('closeWindow');
     } catch (e) {
-      print('Failed to close window: $e');
+      debugPrint('Failed to close window: $e');
     }
   }
 }
