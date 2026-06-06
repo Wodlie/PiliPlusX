@@ -1,4 +1,5 @@
-import 'dart:io' show File;
+import 'dart:io' show File, Platform;
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/grpc/bilibili/app/listener/v1.pb.dart' show DetailItem;
@@ -9,6 +10,7 @@ import 'package:PiliPlus/models_new/video/video_detail/data.dart';
 import 'package:PiliPlus/models_new/video/video_detail/page.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
+import 'package:PiliPlus/utils/android/bindings.g.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -105,13 +107,28 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
             : processingState,
         controls: [
           if (!isLive)
-            MediaControl.rewind.copyWith(
-              androidIcon: 'drawable/ic_baseline_replay_10_24',
+            const MediaControl(
+              androidIcon: 'drawable/ic_player_rewind_10s',
+              label: 'Rewind',
+              action: MediaAction.rewind,
             ),
-          if (playing) MediaControl.pause else MediaControl.play,
+          if (playing)
+            const MediaControl(
+              androidIcon: 'drawable/ic_player_pause',
+              label: 'Pause',
+              action: MediaAction.pause,
+            )
+          else
+            const MediaControl(
+              androidIcon: 'drawable/ic_player_play',
+              label: 'Play',
+              action: MediaAction.play,
+            ),
           if (!isLive)
-            MediaControl.fastForward.copyWith(
-              androidIcon: 'drawable/ic_baseline_forward_10_24',
+            const MediaControl(
+              androidIcon: 'drawable/ic_player_fast_forward_10s',
+              label: 'Fast Forward',
+              action: MediaAction.fastForward,
             ),
         ],
         playing: playing,
@@ -120,6 +137,15 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
         },
       ),
     );
+    if (Platform.isAndroid &&
+        (AndroidHelper.isPipMode ||
+            PlPlayerController.instance?.isAutoEnterPip == true)) {
+      AndroidHelper.updatePipActions(
+        PlatformDispatcher.instance.engineId!,
+        isLive,
+        playing,
+      );
+    }
   }
 
   void onStatusChange(PlayerStatus status, bool isBuffering, isLive) {

@@ -1,28 +1,11 @@
 package com.Wodlie.PiliPlusX
 
-import android.app.PendingIntent
-import android.app.PictureInPictureParams
-import android.app.SearchManager
-import android.content.ComponentName
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.content.pm.ShortcutInfo
-import android.content.pm.ShortcutManager
 import android.content.res.Configuration
-import android.graphics.BitmapFactory
-import android.graphics.Point
-import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
-import android.provider.Settings
 import android.view.WindowManager.LayoutParams
-import androidx.core.net.toUri
 import com.ryanheise.audioservice.AudioServiceActivity
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.MethodChannel
-import io.flutter.SystemChrome
-import kotlin.math.roundToInt
 
 class MainActivity : AudioServiceActivity() {
     private lateinit var methodChannel: MethodChannel
@@ -207,44 +190,9 @@ class MainActivity : AudioServiceActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        if (isFoldable) {
-            maxScreenSize()?.let {
-                MethodChannel(
-                    flutterEngine!!.dartExecutor.binaryMessenger,
-                    "ScreenChannel"
-                ).invokeMethod("onConfigChanged", it)
-            }
+        if (AndroidHelper.isFoldable) {
+            AndroidHelper.ToDart.onConfigurationChanged?.run()
         }
-    }
-
-    private fun maxScreenSize(): Map<String, Int>? {
-        try {
-            val density = resources.displayMetrics.density
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val maxBounds = windowManager.maximumWindowMetrics.bounds
-                return mapOf(
-                    "maxWidth" to (maxBounds.width() / density).roundToInt(),
-                    "maxHeight" to (maxBounds.height() / density).roundToInt(),
-                )
-            } else {
-                val realSizePoint = Point()
-                windowManager.defaultDisplay.getRealSize(realSizePoint)
-                return mapOf(
-                    "maxWidth" to (realSizePoint.x / density).roundToInt(),
-                    "maxHeight" to (realSizePoint.y / density).roundToInt(),
-                )
-            }
-        } catch (_: Exception) {
-            return null
-        }
-    }
-
-    private fun back() {
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_HOME)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        startActivity(intent)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -252,14 +200,6 @@ class MainActivity : AudioServiceActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             window.attributes.layoutInDisplayCutoutMode =
                 LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                isFoldable =
-                    packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
-            } catch (_: Exception) {
-            }
         }
     }
 
@@ -270,17 +210,11 @@ class MainActivity : AudioServiceActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        methodChannel.invokeMethod("onUserLeaveHint", null)
+        AndroidHelper.ToDart.onUserLeaveHint?.run()
     }
 
-    override fun onPictureInPictureModeChanged(
-        isInPictureInPictureMode: Boolean,
-        newConfig: Configuration?
-    ) {
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration?) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-        MethodChannel(
-            flutterEngine!!.dartExecutor.binaryMessenger,
-            "floating"
-        ).invokeMethod("onPipChanged", isInPictureInPictureMode)
+        AndroidHelper.isPipMode = isInPictureInPictureMode
     }
 }

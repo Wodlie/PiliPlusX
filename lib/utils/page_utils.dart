@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:PiliPlus/common/widgets/fractionally_sized_box.dart';
 import 'package:PiliPlus/common/widgets/image_viewer/gallery_viewer.dart';
 import 'package:PiliPlus/common/widgets/image_viewer/hero_dialog_route.dart';
 import 'package:PiliPlus/grpc/im.dart';
@@ -17,9 +18,9 @@ import 'package:PiliPlus/pages/common/publish/publish_route.dart';
 import 'package:PiliPlus/pages/contact/view.dart';
 import 'package:PiliPlus/pages/fav_panel/view.dart';
 import 'package:PiliPlus/pages/share/view.dart';
+import 'package:PiliPlus/utils/android/android_helper.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
-import 'package:PiliPlus/utils/extension/extension.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
@@ -30,7 +31,6 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/url_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:collection/collection.dart';
-import 'package:floating/floating.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -187,22 +187,38 @@ abstract final class PageUtils {
     );
   }
 
-  static void enterPip({int? width, int? height, bool isAuto = false}) {
-    if (width != null && height != null) {
-      Rational aspectRatio = Rational(width, height);
-      aspectRatio = aspectRatio.fitsInAndroidRequirements
-          ? aspectRatio
-          : height > width
-          ? const Rational.vertical()
-          : const Rational.landscape();
-      Floating().enable(
-        isAuto
-            ? AutoEnable(aspectRatio: aspectRatio)
-            : EnableManual(aspectRatio: aspectRatio),
-      );
-    } else {
-      Floating().enable(isAuto ? const AutoEnable() : const EnableManual());
+  static bool _fitsInAndroidRequirements(int width, int height) {
+    final aspectRatio = width / height;
+    const min = 1 / 2.39;
+    const max = 2.39;
+    return (min <= aspectRatio) && (aspectRatio <= max);
+  }
+
+  static void enterPip({
+    int? width,
+    int? height,
+    bool autoEnter = false,
+    required bool isLive,
+    required bool isPlaying,
+  }) {
+    if (width != null &&
+        height != null &&
+        !_fitsInAndroidRequirements(width, height)) {
+      if (height > width) {
+        width = 9;
+        height = 16;
+      } else {
+        width = 16;
+        height = 9;
+      }
     }
+    PiliAndroidHelper.enterPip(
+      width ?? 16,
+      height ?? 9,
+      autoEnter: autoEnter,
+      isLive: isLive,
+      isPlaying: isPlaying,
+    );
   }
 
   static Future<void> pushDynDetail(
@@ -479,8 +495,8 @@ abstract final class PageUtils {
   static Future<void>? showVideoBottomSheet(
     BuildContext context, {
     required Widget child,
-    required ValueGetter<bool> isFullScreen,
-    double? padding,
+    ValueGetter<EdgeInsets>? padding,
+    double maxWidth = 500,
   }) {
     if (!context.mounted) {
       return null;
@@ -488,27 +504,17 @@ abstract final class PageUtils {
     return Get.key.currentState!.push(
       PublishRoute(
         pageBuilder: (context, animation, secondaryAnimation) {
-          if (context.isPortrait) {
-            return SafeArea(
-              child: FractionallySizedBox(
-                heightFactor: 0.7,
-                widthFactor: 1.0,
-                alignment: Alignment.bottomCenter,
-                child: isFullScreen() && padding != null
-                    ? Padding(
-                        padding: EdgeInsets.only(bottom: padding),
-                        child: child,
-                      )
-                    : child,
-              ),
-            );
-          }
+          final isPortrait = context.isPortrait;
           return SafeArea(
-            child: FractionallySizedBox(
-              widthFactor: 0.5,
-              heightFactor: 1.0,
-              alignment: Alignment.centerRight,
-              child: child,
+            child: CustomFractionallySizedBox(
+              maxWidth: maxWidth,
+              widthFactor: isPortrait ? 1.0 : 0.5,
+              heightFactor: isPortrait ? 0.7 : 1.0,
+              alignment: isPortrait ? .bottomCenter : .centerRight,
+              child: Padding(
+                padding: isPortrait ? padding?.call() ?? .zero : .zero,
+                child: child,
+              ),
             ),
           );
         },

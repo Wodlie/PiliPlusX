@@ -29,10 +29,10 @@ packages:
     dependency: "direct main"
     description:
       name: app_links
-      sha256: "3462d9defc61565fde4944858b59bec5be2b9d5b05f20aed190adb3ad08a7abc"
+      sha256: a350a5b37579b7227aaf9a59c07114617cd4283852e193f743b2b3d2d7483c18
       url: "https://pub.dev"
     source: hosted
-    version: "7.0.0"
+    version: "7.1.1"
   app_links_linux:
     dependency: transitive
     description:
@@ -92,10 +92,11 @@ packages:
   audio_service:
     dependency: "direct main"
     description:
-      name: audio_service
-      sha256: cb122c7c2639d2a992421ef96b67948ad88c5221da3365ccef1031393a76e044
-      url: "https://pub.dev"
-    source: hosted
+      path: audio_service
+      ref: main
+      resolved-ref: "81cf56d5a8b8e9c8aa5a4c9396aebe094e09622f"
+      url: "https://github.com/bggRGjQaUbCoE/audio_service.git"
+    source: git
     version: "0.18.18"
   audio_service_platform_interface:
     dependency: transitive
@@ -201,30 +202,33 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "8.12.6"
-  cached_network_image:
+  cached_network_image_ce:
     dependency: "direct main"
     description:
-      name: cached_network_image
-      sha256: "7c1183e361e5c8b0a0f21a28401eecdbde252441106a9816400dd4c2b2424916"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.4.1"
-  cached_network_image_platform_interface:
+      path: cached_network_image
+      ref: develop
+      resolved-ref: "37404435c857ed20ab530a758fd7b1f182b20b0e"
+      url: "https://github.com/bggRGjQaUbCoE/flutter_cached_network_image_ce.git"
+    source: git
+    version: "4.6.4"
+  cached_network_image_platform_interface_ce:
     dependency: transitive
     description:
-      name: cached_network_image_platform_interface
-      sha256: "35814b016e37fbdc91f7ae18c8caf49ba5c88501813f73ce8a07027a395e2829"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.1.1"
-  cached_network_image_web:
+      path: cached_network_image_platform_interface
+      ref: HEAD
+      resolved-ref: "26bc080bc4464483ddde4e850f8c53dc98b07ac0"
+      url: "https://github.com/My-Responsitories/flutter_cached_network_image_ce"
+    source: git
+    version: "5.2.0"
+  cached_network_image_web_ce:
     dependency: transitive
     description:
-      name: cached_network_image_web
-      sha256: "980842f4e8e2535b8dbd3d5ca0b1f0ba66bf61d14cc3a17a9b4788a3685ba062"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.3.1"
+      path: cached_network_image_web
+      ref: HEAD
+      resolved-ref: "26bc080bc4464483ddde4e850f8c53dc98b07ac0"
+      url: "https://github.com/My-Responsitories/flutter_cached_network_image_ce"
+    source: git
+    version: "2.1.1"
   canvas_danmaku:
     dependency: "direct main"
     description:
@@ -239,8 +243,8 @@ packages:
     description:
       path: "."
       ref: dev
-      resolved-ref: a20878e9fe5375252c9ea22697d4dc4823544b1a
-      url: "https://github.com/bggRGjQaUbCoE/catcher_2.git"
+      resolved-ref: "9138d8d2aeefc564efd2f35fde3f54ad1b7e89a7"
+      url: "https://github.com/My-Responsitories/catcher_2.git"
     source: git
     version: "2.1.9"
   characters:
@@ -255,11 +259,11 @@ packages:
     dependency: "direct main"
     description:
       path: "packages/chat_bottom_container"
-      ref: main
-      resolved-ref: dba2bf10db4a6f89564d9be63ce17b18f0f7e3e5
+      ref: dev
+      resolved-ref: "227fe87aeedcd53573b17d6a6e5c08834fbc4e45"
       url: "https://github.com/bggRGjQaUbCoE/flutter_chat_packages.git"
     source: git
-    version: "0.3.2"
+    version: "0.5.0"
   checked_yaml:
     dependency: transitive
     description:
@@ -268,6 +272,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.4"
+  cli_config:
+    dependency: transitive
+    description:
+      name: cli_config
+      sha256: ac20a183a07002b700f0c25e61b7ee46b23c309d76ab7b7640a028f18e4d99ec
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.0"
   cli_util:
     dependency: transitive
     description:
@@ -288,10 +300,10 @@ packages:
     dependency: transitive
     description:
       name: code_assets
-      sha256: dad6bf6b9f4f378b0a69edbf42584d336efd1a9ce15deb1ba591cbb1b5ff440f
+      sha256: bf394f466ba9205f1812a0433b392d6af280f155f56651eda7c18cc32ed493b8
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.0"
+    version: "1.2.1"
   collection:
     dependency: "direct main"
     description:
@@ -409,10 +421,10 @@ packages:
     dependency: "direct main"
     description:
       name: dio_http2_adapter
-      sha256: "79f3d69b155b92a786c8734bd11860390b986210d4e07cbb6a5c8c806a7187b2"
+      sha256: c56522c50bb3bab7e3ca77c153b0f03ae672a87d8c32e46be8f2868693ec9f0a
       url: "https://pub.dev"
     source: hosted
-    version: "2.7.0"
+    version: "2.7.1"
   dio_web_adapter:
     dependency: transitive
     description:
@@ -523,7 +535,7 @@ packages:
     description:
       path: "."
       ref: dev
-      resolved-ref: f6c2ab82ce7539dc26e6c16e1455b435fd2ded09
+      resolved-ref: "1b1197493d734c45e178c15fe665c3dcab284cb8"
       url: "https://github.com/bggRGjQaUbCoE/flutter_file_picker.git"
     source: git
     version: "12.0.0-beta.5"
@@ -583,28 +595,11 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.1"
-  floating:
-    dependency: "direct main"
-    description:
-      path: "."
-      ref: version-3
-      resolved-ref: a66ec0b9dabde6b5880a3f4f3425e57842a38e51
-      url: "https://github.com/bggRGjQaUbCoE/floating.git"
-    source: git
-    version: "3.0.0"
   flutter:
     dependency: "direct main"
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_cache_manager:
-    dependency: "direct main"
-    description:
-      name: flutter_cache_manager
-      sha256: "400b6592f16a4409a7f2bb929a9a7e38c72cceb8ffb99ee57bbf2cb2cecf8386"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.4.1"
   flutter_displaymode:
     dependency: "direct main"
     description:
@@ -634,7 +629,7 @@ packages:
     description:
       path: flutter_inappwebview_android
       ref: "v6.1.5"
-      resolved-ref: e0e82ff8492bbc77aecc37e3b4d02c0f3e3de40f
+      resolved-ref: "553d323316cc1ef5d1b73077fe42be864e3e096d"
       url: "https://github.com/bggRGjQaUbCoE/flutter_inappwebview.git"
     source: git
     version: "1.1.3"
@@ -707,30 +702,22 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_mailer:
-    dependency: transitive
-    description:
-      name: flutter_mailer
-      sha256: e1c0b4425e3cc789f8dd914fd08b5da660c3ac46c8ebf3e7db183d39775a8fa6
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.0.2"
   flutter_native_splash:
     dependency: "direct dev"
     description:
       name: flutter_native_splash
-      sha256: "4fb9f4113350d3a80841ce05ebf1976a36de622af7d19aca0ca9a9911c7ff002"
+      sha256: "9db4b80b044e9af17cc4b1272137fc7ace0054d879ef8210a76adc34aaf4cdff"
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.7"
+    version: "2.4.8"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
       name: flutter_plugin_android_lifecycle
-      sha256: "38d1c268de9097ff59cf0e844ac38759fc78f76836d37edad06fa21e182055a0"
+      sha256: "3854fe5e3bff0b113c658f260b90c95dea17c92db0f2addeac2e343dd9969785"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.34"
+    version: "2.0.35"
   flutter_smart_dialog:
     dependency: "direct main"
     description:
@@ -766,10 +753,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_volume_controller
-      sha256: "27b95004d8abd7c6b24a63e555d721ef5f958fbe54551246567b72321494c6c8"
+      sha256: "78297fd48ce6330d39a11a4c1ae219a3256249f99dec34cfbe9323d2cbb5ebb9"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.0"
+    version: "2.0.1"
   flutter_web_plugins:
     dependency: transitive
     description: flutter
@@ -837,10 +824,10 @@ packages:
     dependency: transitive
     description:
       name: hooks
-      sha256: a41af4e8fc687cd6d33de9751eb936c8c0204ebe2bcb6c15ecf707504bf47f31
+      sha256: "9a62a50b50b769a737bc0a8ff381f333529df3ab746b2f6b02e83760231455ba"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.0"
+    version: "2.0.2"
   html:
     dependency: "direct main"
     description:
@@ -925,10 +912,10 @@ packages:
     dependency: transitive
     description:
       name: image_picker_android
-      sha256: d5b3e1774af29c9ab00103afb0d4614070f924d2e0057ac867ec98800114793f
+      sha256: "6f3a1995eafb000333174fae92202622033b0ee7fd917a6cd3730295264df84a"
       url: "https://pub.dev"
     source: hosted
-    version: "0.8.13+17"
+    version: "0.8.13+19"
   image_picker_for_web:
     dependency: transitive
     description:
@@ -1002,7 +989,7 @@ packages:
     source: hosted
     version: "0.6.1"
   jni:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: jni
       sha256: c2230682d5bc2362c1c9e8d3c7f406d9cbba23ab3f2e203a025dd47e0fb2e68f
@@ -1017,6 +1004,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.1"
+  jnigen:
+    dependency: "direct dev"
+    description:
+      path: "pkgs/jnigen"
+      ref: HEAD
+      resolved-ref: "5e2b3d1171cabe90bae969cd098c85182c1751b3"
+      url: "https://github.com/dart-lang/native.git"
+    source: git
+    version: "0.17.0-wip"
   js:
     dependency: transitive
     description:
@@ -1097,14 +1093,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.0"
-  mailer:
-    dependency: transitive
-    description:
-      name: mailer
-      sha256: "7b8691b080809ea1b2fa2f1b0d49c7c089fb328bd23e68aa5818b9cf5f4b420d"
-      url: "https://pub.dev"
-    source: hosted
-    version: "7.1.0"
   matcher:
     dependency: transitive
     description:
@@ -1246,7 +1234,7 @@ packages:
     description:
       path: "."
       ref: master
-      resolved-ref: "2c74f4d534dfd9b8f66382f82b3540f32be9abd9"
+      resolved-ref: "7be186c79adca7d3ff5abc34bc75d171c68c2694"
       url: "https://github.com/bggRGjQaUbCoE/flutter_native_device_orientation.git"
     source: git
     version: "2.0.5"
@@ -1374,10 +1362,10 @@ packages:
     dependency: "direct main"
     description:
       name: permission_handler_apple
-      sha256: f000131e755c54cf4d84a5d8bd6e4149e262cc31c5a8b1d698de1ac85fa41023
+      sha256: e20daf680eef1ca62ffe8c8c526b778cc386d50137c77ac71c8ec9c88c13fb9d
       url: "https://pub.dev"
     source: hosted
-    version: "9.4.7"
+    version: "9.4.9"
   permission_handler_platform_interface:
     dependency: "direct main"
     description:
@@ -1466,14 +1454,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.0"
-  punycoder:
-    dependency: transitive
-    description:
-      name: punycoder
-      sha256: aed79c05986a18782caa9bad649a4a786e840e1baaf6a2e1aa3a25d143d28e6e
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.2"
   qr:
     dependency: transitive
     description:
@@ -1499,7 +1479,7 @@ packages:
     source: hosted
     version: "0.6.0"
   rxdart:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
       name: rxdart
       sha256: "5c3004a4a8dbb94bd4bf5412a4def4acdaa12e12f269737a5751369e12d1a962"
@@ -1510,20 +1490,21 @@ packages:
     dependency: "direct main"
     description:
       name: saver_gallery
-      sha256: "3f983d4be63aff52523c3e097a9b00ce9ab8444f9a982c878cde9d0359f4681d"
+      sha256: dcecd87113ffcb0eb467bb0ef5ed8f6dd894e26ff3dfd5822624281e7d2cb894
       url: "https://pub.dev"
     source: hosted
-    version: "4.1.1"
+    version: "5.1.0"
   screen_brightness_android:
     dependency: "direct overridden"
     description:
-      name: screen_brightness_android
-      sha256: "2df5e0488a22a73271a43d92dbcd80643df6910cf69690faacaf9929ae9ade3b"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.4"
+      path: screen_brightness_android
+      ref: main
+      resolved-ref: "239b9e4595f257184c8afcaf21167f8667ba367d"
+      url: "https://github.com/bggRGjQaUbCoE/screen_brightness.git"
+    source: git
+    version: "2.1.5"
   screen_brightness_ios:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
       name: screen_brightness_ios
       sha256: "0792d8f98852558f831b4b75241c46047b884598b3f4d982b37dc2dd43e2b2e1"
@@ -1578,14 +1559,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.0"
-  sentry:
-    dependency: transitive
-    description:
-      name: sentry
-      sha256: f04095a25ff02b202a914174c73ec309570aa93d61098cb4a0a9e715b4aaa465
-      url: "https://pub.dev"
-    source: hosted
-    version: "9.20.0"
   share_plus:
     dependency: "direct main"
     description:
@@ -1614,10 +1587,10 @@ packages:
     dependency: transitive
     description:
       name: shared_preferences_android
-      sha256: e8d4762b1e2e8578fc4d0fd548cebf24afd24f49719c08974df92834565e2c53
+      sha256: a2c49fc1fed7140cadd892d765bd47edbe4ac0b9c7e7e3c493dcb58126f99cf0
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.23"
+    version: "2.4.25"
   shared_preferences_foundation:
     dependency: transitive
     description:
@@ -1695,46 +1668,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.10.2"
-  sqflite:
-    dependency: transitive
-    description:
-      name: sqflite
-      sha256: "564cfed0746fe53140c23b70b308e045c3b31f17778f2f326ccb7d804ea0250a"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.4.2+1"
-  sqflite_android:
-    dependency: transitive
-    description:
-      name: sqflite_android
-      sha256: "881e28efdcc9950fd8e9bb42713dcf1103e62a2e7168f23c9338d82db13dec40"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.4.2+3"
-  sqflite_common:
-    dependency: transitive
-    description:
-      name: sqflite_common
-      sha256: "1581ffbf7a0e333b380d6a30737d78516b826cb35beb7fb0bf8a3ea0c678b465"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.5.8"
-  sqflite_darwin:
-    dependency: transitive
-    description:
-      name: sqflite_darwin
-      sha256: "279832e5cde3fe99e8571879498c9211f3ca6391b0d818df4e17d9fff5c6ccb3"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.4.2"
-  sqflite_platform_interface:
-    dependency: transitive
-    description:
-      name: sqflite_platform_interface
-      sha256: "8dd4515c7bdcae0a785b0062859336de775e8c65db81ae33dd5445f35be61920"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.4.0"
   stack_trace:
     dependency: transitive
     description:
@@ -1780,10 +1713,10 @@ packages:
     dependency: "direct main"
     description:
       name: synchronized
-      sha256: "63896c27e81b28f8cb4e69ead0d3e8f03f1d1e5fc531a3e579cabed6a2c7c9e5"
+      sha256: "93b153dcb6a26dcddee6ca087dd634b53e38c10b5aa163e8e49501a776456153"
       url: "https://pub.dev"
     source: hosted
-    version: "3.4.0+1"
+    version: "3.4.1"
   term_glyph:
     dependency: transitive
     description:
@@ -1824,14 +1757,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.1"
-  unorm_dart:
-    dependency: transitive
-    description:
-      name: unorm_dart
-      sha256: "0c69186b03ca6addab0774bcc0f4f17b88d4ce78d9d4d8f0619e30a99ead58e7"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.2"
   upower:
     dependency: transitive
     description:
@@ -1852,10 +1777,10 @@ packages:
     dependency: transitive
     description:
       name: url_launcher_android
-      sha256: "17bc677f0b301615530dd1d67e0a9828cafa2d0b6b6eae4cd3679b7eac4a273c"
+      sha256: b413d49b73867ac08dd2f9890efd3cc11f2a0e577618d50843440a1fb3776c32
       url: "https://pub.dev"
     source: hosted
-    version: "6.3.30"
+    version: "6.3.32"
   url_launcher_ios:
     dependency: transitive
     description:
@@ -1932,10 +1857,10 @@ packages:
     dependency: transitive
     description:
       name: vector_graphics_compiler
-      sha256: b9b3f391857781aa96acacef96066f2f49b4cd03cf9fce3ca4d8da2ef5ea129e
+      sha256: "7ee12e6dffe0fc8e755179d6d91b3b34f5924223fc104d85572ef9180d73d172"
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.3"
+    version: "1.2.5"
   vector_math:
     dependency: "direct main"
     description:
@@ -2026,7 +1951,7 @@ packages:
     source: git
     version: "1.2.2"
   win32:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: win32
       sha256: ba6f4bba816c8d7e3c1580e170f3786d216951cc6b94babc3b814c08d2cb2738

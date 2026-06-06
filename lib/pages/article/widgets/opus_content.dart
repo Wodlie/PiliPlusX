@@ -15,11 +15,10 @@ import 'package:PiliPlus/models/dynamics/result.dart';
 import 'package:PiliPlus/pages/dynamics/widgets/vote.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
-import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
@@ -261,7 +260,7 @@ class OpusContent extends StatelessWidget {
                       .toList(),
                 );
               }
-            case 3 when (element.line != null):
+            case 3 when (element.line?.pic != null):
               final height = element.line!.pic!.height?.toDouble();
               return CachedNetworkImage(
                 fit: .contain,
@@ -337,6 +336,8 @@ class OpusContent extends StatelessWidget {
                             Text(ugc.title!),
                             Text(
                               ugc.descSecond!,
+                              maxLines: 2,
+                              overflow: .ellipsis,
                               style: TextStyle(
                                 fontSize: 13,
                                 color: colorScheme.outline,
@@ -379,6 +380,8 @@ class OpusContent extends StatelessWidget {
                             if (common.desc2 != null)
                               Text(
                                 common.desc2!,
+                                maxLines: 2,
+                                overflow: .ellipsis,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: colorScheme.outline,
@@ -416,6 +419,8 @@ class OpusContent extends StatelessWidget {
                             if (live.descSecond != null)
                               Text(
                                 live.descSecond!,
+                                maxLines: 2,
+                                overflow: .ellipsis,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: colorScheme.outline,
@@ -508,6 +513,8 @@ class OpusContent extends StatelessWidget {
                             if (music.label != null)
                               Text(
                                 music.label!,
+                                maxLines: 2,
+                                overflow: .ellipsis,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: colorScheme.outline,
@@ -694,9 +701,9 @@ class OpusContent extends StatelessWidget {
                 ),
               );
           }
-        } catch (e) {
+        } catch (e, s) {
           return SelectableText(
-            '错误的类型 $e',
+            '错误的类型 $e${kDebugMode ? '\n$s' : ''}',
             style: const TextStyle(
               fontWeight: .bold,
               color: Colors.red,

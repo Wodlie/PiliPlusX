@@ -3,12 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:flutter/services.dart'
-    show
-        SystemChrome,
-        MethodChannel,
-        SystemUiOverlay,
-        DeviceOrientation,
-        SystemUiMode;
+    show SystemChrome, MethodChannel, SystemUiOverlay, DeviceOrientation;
 
 bool _isDesktopFullScreen = false;
 
@@ -73,7 +68,7 @@ Future<void> hideStatusBar() async {
     return;
   }
   _showSystemBar = false;
-  return setEnabledSystemUIMode(.immersiveSticky);
+  return SystemChrome.setEnabledSystemUIMode(.immersiveSticky);
 }
 
 Future<void> hideStatusBarKeepNav() async {
@@ -90,7 +85,7 @@ Future<void> showStatusBar() async {
     return;
   }
   _showSystemBar = true;
-  return setEnabledSystemUIMode(
+  return SystemChrome.setEnabledSystemUIMode(
     Platform.isAndroid && DeviceUtils.sdkInt < 29 ? .manual : .edgeToEdge,
     overlays: SystemUiOverlay.values,
   );

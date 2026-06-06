@@ -32,6 +32,8 @@ import 'package:PiliPlus/pages/member_pgc/view.dart';
 import 'package:PiliPlus/pages/member_shop/view.dart';
 import 'package:PiliPlus/pages/member_video_web/archive/view.dart';
 import 'package:PiliPlus/pages/member_video_web/season_series/view.dart';
+import 'package:PiliPlus/utils/android/android_helper.dart';
+import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
@@ -41,7 +43,6 @@ import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
@@ -702,18 +703,15 @@ class _MemberPageState extends State<MemberPage> {
   Future<void> _createShortcutAndroid() async {
     try {
       SmartDialog.showLoading();
-      final file = (await DefaultCacheManager().getSingleFile(
+      final file = (await CacheManager.manager.getSingleFile(
         '${_userController.userAvatar!}@200w_200h.webp'.http2https,
       ));
       SmartDialog.dismiss();
-      await Utils.channel.invokeMethod(
-        'createShortcut',
-        <String, String>{
-          'id': _userController.mid.toString(),
-          'uri': 'bilibili://space/${_userController.mid}',
-          'label': _userController.username!,
-          'icon': file.path,
-        },
+      PiliAndroidHelper.createShortcut(
+        _userController.mid.toString(),
+        'bilibili://space/${_userController.mid}',
+        _userController.username!,
+        file.path,
       );
     } catch (e) {
       SmartDialog.showToast(e.toString());
