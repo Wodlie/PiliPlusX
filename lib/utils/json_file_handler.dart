@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:PiliPlus/services/logger.dart';
 import 'package:catcher_2/catcher_2.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 class JsonFileHandler extends ReportHandler {
   final bool enableDeviceParameters;
