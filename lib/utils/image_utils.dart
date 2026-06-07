@@ -49,6 +49,9 @@ abstract final class ImageUtils {
     return _defaultAndroidRelativePath;
   }
 
+  static String get _albumPath =>
+      Platform.isAndroid ? _androidRelativePath : Constants.appName;
+
   // 图片分享
   static Future<void> onShareImg(String url) async {
     try {
