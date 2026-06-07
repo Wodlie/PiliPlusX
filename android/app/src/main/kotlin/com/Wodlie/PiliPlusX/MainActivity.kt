@@ -1,11 +1,28 @@
 package com.Wodlie.PiliPlusX
 
+import android.app.PendingIntent
+import android.app.PictureInPictureParams
+import android.app.SearchManager
+import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
 import android.content.res.Configuration
+import android.graphics.BitmapFactory
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
+import android.provider.Settings
 import android.view.WindowManager.LayoutParams
+import androidx.core.net.toUri
+import com.example.piliplus.AndroidHelper
+import com.ryanheise.audioservice.AudioService
 import com.ryanheise.audioservice.AudioServiceActivity
+import io.flutter.SystemChrome
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : AudioServiceActivity() {
     private lateinit var methodChannel: MethodChannel
@@ -216,5 +233,27 @@ class MainActivity : AudioServiceActivity() {
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration?) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         AndroidHelper.isPipMode = isInPictureInPictureMode
+    }
+
+    private fun maxScreenSize(): HashMap<String, Int>? {
+        val wm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
+        }
+        val bounds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            wm.currentWindowMetrics.bounds
+        } else {
+            @Suppress("DEPRECATION")
+            val display = wm.defaultDisplay
+            val outMetrics = android.util.DisplayMetrics()
+            display.getRealMetrics(outMetrics)
+            android.graphics.Rect(0, 0, outMetrics.widthPixels, outMetrics.heightPixels)
+        }
+        return hashMapOf(
+            "maxWidth" to bounds.width(),
+            "maxHeight" to bounds.height()
+        )
     }
 }
