@@ -324,14 +324,14 @@ abstract final class ImageUtils {
       result = await SaverGallery.saveImage(
         bytes,
         fileName: fileName,
-        androidRelativePath: _androidScreenshotPath,
+        albumPath: _androidScreenshotPath,
         skipIfExists: false,
       );
       SmartDialog.dismiss();
-      if (result.isSuccess) {
+      if (result?.isSuccess == true) {
         SmartDialog.showToast(' 已保存 ');
       } else {
-        SmartDialog.showToast('保存失败，${result.errorMessage}');
+        SmartDialog.showToast('保存失败，${result?.errorMessage}');
       }
     } else {
       SmartDialog.dismiss();
