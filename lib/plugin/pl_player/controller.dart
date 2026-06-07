@@ -1491,9 +1491,9 @@ class PlPlayerController with BlockConfigMixin {
         if (PlatformUtils.isMobile) {
           if (!removeSafeArea) {
             if (!Pref.hideStatusBar) {
-              showStatusBar();
+              showSystemBar();
             } else {
-              hideStatusBarKeepNav();
+              hideSystemBar();
             }
           }
           if (orientation == null && mode == .none) {

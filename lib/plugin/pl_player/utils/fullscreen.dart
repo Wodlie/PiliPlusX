@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:flutter/services.dart'
-    show SystemChrome, MethodChannel, SystemUiOverlay, DeviceOrientation, SystemUiMode;
+    show SystemChrome, MethodChannel, SystemUiOverlay, DeviceOrientation;
 
 bool _isDesktopFullScreen = false;
 
@@ -63,26 +63,19 @@ Future<void>? fullMode() {
 }
 
 bool _showSystemBar = true;
-Future<void> hideStatusBar() async {
+bool get showSystemBar_ => _showSystemBar;
+Future<void>? hideSystemBar() {
   if (!_showSystemBar) {
-    return;
+    return null;
   }
   _showSystemBar = false;
   return SystemChrome.setEnabledSystemUIMode(.immersiveSticky);
 }
 
-Future<void> hideStatusBarKeepNav() async {
-  _showSystemBar = false;
-  await SystemChrome.setEnabledSystemUIMode(
-    SystemUiMode.manual,
-    overlays: [SystemUiOverlay.bottom],
-  );
-}
-
 //退出全屏显示
-Future<void> showStatusBar() async {
+Future<void>? showSystemBar() {
   if (_showSystemBar) {
-    return;
+    return null;
   }
   _showSystemBar = true;
   return SystemChrome.setEnabledSystemUIMode(
@@ -90,35 +83,3 @@ Future<void> showStatusBar() async {
     overlays: SystemUiOverlay.values,
   );
 }
-
-/// Alias for upstream compatibility
-bool get showSystemBar_ => _showSystemBar;
-Future<void>? hideSystemBar() => hideStatusBar();
-Future<void>? showSystemBar() => showStatusBar();
-
-// TODO: remove
-// https://github.com/flutter/flutter/issues/186723
-Future<void> setEnabledSystemUIMode(
-  SystemUiMode mode, {
-  List<SystemUiOverlay>? overlays,
-}) {
-  if (!Platform.isAndroid) {
-    return SystemChrome.setEnabledSystemUIMode(mode, overlays: overlays);
-  }
-  if (mode != SystemUiMode.manual) {
-    return const MethodChannel('PiliPlus').invokeMethod(
-      'SystemChrome.setEnabledSystemUIMode',
-      {'arguments': mode.toString()},
-    );
-  } else {
-    assert(mode == SystemUiMode.manual && overlays != null);
-    return const MethodChannel('PiliPlus').invokeMethod(
-      'SystemChrome.setEnabledSystemUIOverlays',
-      {'arguments': _stringify(overlays!)},
-    );
-  }
-}
-
-List<String> _stringify(List<dynamic> list) => <String>[
-  for (final dynamic item in list) item.toString(),
-];
