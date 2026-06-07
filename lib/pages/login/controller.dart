@@ -13,14 +13,12 @@ import 'package:PiliPlus/pages/login/geetest/geetest_webview_dialog.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
-import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
-import 'package:gt3_flutter_plugin/gt3_flutter_plugin.dart';
 
 class LoginPageController extends GetxController
     with GetSingleTickerProviderStateMixin {
@@ -34,8 +32,6 @@ class LoginPageController extends GetxController
       LoadingState<({String authCode, String url})>.loading().obs;
 
   late final TabController tabController;
-
-  late final Gt3FlutterPlugin captcha = Gt3FlutterPlugin();
 
   late final CaptchaDataModel captchaData = CaptchaDataModel();
   late final RxInt qrCodeLeftTime = 180.obs;
@@ -126,115 +122,33 @@ class LoginPageController extends GetxController
     String geeChallenge,
     VoidCallback onSuccess,
   ) {
-    void updateCaptchaData(Map json) {
-      captchaData
-        ..validate = json['geetest_validate']
-        ..seccode = json['geetest_seccode']
-        ..geetest = GeetestData(
-          challenge: json['geetest_challenge'],
-          gt: geeGt,
-        );
-      SmartDialog.showToast('验证成功');
-      onSuccess();
-    }
+    GeetestWebviewDialog.geetest(geeGt, geeChallenge).then((res) {
+      if (res is Map) {
+        captchaData
+          ..validate = res['geetest_validate']
+          ..seccode = res['geetest_seccode']
+          ..geetest = GeetestData(
+            challenge: res['geetest_challenge'],
+            gt: geeGt,
+          );
+        SmartDialog.showToast('验证成功');
+        onSuccess();
+      }
+    });
+  }
 
-    if (PlatformUtils.isDesktop) {
-      showDialog<Map<String, dynamic>>(
-        context: Get.context!,
-        builder: (context) => GeetestWebviewDialog(geeGt, geeChallenge),
-      ).then((res) {
-        if (res != null) {
-          updateCaptchaData(res);
-        }
-      });
-    } else {
-      final registerData = Gt3RegisterData(
-        challenge: geeChallenge,
-        gt: geeGt,
-        success: true,
-      );
-
-      captcha
-        ..addEventHandler(
-          onShow: (Map<String, dynamic> message) {},
-          onClose: (Map<String, dynamic> message) {
-            SmartDialog.showToast('关闭验证');
-          },
-          onResult: (Map<String, dynamic> message) {
-            if (kDebugMode) debugPrint("Captcha result: $message");
-            final String code = message["code"];
-            if (code == "1") {
-              // 发送 message["result"] 中的数据向 B 端的业务服务接口进行查询
-              updateCaptchaData(message['result']);
-            } else {
-              // 终端用户完成验证失败，自动重试 If the verification fails, it will be automatically retried.
-              if (kDebugMode) debugPrint("Captcha result code : $code");
-            }
-          },
-          onError: (Map<String, dynamic> message) {
-            SmartDialog.showToast("Captcha onError: $message");
-            String code = message["code"];
-            // 处理验证中返回的错误 Handling errors returned in verification
-            if (Platform.isAndroid) {
-              // Android 平台
-              if (code == "-2") {
-                // Dart 调用异常 Call exception
-              } else if (code == "-1") {
-                // Gt3RegisterData 参数不合法 Parameter is invalid
-              } else if (code == "201") {
-                // 网络无法访问 Network inaccessible
-              } else if (code == "202") {
-                // Json 解析错误 Analysis error
-              } else if (code == "204") {
-                // WebView 加载超时，请检查是否混淆极验 SDK   Load timed out
-              } else if (code == "204_1") {
-                // WebView 加载前端页面错误，请查看日志 Error loading front-end page, please check the log
-              } else if (code == "204_2") {
-                // WebView 加载 SSLError
-              } else if (code == "206") {
-                // gettype 接口错误或返回为 null   API error or return null
-              } else if (code == "207") {
-                // getphp 接口错误或返回为 null    API error or return null
-              } else if (code == "208") {
-                // ajax 接口错误或返回为 null      API error or return null
-              } else {
-                // 更多错误码参考开发文档  More error codes refer to the development document
-                // https://docs.geetest.com/sensebot/apirefer/errorcode/android
-              }
-            }
-
-            if (Platform.isIOS) {
-              // iOS 平台
-              if (code == "-1009") {
-                // 网络无法访问 Network inaccessible
-              } else if (code == "-1004") {
-                // 无法查找到 HOST  Unable to find HOST
-              } else if (code == "-1002") {
-                // 非法的 URL  Illegal URL
-              } else if (code == "-1001") {
-                // 网络超时 Network timeout
-              } else if (code == "-999") {
-                // 请求被意外中断, 一般由用户进行取消操作导致 The interrupted request was usually caused by the user cancelling the operation
-              } else if (code == "-21") {
-                // 使用了重复的 challenge   Duplicate challenges are used
-                // 检查获取 challenge 是否进行了缓存  Check if the fetch challenge is cached
-              } else if (code == "-20") {
-                // 尝试过多, 重新引导用户触发验证即可 Try too many times, lead the user to request verification again
-              } else if (code == "-10") {
-                // 预判断时被封禁, 不会再进行图形验证 Banned during pre-judgment, and no more image captcha verification
-              } else if (code == "-2") {
-                // Dart 调用异常 Call exception
-              } else if (code == "-1") {
-                // Gt3RegisterData 参数不合法  Parameter is invalid
-              } else {
-                // 更多错误码参考开发文档 More error codes refer to the development document
-                // https://docs.geetest.com/sensebot/apirefer/errorcode/ios
-              }
-            }
-          },
-        )
-        ..startCaptcha(registerData);
-    }
+  static String validateCookie(String cookie) {
+    return cookie
+        .split(';')
+        .where((e) {
+          try {
+            Cookie.fromSetCookieValue(e.trim());
+          } catch (_) {
+            return false;
+          }
+          return true;
+        })
+        .join(';');
   }
 
   // cookie登录
@@ -248,7 +162,7 @@ class LoginPageController extends GetxController
         "/x/member/web/account",
         options: Options(
           headers: {
-            "cookie": cookieTextController.text,
+            "cookie": validateCookie(cookieTextController.text),
           },
           extra: {'account': AnonymousAccount()},
         ),
@@ -716,12 +630,6 @@ class LoginPageController extends GetxController
         Accounts.accountMode[i] = account;
       }
     }
-    // Activate the new account's BUVID in the same session so the
-    // lifecycle transition (anonymous → logged-in) is reflected
-    // immediately.  Non-blocking: if activation fails, activated
-    // stays false and will be retried on next Accounts.refresh or
-    // Accounts.set (see buvidActive fix).
-    Request.buvidActive(account);
     if (Accounts.main.isLogin) {
       SmartDialog.showToast('登录成功');
     } else {
@@ -735,17 +643,12 @@ class LoginPageController extends GetxController
       SmartDialog.showToast('请先登录');
       return Get.toNamed('/loginPage');
     }
+    final colorScheme = ColorScheme.of(context);
     final selectAccount = List.of(Accounts.accountMode);
-    final useDisplayName = Pref.accountDisplayName;
     final options = {
       AnonymousAccount(): '0',
       ...Accounts.account.toMap().map(
-        (k, v) => MapEntry(
-          v,
-          useDisplayName
-              ? Pref.getAccountDisplayName(v.mid)
-              : k as String,
-        ),
+        (k, v) => MapEntry(v, k as String),
       ),
     };
     bool quickSelect = selectAccount.every((e) => e == selectAccount.first);
@@ -762,11 +665,8 @@ class LoginPageController extends GetxController
                 children: [
                   const TextSpan(text: '账号切换'),
                   TextSpan(
-                    text: '\nmid 为0时使用匿名',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: ColorScheme.of(context).outline,
-                    ),
+                    text: '\nmid为0时使用匿名',
+                    style: TextStyle(fontSize: 14, color: colorScheme.outline),
                   ),
                 ],
               ),
@@ -780,14 +680,13 @@ class LoginPageController extends GetxController
                 quickSelect = !quickSelect;
                 (context as Element).markNeedsBuild();
               },
-              child: const Text('切换'),
+              child: Text(quickSelect ? '详细' : '快速'),
             ),
           ],
         ),
         titlePadding: const .only(left: 22, top: 16, right: 22, bottom: 3),
         contentPadding: const .symmetric(vertical: 5),
-        actionsPadding: const .only(left: 8, right: 16, bottom: 10),
-        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actionsPadding: const .only(left: 16, right: 16, bottom: 10),
         content: SingleChildScrollView(
           child: AnimatedSize(
             curve: Curves.easeIn,
@@ -842,38 +741,23 @@ class LoginPageController extends GetxController
         ),
         actions: [
           TextButton(
+            onPressed: Get.back,
+            child: Text('取消', style: TextStyle(color: colorScheme.outline)),
+          ),
+          TextButton(
             onPressed: () {
               Get.back();
-              Get.toNamed('/loginPage');
+              for (final type in AccountType.values) {
+                final index = type.index;
+                final account = quickSelect
+                    ? selectAccount.first
+                    : selectAccount[index];
+                if (account != Accounts.accountMode[index]) {
+                  Accounts.set(type, account);
+                }
+              }
             },
-            child: const Text('登录新账号'),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextButton(
-                onPressed: Get.back,
-                child: Text(
-                  '取消',
-                  style: TextStyle(color: ColorScheme.of(context).outline),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Get.back();
-                  for (final type in AccountType.values) {
-                    final index = type.index;
-                    final account = quickSelect
-                        ? selectAccount.first
-                        : selectAccount[index];
-                    if (account != Accounts.accountMode[index]) {
-                      Accounts.set(type, account);
-                    }
-                  }
-                },
-                child: const Text('确定'),
-              ),
-            ],
+            child: const Text('确定'),
           ),
         ],
       ),

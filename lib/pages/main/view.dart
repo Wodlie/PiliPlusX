@@ -13,6 +13,7 @@ import 'package:PiliPlus/pages/home/view.dart';
 import 'package:PiliPlus/pages/main/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
+import 'package:PiliPlus/utils/android/android_helper.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
@@ -21,11 +22,11 @@ import 'package:PiliPlus/utils/mobile_observer.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
-import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:tray_manager/tray_manager.dart';
+import 'package:win32/win32.dart' as kernel32;
 import 'package:window_manager/window_manager.dart';
 
 class MainApp extends StatefulWidget {
@@ -168,7 +169,11 @@ class _MainAppState extends PopScopeState<MainApp>
     await GStorage.close();
     await trayManager.destroy();
     if (Platform.isWindows) {
-      const MethodChannel('window_control').invokeMethod('closeWindow');
+      // flutter_inappwebview
+      // 6.2.0-beta.2+ https://github.com/pichillilorenzo/flutter_inappwebview/issues/2482
+      // 6.1.5 https://github.com/pichillilorenzo/flutter_inappwebview/issues/2512#issuecomment-3031039587
+      final hProcess = kernel32.GetCurrentProcess();
+      kernel32.TerminateProcess(hProcess, 0);
     } else {
       exit(0);
     }
@@ -249,9 +254,10 @@ class _MainAppState extends PopScopeState<MainApp>
     await trayManager.setContextMenu(trayMenu);
   }
 
-  void _onBack() {
+  @pragma('vm:prefer-inline')
+  static void _onBack() {
     if (Platform.isAndroid) {
-      Utils.channel.invokeMethod('back');
+      PiliAndroidHelper.back();
     }
   }
 

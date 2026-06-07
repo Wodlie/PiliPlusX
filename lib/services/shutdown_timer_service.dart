@@ -147,7 +147,7 @@ class ShutdownTimerService {
     }
     PageUtils.showVideoBottomSheet(
       context,
-      isFullScreen: () => isFullScreen,
+      maxWidth: 512,
       child: StatefulBuilder(
         builder: (_, setState) {
           final ThemeData theme = Theme.of(context);

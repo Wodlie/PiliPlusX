@@ -17,11 +17,11 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 # update when release
-version: 2.0.7+1
+version: 2.0.8+1
 
 environment:
   sdk: ">=3.12.0"
-  flutter: 3.44.0
+  flutter: 3.44.1
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -35,38 +35,35 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  app_links: ^7.0.0
+  app_links: ^7.1.1
   archive: ^4.0.0
-  audio_service: ^0.18.15
-  audio_session: ^0.2.2
-  # universal_platform: ^1.1.0
-  auto_orientation:
+  audio_service:
     git:
-      url: https://github.com/bggRGjQaUbCoE/auto_orientation.git
-      ref: master
-  # animations: ^2.0.11
-  # 弹幕
-  # ns_danmaku:
-  #   git:
-  #     url: https://github.com/bggRGjQaUbCoE/flutter_ns_danmaku.git
-  #     ref: master
+      url: https://github.com/bggRGjQaUbCoE/audio_service.git
+      path: audio_service
+      ref: main
+  audio_session: ^0.2.2
   battery_plus: ^7.0.0
   brotli: ^0.6.0
-  cached_network_image: ^3.4.1
+  cached_network_image_ce:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/flutter_cached_network_image_ce.git
+      path: cached_network_image
+      ref: develop
   canvas_danmaku:
     git:
-      url: https://github.com/cnctem/canvas_danmaku.git
+      url: https://github.com/bggRGjQaUbCoE/canvas_danmaku.git
       ref: main
   catcher_2:
     git:
-      url: https://github.com/bggRGjQaUbCoE/catcher_2.git
+      url: https://github.com/My-Responsitories/catcher_2.git
       ref: dev
   characters: ^1.4.1
   chat_bottom_container:
     git:
       url: https://github.com/bggRGjQaUbCoE/flutter_chat_packages.git
-      ref: main
       path: packages/chat_bottom_container
+      ref: dev
   collection: ^1.19.1
   connectivity_plus: ^7.1.1
   cookie_jar: ^4.0.8
@@ -77,7 +74,7 @@ dependencies:
       ref: main
   device_info_plus: ^13.1.0
   dio: ^5.9.1
-  dio_http2_adapter: ^2.5.3
+  dio_http2_adapter: ^2.7.1
   dlna_dart: ^0.1.0
   dynamic_color: ^1.8.1
   easy_debounce: ^2.0.3
@@ -94,11 +91,6 @@ dependencies:
   fixnum: ^1.1.1
   fl_chart: ^1.0.0
   flex_seed_scheme: ^4.0.1
-  floating:
-    git:
-      url: https://github.com/bggRGjQaUbCoE/floating.git
-      ref: version-3
-  flutter_cache_manager: ^3.4.1
   flutter_displaymode: ^0.7.0
   flutter_html: ^3.0.0-beta.2
   flutter_inappwebview: ^6.1.5
@@ -120,13 +112,13 @@ dependencies:
     git:
       url: https://github.com/bggRGjQaUbCoE/getx.git
       ref: version_4.7.2
-  gt3_flutter_plugin: ^0.1.0
   hive_ce: ^2.19.3
   html: ^0.15.4
   http2: ^2.3.1
   image_cropper: ^12.0.0
   image_picker: ^1.1.2
   intl: ^0.20.2
+  jni: ^1.0.0
   json_annotation: ^4.11.0
   live_photo_maker: ^0.0.6
   logger: ^2.5.0
@@ -138,11 +130,7 @@ dependencies:
   material_new_shapes: ^1.0.0
   media_kit: 1.1.11
   media_kit_libs_video: 1.0.5
-  media_kit_video:
-    git:
-      url: https://github.com/bggRGjQaUbCoE/media-kit.git
-      path: media_kit_video
-      ref: version_1.2.5
+  media_kit_video: 1.2.5
   mime: ^2.0.0
   native_device_orientation:
     git:
@@ -157,7 +145,7 @@ dependencies:
   pretty_qr_code: ^3.3.0
   protobuf: ^6.0.0
   re_highlight: ^0.0.3
-  saver_gallery: ^4.1.0
+  saver_gallery: ^5.0.2
   screen_brightness_platform_interface: ^2.1.0
   screen_retriever: ^0.2.0
   share_plus: ^13.1.0
@@ -178,6 +166,7 @@ dependencies:
     git:
       url: https://github.com/wgh136/webdav_client.git
       ref: main
+  win32: ^6.3.0
   window_manager:
     git:
       url: https://github.com/bggRGjQaUbCoE/window_manager.git
@@ -226,12 +215,11 @@ dependency_overrides:
       url: https://github.com/My-Responsitories/media-kit.git
       path: media_kit_video
       ref: version_1.2.5
-  mime: ^2.0.0
-  path: ^1.9.1
-  rxdart: ^0.28.0
-  screen_brightness_android: ^2.1.4
-  screen_brightness_ios: ^2.1.3
-  screen_brightness_platform_interface: ^2.1.1
+  screen_brightness_android:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/screen_brightness.git
+      path: screen_brightness_android
+      ref: main
 
 dev_dependencies:
   flutter_test:
@@ -240,6 +228,10 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_lints: ^6.0.0
   flutter_native_splash: ^2.4.6
+  jnigen:
+    git:
+      url: https://github.com/dart-lang/native.git
+      path: pkgs/jnigen
 
 flutter_launcher_icons:
   android: true
@@ -276,7 +268,6 @@ flutter:
     - path: assets/images/logo/desktop/
       platforms: [linux, macos]
     - path: assets/images/live/
-    - path: assets/images/video/
     - path: assets/images/paycoins/
     - path: assets/shaders/
 

@@ -48,6 +48,12 @@ android {
         }
     }
 
+    buildFeatures {
+        if (project.hasProperty("dev")) {
+            resValues = true
+        }
+    }
+
     buildTypes {
         all {
             signingConfig = config ?: signingConfigs["debug"]

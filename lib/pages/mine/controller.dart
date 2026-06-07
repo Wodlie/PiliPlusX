@@ -11,7 +11,6 @@ import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
-import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -115,19 +114,21 @@ class MineController extends CommonDataController<FavFolderData, FavFolderData>
           ..face.value = response.face!
           ..isLogin.value = true;
       } else {
-        LoginUtils.onLogoutMain();
+        _onLogoutMain();
         return;
       }
     } else {
       final errMsg = res.toString();
       SmartDialog.showToast(errMsg);
       if (errMsg == '账号未登录') {
-        LoginUtils.onLogoutMain();
+        _onLogoutMain();
         return;
       }
     }
     queryUserStatOwner();
   }
+
+  void _onLogoutMain() => Accounts.deleteAll({Accounts.main});
 
   Future<void> queryUserStatOwner() async {
     final res = await UserHttp.userStatOwner();
@@ -193,9 +194,10 @@ class MineController extends CommonDataController<FavFolderData, FavFolderData>
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    '搜索、观看视频/直播不携带身份信息（包含大会员）\n'
+                    '搜索不携带身份信息\n'
                     '不产生查询或播放记录\n'
                     '点赞等其它操作不受影响\n'
+                    '播放进度信息跟随视频取流\n'
                     '(前往隐私设置了解详情)',
                     style: theme.textTheme.bodySmall,
                   ),
