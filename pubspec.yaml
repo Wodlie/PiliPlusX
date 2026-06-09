@@ -21,7 +21,7 @@ version: 2.0.8+1
 
 environment:
   sdk: ">=3.12.0"
-  flutter: 3.44.0
+  flutter: 3.44.1
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -123,7 +123,6 @@ dependencies:
     git:
       url: https://github.com/bggRGjQaUbCoE/getx.git
       ref: version_4.7.2
-  gt3_flutter_plugin: ^0.1.0
   hive_ce: ^2.19.3
   html: ^0.15.4
   http2: ^2.3.1
@@ -191,6 +190,11 @@ dependency_overrides:
       url: https://github.com/bggRGjQaUbCoE/flutter_inappwebview.git
       path: flutter_inappwebview_android
       ref: v6.1.5
+  flutter_inappwebview_windows:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/flutter_inappwebview.git
+      path: flutter_inappwebview_windows
+      ref: v6.1.5
   flutter_volume_controller: ^2.0.0
   media_kit:
     git:
@@ -204,9 +208,9 @@ dependency_overrides:
       ref: version_1.2.5
   media_kit_libs_ios_video:
     git:
-      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      url: https://github.com/My-Responsitories/media-kit.git
       path: libs/ios/media_kit_libs_ios_video
-      ref: dev
+      ref: version_1.2.5
   media_kit_libs_video:
     git:
       url: https://github.com/My-Responsitories/media-kit.git

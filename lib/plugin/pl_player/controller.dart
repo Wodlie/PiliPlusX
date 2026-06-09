@@ -17,6 +17,8 @@ import 'package:PiliPlus/models/user/danmaku_rule.dart';
 import 'package:PiliPlus/models/video/play/url.dart';
 import 'package:PiliPlus/models_new/video/video_shot/data.dart';
 import 'package:PiliPlus/pages/danmaku/danmaku_model.dart';
+import 'package:PiliPlus/pages/setting/models/play_settings.dart'
+    show kMaxVolume;
 import 'package:PiliPlus/pages/sponsor_block/block_mixin.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_status.dart';
@@ -778,11 +780,14 @@ class PlPlayerController with BlockConfigMixin {
       'video-sync': Pref.videoSync,
     };
     if (Platform.isAndroid) {
-      opt['volume-max'] = '100';
       opt['ao'] = Pref.audioOutput;
-    } else if (PlatformUtils.isDesktop) {
+    }
+    if (PlatformUtils.isMobile) {
+      opt['volume'] = Pref.playerVolume.toString();
+    } else {
       opt['volume'] = (volume.value * 100).toString();
     }
+    opt['volume-max'] = kMaxVolume.toString();
     final autosync = Pref.autosync;
     if (autosync != '0') {
       opt['autosync'] = autosync;
@@ -1256,13 +1261,13 @@ class PlPlayerController with BlockConfigMixin {
   Timer? volumeTimer;
   bool volumeInterceptEventStream = false;
 
-  static final double maxVolume = PlatformUtils.isDesktop ? 2.0 : 1.0;
+  final double maxVolume = PlatformUtils.isDesktop ? Pref.maxVolume : 1.0;
   Future<void> setVolume(double volume, {bool showIndicator = true}) async {
     if (this.volume.value != volume) {
       this.volume.value = volume;
       try {
         if (PlatformUtils.isDesktop) {
-          _videoPlayerController!.setVolume(volume * 100);
+          await _videoPlayerController!.setVolume(volume * 100);
         } else {
           FlutterVolumeController.updateShowSystemUI(false);
           await FlutterVolumeController.setVolume(volume);
@@ -1736,50 +1741,52 @@ class PlPlayerController with BlockConfigMixin {
     videoShot = await VideoHttp.videoshot(bvid: bvid, cid: cid!);
   }
 
-  void takeScreenshot() {
+  Future<void> takeScreenshot() async {
     SmartDialog.showToast('截图中');
-    videoPlayerController?.screenshot(format: .png).then((value) {
-      if (value != null) {
-        SmartDialog.showToast('点击弹窗保存截图');
-        showDialog(
-          context: Get.context!,
-          builder: (context) => GestureDetector(
-            onTap: () {
-              Get.back();
+    final image = await videoPlayerController?.screenshot();
+    if (image != null) {
+      SmartDialog.showToast('点击弹窗保存截图');
+      showDialog(
+        context: Get.context!,
+        builder: (context) => GestureDetector(
+          onTap: () async {
+            final bytes = await image.toByteData(format: .png);
+            if (bytes != null) {
               ImageUtils.saveByteImg(
-                bytes: value,
+                bytes: bytes.buffer.asUint8List(),
                 fileName: 'screenshot_${ImageUtils.time}',
               );
-            },
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: min(DeviceUtils.size.width / 3, 350),
+            }
+            Get.back();
+          },
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: min(MediaQuery.widthOf(context) / 3, 350),
+                ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      width: 5,
+                      color: ThemeUtils.theme.colorScheme.surface,
+                    ),
                   ),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        width: 5,
-                        color: ThemeUtils.theme.colorScheme.surface,
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(5),
-                      child: Image.memory(value),
-                    ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(5),
+                    child: RawImage(image: image),
                   ),
                 ),
               ),
             ),
           ),
-        );
-      } else {
-        SmartDialog.showToast('截图失败');
-      }
-    });
+        ),
+      ).whenComplete(image.dispose);
+    } else {
+      SmartDialog.showToast('截图失败');
+    }
   }
 
   void onPopInvokedWithResult(bool didPop, Object? result) {
