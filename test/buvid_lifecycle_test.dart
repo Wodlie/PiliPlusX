@@ -8,6 +8,7 @@ import 'package:PiliPlus/http/login.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -205,6 +206,31 @@ void main() {
       expect(secondSnapshot.profile.buvid, isNot(firstSnapshot.profile.buvid));
       expect(Accounts.get(AccountType.recommend).buvid, 'ACCOUNT_SWITCH_B');
       expect(Accounts.snapshot(AccountType.recommend).profile.buvid, 'ACCOUNT_SWITCH_B');
+    });
+
+    test('login account persists supplied login-session identity without remapping device profile', () async {
+      final identity = LoginHttp.createLoginSessionIdentity(
+        scope: 'test-login-promote',
+      );
+      final account = LoginAccount(
+        _createCookieJar(mid: 1301),
+        'ACCESS_KEY_1301',
+        'REFRESH_1301',
+        null,
+        identity.buvid,
+        identity.profile.deviceProfile,
+      );
+
+      await account.onChange();
+
+      final persisted = Accounts.account.get(account.mid.toString());
+      expect(persisted, isNotNull);
+      expect(persisted!.buvid, identity.buvid);
+      expect(persisted.deviceProfile, identity.profile.deviceProfile);
+      expect(
+        persisted.deviceProfile,
+        isNot(AppDeviceProfiles.defaultDeviceProfileForOwner('account:${account.mid}')),
+      );
     });
   });
 

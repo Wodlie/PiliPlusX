@@ -177,7 +177,6 @@ abstract final class SettingBoxKey {
       removeSafeArea = 'removeSafeArea',
       accountDisplayName = 'accountDisplayName',
       angleDegrees = 'angleDegrees';
-      angleDegrees = 'angleDegrees';
 
   static const String minimizeOnExit = 'minimizeOnExit',
       windowSize = 'windowSize',

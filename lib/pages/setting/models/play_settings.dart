@@ -9,7 +9,6 @@ import 'package:PiliPlus/pages/setting/pages/fullscreen_sc_size.dart';
 import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
 import 'package:PiliPlus/pages/setting/widgets/shortcut_keys_dialog.dart';
 import 'package:PiliPlus/pages/setting/widgets/slider_dialog.dart';
-import 'package:PiliPlus/pages/setting/widgets/slider_dialog.dart';
 import 'package:PiliPlus/plugin/pl_player/models/bottom_progress_behavior.dart';
 import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
@@ -96,6 +95,13 @@ List<SettingsModel> get playSettings => [
     leading: Icon(MdiIcons.panVertical),
     setKey: SettingBoxKey.enableSlideFS,
     defaultVal: true,
+  ),
+  const SwitchModel(
+    title: '双击快退/快进',
+    subtitle: '左侧双击快退/右侧双击快进，关闭则双击均为暂停/播放',
+    leading: Icon(Icons.touch_app_outlined),
+    setKey: SettingBoxKey.enableQuickDouble,
+    defaultVal: false,
   ),
   if (PlatformUtils.isMobile)
     NormalModel(

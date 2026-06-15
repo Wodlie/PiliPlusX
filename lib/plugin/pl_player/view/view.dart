@@ -1045,13 +1045,6 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     colorScheme = ColorScheme.of(context);
   }
 
-<<<<<<< HEAD
-  void _onPanStart(ScaleStartDetails details) {
-    _gestureType = null;
-    _initialFocalPoint = details.localFocalPoint;
-  }
-
-=======
   @override
   void didUpdateWidget(covariant PLVideoPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -1065,7 +1058,6 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     _initialFocalPoint = details.localFocalPoint;
   }
 
->>>>>>> upstream/main
   void _onScaleUpdate(double scale) {
     showRestoreScaleBtn.value = scale != 1.0;
   }
