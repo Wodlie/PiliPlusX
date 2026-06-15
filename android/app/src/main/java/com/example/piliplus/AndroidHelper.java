@@ -29,6 +29,7 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
+import com.Wodlie.PiliPlusX.R;
 import com.github.dart_lang.jni_flutter.JniFlutterPlugin;
 
 import java.util.ArrayList;
