@@ -29,9 +29,7 @@ bool FlutterWindow::OnCreate() {
   }
   RegisterPlugins(flutter_controller_->engine());
 
-  // flutter_inappwebview
-  // 6.2.0-beta.2+ https://github.com/pichillilorenzo/flutter_inappwebview/issues/2482
-  // 6.1.5 https://github.com/pichillilorenzo/flutter_inappwebview/issues/2512#issuecomment-3031039587
+  // Desktop window-control channel used by Flutter plugins and app-side actions.
   const HWND app_window = flutter_controller_->view()->GetNativeWindow();
   flutter::MethodChannel<> channel(
       flutter_controller_->engine()->messenger(), "window_control",
