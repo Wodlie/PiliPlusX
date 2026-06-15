@@ -12,6 +12,7 @@ import 'package:PiliPlus/models/login/model.dart';
 import 'package:PiliPlus/pages/login/geetest/geetest_webview_dialog.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
@@ -48,6 +49,17 @@ class LoginPageController extends GetxController
   Timer? smsSendCooldownTimer;
 
   bool _isReq = false;
+  RequestIdentityAdapter? _loginSessionIdentity;
+
+  RequestIdentityAdapter _ensureLoginSessionIdentity() {
+    return _loginSessionIdentity ??= LoginHttp.createLoginSessionIdentity(
+      scope: 'login-session:${DateTime.now().microsecondsSinceEpoch}',
+    );
+  }
+
+  void _clearLoginSessionIdentity() {
+    _loginSessionIdentity = null;
+  }
 
   @override
   void onInit() {
@@ -63,6 +75,7 @@ class LoginPageController extends GetxController
       ..dispose();
     qrCodeTimer?.cancel();
     smsSendCooldownTimer?.cancel();
+    _clearLoginSessionIdentity();
     telTextController.dispose();
     usernameTextController.dispose();
     passwordTextController.dispose();
@@ -72,7 +85,8 @@ class LoginPageController extends GetxController
   }
 
   Future<void> refreshQRCode() async {
-    final res = await LoginHttp.getHDcode();
+    final identity = _ensureLoginSessionIdentity();
+    final res = await LoginHttp.getHDcode(identity: identity);
     if (res case Success(:final response)) {
       qrCodeTimer?.cancel();
       codeInfo.value = res;
@@ -82,13 +96,17 @@ class LoginPageController extends GetxController
           t.cancel();
           statusQRCode.value = '二维码已过期，请刷新';
           qrCodeLeftTime.value = 0;
+          _clearLoginSessionIdentity();
           return;
         }
         qrCodeLeftTime.value = left;
         if (_isReq || tabController.index != 2) return;
 
         _isReq = true;
-        LoginHttp.codePoll(response.authCode).then((value) async {
+        LoginHttp.codePoll(
+          response.authCode,
+          identity: identity,
+        ).then((value) async {
           _isReq = false;
           if (value['status']) {
             t.cancel();
@@ -96,16 +114,20 @@ class LoginPageController extends GetxController
             await setAccount(
               value['data'],
               value['data']['cookie_info']['cookies'],
+              identity: identity,
             );
             Get.back();
           } else if (value['code'] == 86038) {
             t.cancel();
             qrCodeLeftTime.value = 0;
+            _clearLoginSessionIdentity();
           } else {
             statusQRCode.value = value['msg'];
           }
         });
       });
+    } else {
+      _clearLoginSessionIdentity();
     }
   }
 
@@ -212,11 +234,13 @@ class LoginPageController extends GetxController
     }
     String salt = webKeyRes['data']['hash'];
     String key = webKeyRes['data']['key'];
+    final identity = _ensureLoginSessionIdentity();
     final res = await LoginHttp.loginByPwd(
       username: username,
       password: password,
       key: key,
       salt: salt,
+      identity: identity,
       geeValidate: captchaData.validate,
       geeSeccode: captchaData.seccode,
       geeChallenge: captchaData.geetest?.challenge,
@@ -225,6 +249,7 @@ class LoginPageController extends GetxController
     if (res['status']) {
       final data = res['data'];
       if (data == null) {
+        _clearLoginSessionIdentity();
         SmartDialog.showToast('登录异常，接口未返回数据：${res["msg"]}');
         return;
       }
@@ -239,6 +264,7 @@ class LoginPageController extends GetxController
         );
         //{"code":0,"message":"0","ttl":1,"data":{"account_info":{"hide_tel":"111*****111","hide_mail":"aaa*****aaaa.aaa","bind_mail":true,"bind_tel":true,"tel_verify":true,"mail_verify":true,"unneeded_check":false,"bind_safe_question":false,"mid":1111111},"member_info":{"nickname":"xxxxxxx","face":"https://i0.hdslb.com/bfs/face/xxxxxxx.jpg","realname_status":false},"sns_info":{"bind_google":false,"bind_fb":false,"bind_apple":false,"bind_qq":true,"bind_weibo":true,"bind_wechat":false},"account_safe":{"score":80}}}
         if (!safeCenterRes['status']) {
+          _clearLoginSessionIdentity();
           SmartDialog.showToast(
             "获取安全验证信息失败，请尝试其它登录方式\n"
             "(${safeCenterRes['code']}) ${safeCenterRes['msg']}",
@@ -250,6 +276,7 @@ class LoginPageController extends GetxController
           "hindMail": safeCenterRes['data']['account_info']!["hide_mail"],
         };
         if (!safeCenterRes['data']['account_info']!['tel_verify']) {
+          _clearLoginSessionIdentity();
           SmartDialog.showToast("当前账号未支持手机号验证，请尝试其它登录方式");
           return;
         }
@@ -353,7 +380,10 @@ class LoginPageController extends GetxController
                 },
               ),
               TextButton(
-                onPressed: Get.back,
+                onPressed: () {
+                  _clearLoginSessionIdentity();
+                  Get.back();
+                },
                 child: Text(
                   "取消",
                   style: TextStyle(color: ThemeUtils.theme.colorScheme.outline),
@@ -376,6 +406,7 @@ class LoginPageController extends GetxController
                         refererUrl: url,
                       );
                   if (!safeCenterSmsVerifyRes['status']) {
+                    _clearLoginSessionIdentity();
                     SmartDialog.showToast(
                       "验证短信验证码失败，请尝试其它登录方式\n"
                       "(${safeCenterSmsVerifyRes['code']}) ${safeCenterSmsVerifyRes['msg']}",
@@ -386,8 +417,10 @@ class LoginPageController extends GetxController
                   final oauth2AccessTokenRes =
                       await LoginHttp.oauth2AccessToken(
                         code: safeCenterSmsVerifyRes['data']['code'],
+                        identity: identity,
                       );
                   if (!oauth2AccessTokenRes['status']) {
+                    _clearLoginSessionIdentity();
                     SmartDialog.showToast(
                       "登录失败，请尝试其它登录方式\n"
                       "(${oauth2AccessTokenRes['code']}) ${oauth2AccessTokenRes['msg']}",
@@ -397,6 +430,7 @@ class LoginPageController extends GetxController
                   final data = oauth2AccessTokenRes['data'];
                   if (data['token_info'] == null ||
                       data['cookie_info'] == null) {
+                    _clearLoginSessionIdentity();
                     SmartDialog.showToast(
                       '登录异常，接口未返回身份信息，可能是因为账号风控，请尝试其它登录方式。\n${oauth2AccessTokenRes["msg"]}，\n $data',
                     );
@@ -406,6 +440,7 @@ class LoginPageController extends GetxController
                   await setAccount(
                     data['token_info'],
                     data['cookie_info']['cookies'],
+                    identity: identity,
                   );
                   Get
                     ..back()
@@ -420,13 +455,18 @@ class LoginPageController extends GetxController
         return;
       }
       if (data['token_info'] == null || data['cookie_info'] == null) {
+        _clearLoginSessionIdentity();
         SmartDialog.showToast(
           '登录异常，接口未返回身份信息，可能是因为账号风控，请尝试其它登录方式。\n${res["msg"]}，\n $data',
         );
         return;
       }
       SmartDialog.showToast('正在保存身份信息');
-      await setAccount(data['token_info'], data['cookie_info']['cookies']);
+      await setAccount(
+        data['token_info'],
+        data['cookie_info']['cookies'],
+        identity: identity,
+      );
       Get.back();
     } else {
       // handle login result
@@ -445,6 +485,7 @@ class LoginPageController extends GetxController
           break;
         default:
           SmartDialog.showToast(res['msg']);
+          _clearLoginSessionIdentity();
           // login failed
           break;
       }
@@ -468,6 +509,7 @@ class LoginPageController extends GetxController
     }
     if (DateTime.now().millisecondsSinceEpoch - smsSendTimestamp >
         1000 * 60 * 5) {
+      _clearLoginSessionIdentity();
       SmartDialog.showToast('验证码已过期，请重新获取');
       return;
     }
@@ -477,20 +519,27 @@ class LoginPageController extends GetxController
       return;
     }
     String key = webKeyRes['data']['key'];
+    final identity = _ensureLoginSessionIdentity();
     final res = await LoginHttp.loginBySms(
       tel: telTextController.text,
       code: smsCodeTextController.text,
       captchaKey: captchaKey,
       cid: selectedCountryCodeId.countryId,
       key: key,
+      identity: identity,
     );
     if (res['status']) {
       SmartDialog.showToast('登录成功');
       final data = res['data'];
-      await setAccount(data['token_info'], data['cookie_info']['cookies']);
+      await setAccount(
+        data['token_info'],
+        data['cookie_info']['cookies'],
+        identity: identity,
+      );
       Get.back();
     } else {
       SmartDialog.showToast(res['msg']);
+      _clearLoginSessionIdentity();
     }
   }
 
@@ -545,6 +594,7 @@ class LoginPageController extends GetxController
     final res = await LoginHttp.sendSmsCode(
       tel: telTextController.text,
       cid: selectedCountryCodeId.countryId,
+      identity: _ensureLoginSessionIdentity(),
       // deviceTouristId: guestId,
       geeValidate: captchaData.validate,
       geeSeccode: captchaData.seccode,
@@ -608,6 +658,7 @@ class LoginPageController extends GetxController
           break;
         default:
           SmartDialog.showToast(res['msg']);
+          _clearLoginSessionIdentity();
           break;
       }
     }
@@ -619,11 +670,19 @@ class LoginPageController extends GetxController
         captchaData.token?.isNotEmpty == true;
   }
 
-  Future<void> setAccount(Map tokenInfo, List cookieInfo) async {
+  Future<void> setAccount(
+    Map tokenInfo,
+    List cookieInfo, {
+    RequestIdentityAdapter? identity,
+  }) async {
+    final loginIdentity = identity ?? _loginSessionIdentity;
     final account = LoginAccount(
       BiliCookieJar.fromList(cookieInfo),
       tokenInfo['access_token'],
       tokenInfo['refresh_token'],
+      null,
+      loginIdentity?.buvid,
+      loginIdentity?.profile.deviceProfile,
     );
     await Future.wait([account.onChange(), AnonymousAccount().delete()]);
     for (int i = 0; i < AccountType.values.length; i++) {
@@ -637,6 +696,7 @@ class LoginPageController extends GetxController
     // stays false and will be retried on next Accounts.refresh or
     // Accounts.set (see buvidActive fix).
     Request.buvidActive(account);
+    _clearLoginSessionIdentity();
     if (Accounts.main.isLogin) {
       SmartDialog.showToast('登录成功');
     } else {

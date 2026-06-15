@@ -8,6 +8,8 @@ import 'package:PiliPlus/models/login/model.dart';
 import 'package:PiliPlus/models_new/login_devices/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/identity_core/identity_generators.dart';
+import 'package:PiliPlus/utils/accounts/identity_core/identity_owner.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
 import 'package:PiliPlus/utils/utils.dart';
@@ -16,24 +18,39 @@ import 'package:dio/dio.dart';
 import 'package:encrypt/encrypt.dart';
 
 abstract final class LoginHttp {
+  static RequestIdentityAdapter createLoginSessionIdentity({
+    String scope = 'login-session',
+  }) {
+    final buvid = IdentityCoreGenerators.generateBuvidForOwner(
+      IdentityOwnerKey.workflow(scope),
+    );
+    return RequestIdentityAdapter.fromBuvid(
+      buvid: buvid,
+      userAgent: Constants.userAgent,
+      scope: scope,
+    );
+  }
+
   static Map<String, String> appHeaders({
     required String buvid,
     required String appKey,
     required String userAgent,
     String? contentType,
     Account? account,
+    RequestIdentityAdapter? identity,
   }) {
-    final identity = account == null
-        ? RequestIdentityAdapter.fromBuvid(
-            buvid: buvid,
-            userAgent: userAgent,
-            scope: 'login-http:$appKey',
-          )
-        : RequestIdentityAdapter.fromAccount(
-            account: account,
-            userAgent: userAgent,
-          );
-    return identity.appHeaders(
+    final resolvedIdentity = identity ??
+        (account == null
+            ? RequestIdentityAdapter.fromBuvid(
+                buvid: buvid,
+                userAgent: userAgent,
+                scope: 'login-http:$appKey',
+              )
+            : RequestIdentityAdapter.fromAccount(
+                account: account,
+                userAgent: userAgent,
+              ));
+    return resolvedIdentity.appHeaders(
       appKey: appKey,
       userAgent: userAgent,
       contentType: contentType,
@@ -42,11 +59,7 @@ abstract final class LoginHttp {
 
   @pragma('vm:notify-debugger-on-exception')
   static Future<LoadingState<({String authCode, String url})>>
-  getHDcode() async {
-    final identity = RequestIdentityAdapter.fromAccount(
-      account: AnonymousAccount(),
-      userAgent: Constants.userAgent,
-    );
+  getHDcode({required RequestIdentityAdapter identity}) async {
     final params = {
       'local_id': identity.localId,
       'platform': 'android',
@@ -67,11 +80,10 @@ abstract final class LoginHttp {
     }
   }
 
-  static Future codePoll(String authCode) async {
-    final identity = RequestIdentityAdapter.fromAccount(
-      account: AnonymousAccount(),
-      userAgent: Constants.userAgent,
-    );
+  static Future codePoll(
+    String authCode, {
+    required RequestIdentityAdapter identity,
+  }) async {
     final params = {
       'auth_code': authCode,
       'local_id': identity.localId,
@@ -112,17 +124,14 @@ abstract final class LoginHttp {
   static Future sendSmsCode({
     required Object cid,
     required String tel,
+    required RequestIdentityAdapter identity,
     // String? deviceTouristId,
     String? geeChallenge,
     String? geeSeccode,
     String? geeValidate,
     String? recaptchaToken,
   }) async {
-    final guestBuvid = AnonymousAccount().buvid;
-    final identity = RequestIdentityAdapter.fromAccount(
-      account: AnonymousAccount(),
-      userAgent: Constants.userAgent,
-    );
+    final guestBuvid = identity.buvid;
     int timestamp = DateTime.now().millisecondsSinceEpoch;
     final data = {
       'build': '2001100',
@@ -160,7 +169,7 @@ abstract final class LoginHttp {
           appKey: 'android_hd',
           userAgent: Constants.userAgent,
           contentType: Headers.formUrlEncodedContentType,
-          account: AnonymousAccount(),
+          identity: identity,
         ),
       ),
     );
@@ -222,16 +231,13 @@ abstract final class LoginHttp {
     required String password,
     required String key,
     required String salt,
+    required RequestIdentityAdapter identity,
     String? geeChallenge,
     String? geeSeccode,
     String? geeValidate,
     String? recaptchaToken,
   }) async {
-    final guestBuvid = AnonymousAccount().buvid;
-    final identity = RequestIdentityAdapter.fromAccount(
-      account: AnonymousAccount(),
-      userAgent: Constants.userAgent,
-    );
+    final guestBuvid = identity.buvid;
     dynamic publicKey = RSAKeyParser().parse(key);
     String passwordEncrypted = Encrypter(
       RSA(publicKey: publicKey),
@@ -276,7 +282,7 @@ abstract final class LoginHttp {
           appKey: 'android_hd',
           userAgent: Constants.userAgent,
           contentType: Headers.formUrlEncodedContentType,
-          account: AnonymousAccount(),
+          identity: identity,
         ),
         //responseType: ResponseType.plain
       ),
@@ -305,12 +311,9 @@ abstract final class LoginHttp {
     required String code,
     required Object cid,
     required String key,
+    required RequestIdentityAdapter identity,
   }) async {
-    final guestBuvid = AnonymousAccount().buvid;
-    final identity = RequestIdentityAdapter.fromAccount(
-      account: AnonymousAccount(),
-      userAgent: Constants.userAgent,
-    );
+    final guestBuvid = identity.buvid;
     dynamic publicKey = RSAKeyParser().parse(key);
     Map<String, Object> data = {
       ...identity.loginPayloadFields,
@@ -349,7 +352,7 @@ abstract final class LoginHttp {
           appKey: 'android_hd',
           userAgent: Constants.userAgent,
           contentType: Headers.formUrlEncodedContentType,
-          account: AnonymousAccount(),
+          identity: identity,
         ),
         //responseType: ResponseType.plain
       ),
@@ -493,12 +496,9 @@ abstract final class LoginHttp {
   // 风控验证手机：用oauthCode换回accessToken
   static Future oauth2AccessToken({
     required String code,
+    required RequestIdentityAdapter identity,
   }) async {
-    final guestBuvid = AnonymousAccount().buvid;
-    final identity = RequestIdentityAdapter.fromAccount(
-      account: AnonymousAccount(),
-      userAgent: Constants.userAgent,
-    );
+    final guestBuvid = identity.buvid;
     final Map<String, String> data = {
       'build': '2001100',
       'buvid': guestBuvid,
@@ -524,7 +524,7 @@ abstract final class LoginHttp {
           appKey: 'android_hd',
           userAgent: Constants.userAgent,
           contentType: Headers.formUrlEncodedContentType,
-          account: AnonymousAccount(),
+          identity: identity,
         ),
       ),
     );
