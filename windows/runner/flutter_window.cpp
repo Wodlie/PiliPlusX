@@ -39,29 +39,30 @@ bool FlutterWindow::OnCreate() {
   channel.SetMethodCallHandler(
       [app_window](const flutter::MethodCall<>& call,
          std::unique_ptr<flutter::MethodResult<>> result) {
-          HWND hwnd = app_window;
           if (call.method_name().compare("closeWindow") == 0) {
-            if (hwnd != NULL) {
-              ::PostMessage(hwnd, WM_CLOSE, 0, 0);
+            if (app_window != NULL) {
+              ::PostMessage(app_window, WM_CLOSE, 0, 0);
             }
             result->Success();
           } else if (call.method_name().compare("restoreWindow") == 0) {
-            if (hwnd != NULL) {
+            if (app_window != NULL) {
               // Restore the window if it's minimized
-              if (::IsIconic(hwnd)) {
-                ::ShowWindow(hwnd, SW_RESTORE);
+              if (::IsIconic(app_window)) {
+                ::ShowWindow(app_window, SW_RESTORE);
               } else {
-                ::ShowWindow(hwnd, SW_NORMAL);
+                ::ShowWindow(app_window, SW_NORMAL);
               }
-              ::SetForegroundWindow(hwnd);
+              ::SetForegroundWindow(app_window);
               // Bring window to top and activate it
-              ::SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-              ::SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+              ::SetWindowPos(app_window, HWND_TOPMOST, 0, 0, 0, 0,
+                             SWP_NOMOVE | SWP_NOSIZE);
+              ::SetWindowPos(app_window, HWND_NOTOPMOST, 0, 0, 0, 0,
+                             SWP_NOMOVE | SWP_NOSIZE);
             }
             result->Success();
           } else if (call.method_name().compare("minimizeWindow") == 0) {
-            if (hwnd != NULL) {
-              ::ShowWindow(hwnd, SW_MINIMIZE);
+            if (app_window != NULL) {
+              ::ShowWindow(app_window, SW_MINIMIZE);
             }
             result->Success();
           } else {
