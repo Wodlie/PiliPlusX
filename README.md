@@ -23,17 +23,28 @@
 
 <br/>
 
+## 声明
+
+此项目（PiliPlusX）是个人学习 Flutter 而开发，仅用于交流学习 Flutter 技术，请于下载后24小时内删除，严禁在互联网上传播软件安装包！
+
+注意：本项目包含 vibe coding / AI 辅助生成或修改的代码！
+
+本项目主要面向个人自用；如需参考或二次开发，请自行审查相关实现的稳定性、安全性与适用性。
+
+上游项目声明
+>此项目（PiliPlus）是个人为了兴趣而开发，仅用于学习和测试，请于下载后24小时内删除。
+所用API皆从官方网站收集, 不提供任何破解内容。
 ## 空降指挥部
 
 - PiliPlus [特色功能](#功能)
 - PiliPlusX 独家功能见 [TODO List](https://github.com/Wodlie/PiliPlusX/blob/dev/docs/TODO.md) 完成项
 - [下载最新版本](https://github.com/Wodlie/PiliPlusX/releases/latest)
+- [构建与开发信息](#构建与开发信息)
 - [快捷键功能说明](docs/快捷键说明.md)
 - [安卓字体修复说明](#PiliPlusX字体修复说明)
 - [鸿蒙版详情](https://github.com/Wodlie/PiliPlusX/tree/ohos#当前分支ohos说明)
 - [港澳台代理](#港澳台代理)
 - [致谢](#致谢)
-- [请提出你的宝贵建议!](https://github.com/Wodlie/PiliPlusX/issues)
 
 ## 适配平台
 
@@ -43,11 +54,20 @@
 - [x] Pad & Fold
 - [x] macOS
 - [x] Windows
-- [x] Linux (需自行编译体验, [详情](https://github.com/Wodlie/PiliPlusX/issues/7#issuecomment-3650079829))
+- [x] Linux (CI 构建 x64：tar.gz / deb / rpm / AppImage；也可自行编译体验)
+
+## 构建与开发信息
+
+- 当前版本：`2.0.8+1`（以 `pubspec.yaml` 为准）
+- 当前主开发分支：`dev`；`main` 用于稳定版本/上游同步
+- Flutter：`3.44.1`（`.fvmrc` 与 `pubspec.yaml` 同步）；Dart SDK：`>=3.12.0`
+- CI 会构建 Android、iOS、macOS、Windows x64、Linux x64；Release 产物由 GitHub Actions 生成草稿预发布
+- 版本与发布元数据由 `lib/scripts/build.ps1` 生成，Flutter SDK 补丁由 `lib/scripts/patch.ps1` 按平台应用
+- 测试集中在账号/身份/BUVID、gRPC identity、AI 视频总结等模块：`flutter test`
 
 ## refactor
 
-- [ ] gRPC [wip]
+- [x] gRPC
 - [x] 用户界面
 - [x] 其他
 
@@ -69,6 +89,8 @@
 - [x] 发布动态/评论支持`富文本编辑`/`表情显示`/`@用户`
 - [x] 修改消息设置
 - [x] 修改聊天设置
+- [x] 设置项搜索
+- [x] 登录设备/登录记录查看
 - [x] 展示折叠消息
 - [x] 查看用户图文
 - [x] 动态话题
@@ -102,7 +124,10 @@
 - [x] 调节全屏弹幕大小
 - [x] 收藏夹/稍后再看多选删除
 - [x] 搜索用户动态
+- [x] 硬币/经验日志查看
+- [x] 私信屏蔽、链接设置、二级会话
 - [x] 直播弹幕
+- [x] 直播表情、弹幕屏蔽管理
 - [x] 修改头像/用户名/签名/性别/生日
 - [x] 创建/编辑/删除收藏夹
 - [x] 评论楼中楼查看对话
@@ -215,6 +240,7 @@
 - [x] 设置相关
   - [x] 画质、音质、解码方式预设      
   - [x] 图片质量设定
+  - [x] 设置搜索
   - [x] 主题模式：亮色/暗色/跟随系统
   - [x] 震动反馈(可选)
   - [x] 高帧率
@@ -226,7 +252,7 @@
 
 ## 下载
 
-可以通过右侧release进行下载或拉取代码到本地进行编译
+可以通过右侧 Release 下载 Android、iOS、macOS、Windows x64、Linux x64 构建产物，或拉取代码到本地自行编译。
 
 <br/>
 
@@ -258,21 +284,20 @@
 
 ## PiliPlusX版本说明
 
-- 主线版本：基于上游[`main`分支](https://github.com/bggRGjQaUbCoE/PiliPlus/tree/main)更新最及时，打包 Android、iOS、Windows、macOS 版本
-- oddo版本：基于上游[`flutter_3.35.7`分支](https://github.com/bggRGjQaUbCoE/PiliPlus/tree/flutter_3.35.7)，面向color OS等字体错误的定制安卓，仅打包 Android 版本
-- ohos版本：基于上游[qinshah/PiliPlus](https://github.com/qinshah/PiliPlus)
+- 主线版本：基于上游[`main`分支](https://github.com/bggRGjQaUbCoE/PiliPlus/tree/main)更新最及时，打包 Android、iOS、Windows、macOS、Linux 版本
 
 ## PiliPlusX字体修复说明
 
-- 字体问题由`flutter3.38.x`要求显式定义字体，而color OS及个别定制安卓的字体机制采用映射到系统Roboto的方案，导致flutter找不到定义的字体从而产生字体问题，表现为显示为一种错误的衬线字体
+- 字体问题最早由 Flutter 3.38 起对字体定义的变化暴露出来；当前主线已随 Flutter `3.44.1` 继续维护相关适配。ColorOS 及个别定制安卓的字体机制采用映射到系统 Roboto 的方案，可能导致 Flutter 找不到定义的字体从而显示为错误的衬线字体
 - 主线版本 在关闭设置项“使用系统字体”后将字体指定为使用鸿蒙黑体，基本解决问题
-- 如果你是ColorOS等字体错误的定制安卓，且希望显示手机自定义主题字体，推荐使用oddo版本，通过使用`flutter3.35.7`彻底解决字体问题。下载最新oddo版 [v1.1.1.6-oddo](https://github.com/Wodlie/PiliPlusX/releases/tag/v1.1.1.6)
 - 由于ColorOS在逐步推送修复完Flutter字体回退问题的OTA更新，oddo分支将不再维护，主线版本内嵌字体也将在后续版本改为支持用户导入字体
 
 
 ## 声明
 
 此项目（PiliPlusX）是个人学习 Flutter 而开发，仅用于交流学习 Flutter 技术，请于下载后24小时内删除，严禁在互联网上传播软件安装包！
+
+注意：本项目包含 vibe coding / AI 辅助生成或修改的代码，主要面向个人自用与学习交流；如需参考或二次开发，请自行审查相关实现的稳定性、安全性与适用性。
 
 上游项目声明
 >此项目（PiliPlus）是个人为了兴趣而开发，仅用于学习和测试，请于下载后24小时内删除。
