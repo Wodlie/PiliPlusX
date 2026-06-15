@@ -32,16 +32,18 @@ bool FlutterWindow::OnCreate() {
   // flutter_inappwebview
   // 6.2.0-beta.2+ https://github.com/pichillilorenzo/flutter_inappwebview/issues/2482
   // 6.1.5 https://github.com/pichillilorenzo/flutter_inappwebview/issues/2512#issuecomment-3031039587
+  const HWND app_window = flutter_controller_->view()->GetNativeWindow();
   flutter::MethodChannel<> channel(
       flutter_controller_->engine()->messenger(), "window_control",
       &flutter::StandardMethodCodec::GetInstance());
   channel.SetMethodCallHandler(
-      [](const flutter::MethodCall<>& call,
+      [app_window](const flutter::MethodCall<>& call,
          std::unique_ptr<flutter::MethodResult<>> result) {
-          HWND hwnd = ::GetActiveWindow();
+          HWND hwnd = app_window;
           if (call.method_name().compare("closeWindow") == 0) {
-            HANDLE hProcess = GetCurrentProcess();
-            TerminateProcess(hProcess, 0);
+            if (hwnd != NULL) {
+              ::PostMessage(hwnd, WM_CLOSE, 0, 0);
+            }
             result->Success();
           } else if (call.method_name().compare("restoreWindow") == 0) {
             if (hwnd != NULL) {
