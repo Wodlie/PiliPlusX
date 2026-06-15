@@ -39,13 +39,15 @@ bool FlutterWindow::OnCreate() {
   channel.SetMethodCallHandler(
       [app_window](const flutter::MethodCall<>& call,
          std::unique_ptr<flutter::MethodResult<>> result) {
+          const bool has_window =
+              app_window != nullptr && ::IsWindow(app_window);
           if (call.method_name().compare("closeWindow") == 0) {
-            if (app_window != NULL) {
+            if (has_window) {
               ::PostMessage(app_window, WM_CLOSE, 0, 0);
             }
             result->Success();
           } else if (call.method_name().compare("restoreWindow") == 0) {
-            if (app_window != NULL) {
+            if (has_window) {
               // Restore the window if it's minimized
               if (::IsIconic(app_window)) {
                 ::ShowWindow(app_window, SW_RESTORE);
@@ -61,7 +63,7 @@ bool FlutterWindow::OnCreate() {
             }
             result->Success();
           } else if (call.method_name().compare("minimizeWindow") == 0) {
-            if (app_window != NULL) {
+            if (has_window) {
               ::ShowWindow(app_window, SW_MINIMIZE);
             }
             result->Success();
