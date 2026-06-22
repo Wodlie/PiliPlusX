@@ -4,6 +4,9 @@
 
 #include "flutter/generated_plugin_registrant.h"
 
+#include <flutter/method_channel.h>
+#include <flutter/standard_method_codec.h>
+
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
@@ -25,6 +28,47 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+
+  // Desktop window-control channel used by Flutter plugins and app-side actions.
+  const HWND app_window = flutter_controller_->view()->GetNativeWindow();
+  flutter::MethodChannel<> channel(
+      flutter_controller_->engine()->messenger(), "window_control",
+      &flutter::StandardMethodCodec::GetInstance());
+  channel.SetMethodCallHandler(
+      [app_window](const flutter::MethodCall<>& call,
+         std::unique_ptr<flutter::MethodResult<>> result) {
+          const bool has_window =
+              app_window != nullptr && ::IsWindow(app_window);
+          if (call.method_name().compare("closeWindow") == 0) {
+            if (has_window) {
+              ::PostMessage(app_window, WM_CLOSE, 0, 0);
+            }
+            result->Success();
+          } else if (call.method_name().compare("restoreWindow") == 0) {
+            if (has_window) {
+              // Restore the window if it's minimized
+              if (::IsIconic(app_window)) {
+                ::ShowWindow(app_window, SW_RESTORE);
+              } else {
+                ::ShowWindow(app_window, SW_NORMAL);
+              }
+              ::SetForegroundWindow(app_window);
+              // Bring window to top and activate it
+              ::SetWindowPos(app_window, HWND_TOPMOST, 0, 0, 0, 0,
+                             SWP_NOMOVE | SWP_NOSIZE);
+              ::SetWindowPos(app_window, HWND_NOTOPMOST, 0, 0, 0, 0,
+                             SWP_NOMOVE | SWP_NOSIZE);
+            }
+            result->Success();
+          } else if (call.method_name().compare("minimizeWindow") == 0) {
+            if (has_window) {
+              ::ShowWindow(app_window, SW_MINIMIZE);
+            }
+            result->Success();
+          } else {
+            result->NotImplemented();
+          }
+      });
 
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
