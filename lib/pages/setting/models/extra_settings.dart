@@ -418,6 +418,48 @@ List<SettingsModel> get extraSettings => [
     setKey: SettingBoxKey.enableCommAntifraud,
     defaultVal: false,
   ),
+  NormalModel(
+    title: '默认申诉理由',
+    leading: const Icon(Icons.edit_note),
+    getSubtitle: () => Pref.defaultAppealReason.isEmpty
+        ? '点击设置'
+        : Pref.defaultAppealReason,
+    onTap: (context, setState) {
+      String editValue = Pref.defaultAppealReason;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('默认申诉理由'),
+          content: TextFormField(
+            autofocus: true,
+            initialValue: editValue,
+            textInputAction: TextInputAction.newline,
+            minLines: 1,
+            maxLines: 4,
+            onChanged: (value) => editValue = value,
+          ),
+          actions: [
+            TextButton(
+              onPressed: Get.back,
+              child: Text(
+                '取消',
+                style: TextStyle(color: ColorScheme.of(context).outline),
+              ),
+            ),
+            TextButton(
+              child: const Text('保存'),
+              onPressed: () {
+                Get.back();
+                Pref.defaultAppealReason = editValue;
+                setState();
+                SmartDialog.showToast('已保存');
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  ),
   if (Platform.isAndroid)
     const SwitchModel(
       title: '使用「哔哩发评反诈」检查评论',

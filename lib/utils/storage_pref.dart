@@ -312,6 +312,11 @@ abstract final class Pref {
   static String get banWordForReply =>
       _setting.get(SettingBoxKey.banWordForReply, defaultValue: '');
 
+  static String get defaultAppealReason =>
+      _setting.get(SettingBoxKey.defaultAppealReason, defaultValue: '');
+  static set defaultAppealReason(String value) =>
+      _setting.put(SettingBoxKey.defaultAppealReason, value);
+
   static int get minLevelForReply =>
       _setting.get(SettingBoxKey.minLevelForReply, defaultValue: 0);
 
