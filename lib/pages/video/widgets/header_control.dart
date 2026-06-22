@@ -450,10 +450,7 @@ class HeaderControlState extends State<HeaderControl>
                     dense: true,
                     onTap: () {
                       Get.back();
-                      videoDetailCtr.queryVideoUrl(
-                        defaultST: videoDetailCtr.playedTime,
-                        fromReset: true,
-                      );
+                      videoDetailCtr.queryVideoUrl(fromReset: true);
                     },
                     leading: const Icon(Icons.refresh_outlined, size: 20),
                     title: const Text('重载视频', style: titleStyle),
@@ -519,10 +516,7 @@ class HeaderControlState extends State<HeaderControl>
                         VideoUtils.cdnService = result;
                         setting.put(SettingBoxKey.CDNService, result.name);
                         SmartDialog.showToast('已设置为 ${result.desc}，正在重载视频');
-                        videoDetailCtr.queryVideoUrl(
-                          defaultST: videoDetailCtr.playedTime,
-                          fromReset: true,
-                        );
+                        videoDetailCtr.queryVideoUrl(fromReset: true);
                       }
                     },
                   ),
@@ -843,12 +837,6 @@ class HeaderControlState extends State<HeaderControl>
                       subtitle: Text(state.track.video.toString()),
                       onTap: () =>
                           Utils.copyText('VideoTrack\n${state.track.audio}'),
-                    ),
-                    ListTile(
-                      dense: true,
-                      title: const Text("pitch"),
-                      subtitle: Text(state.pitch.toString()),
-                      onTap: () => Utils.copyText('pitch\n${state.pitch}'),
                     ),
                     ListTile(
                       dense: true,
@@ -2004,9 +1992,7 @@ class HeaderControlState extends State<HeaderControl>
                         FontAwesomeIcons.thumbsUp,
                         color: Colors.white,
                       ),
-                      selectIcon: const Icon(
-                        FontAwesomeIcons.solidThumbsUp,
-                      ),
+                      selectIcon: const Icon(FontAwesomeIcons.solidThumbsUp),
                       selectStatus: introController.hasLike.value,
                       semanticsLabel: '点赞',
                       animation: introController.tripleAnimation,

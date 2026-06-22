@@ -150,7 +150,11 @@ abstract final class LiveHttp {
       }),
     );
     if (res.data['code'] == 0) {
-      return Success(RoomPlayInfoData.fromJson(res.data['data']));
+      try {
+        return Success(RoomPlayInfoData.fromJson(res.data['data']));
+      } catch (e) {
+        return Error(e.toString());
+      }
     } else {
       return Error(res.data['message']);
     }
@@ -211,7 +215,11 @@ abstract final class LiveHttp {
       }),
     );
     if (res.data['code'] == 0) {
-      return Success(LiveDmInfoData.fromJson(res.data['data']));
+      try {
+        return Success(LiveDmInfoData.fromJson(res.data['data']));
+      } catch (e) {
+        return Error(e.toString());
+      }
     } else {
       return Error(res.data['message']);
     }
