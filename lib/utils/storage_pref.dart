@@ -562,6 +562,9 @@ abstract final class Pref {
   static bool get antiGoodsReply =>
       _setting.get(SettingBoxKey.antiGoodsReply, defaultValue: false);
 
+  static bool get showBlockedReplyBanner =>
+      _setting.get(SettingBoxKey.showBlockedReplyBanner, defaultValue: true);
+
   static bool get expandDynLivePanel =>
       _setting.get(SettingBoxKey.expandDynLivePanel, defaultValue: false);
 

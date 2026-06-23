@@ -493,6 +493,14 @@ List<SettingsModel> get extraSettings => [
     onChanged: (value) => ReplyGrpc.antiGoodsReply = value,
   ),
   SwitchModel(
+    title: '显示被屏蔽评论提示',
+    subtitle: '被屏蔽的评论显示为提示横幅而非直接移除',
+    leading: const Icon(Icons.block_outlined),
+    setKey: SettingBoxKey.showBlockedReplyBanner,
+    defaultVal: true,
+    onChanged: (value) => ReplyGrpc.showBlockedReplyBanner = value,
+  ),
+  SwitchModel(
     title: '侧滑关闭二级页面',
     leading: const Icon(CustomIcons.touch_app_rotate_270),
     setKey: SettingBoxKey.slideDismissReplyPage,
