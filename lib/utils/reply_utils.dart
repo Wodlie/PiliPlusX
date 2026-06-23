@@ -127,44 +127,6 @@ abstract final class ReplyUtils {
     if (!isManual) {
       await Future.delayed(const Duration(seconds: 8));
     }
-    void showReplyCheckResult(String state) {
-      final theme = ThemeUtils.theme;
-      final displayMessage = replyStateDesc(state, message);
-      final actions = [
-        if (state != replyStateNormal)
-          TextButton(
-            onPressed: () {
-              Get.back();
-              final sourceUrl = switch (type) {
-                1 => 'https://www.bilibili.com/video/${IdUtils.av2bv(oid)}',
-                12 => 'https://www.bilibili.com/read/cv$oid',
-                17 || 11 => 'https://www.bilibili.com/opus/$oid',
-                _ => oid.toString(),
-              };
-              showAppealDialog(sourceUrl);
-            },
-            child: const Text('申诉'),
-          ),
-        if (!isManual)
-          TextButton(
-            onPressed: Get.back,
-            child: Text(
-              '关闭',
-              style: TextStyle(color: theme.colorScheme.outline),
-            ),
-          ),
-      ];
-      showDialog(
-        context: Get.context!,
-        barrierDismissible: isManual,
-        builder: (context) => AlertDialog(
-          title: const Text('评论检查结果'),
-          content: SelectableText(displayMessage),
-          actions: actions.isEmpty ? null : actions,
-        ),
-      );
-    }
-
     void showAppealDialog(String sourceUrl) {
       final defaultReason = Pref.defaultAppealReason;
       final reasonController = TextEditingController(
@@ -258,6 +220,44 @@ abstract final class ReplyUtils {
               ],
             );
           },
+        ),
+      );
+    }
+
+    void showReplyCheckResult(String state) {
+      final theme = ThemeUtils.theme;
+      final displayMessage = replyStateDesc(state, message);
+      final actions = [
+        if (state != replyStateNormal)
+          TextButton(
+            onPressed: () {
+              Get.back();
+              final sourceUrl = switch (type) {
+                1 => 'https://www.bilibili.com/video/${IdUtils.av2bv(oid)}',
+                12 => 'https://www.bilibili.com/read/cv$oid',
+                17 || 11 => 'https://www.bilibili.com/opus/$oid',
+                _ => oid.toString(),
+              };
+              showAppealDialog(sourceUrl);
+            },
+            child: const Text('申诉'),
+          ),
+        if (!isManual)
+          TextButton(
+            onPressed: Get.back,
+            child: Text(
+              '关闭',
+              style: TextStyle(color: theme.colorScheme.outline),
+            ),
+          ),
+      ];
+      showDialog(
+        context: Get.context!,
+        barrierDismissible: isManual,
+        builder: (context) => AlertDialog(
+          title: const Text('评论检查结果'),
+          content: SelectableText(displayMessage),
+          actions: actions.isEmpty ? null : actions,
         ),
       );
     }
