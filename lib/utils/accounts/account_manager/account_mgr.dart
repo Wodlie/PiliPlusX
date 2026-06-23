@@ -248,6 +248,14 @@ class AccountManager extends Interceptor {
         account: canonical,
       );
     }
+    // 当明确指定 NoAccount 时，使用真正匿名的身份
+    if (account is NoAccount) {
+      final anonymous = AnonymousAccount();
+      return (
+        identity: OwnerScopedIdentitySnapshot.fromAccount(anonymous),
+        account: anonymous,
+      );
+    }
     if (ApiType.loginApi.contains(path)) {
       final anonymous = AnonymousAccount();
       return (
