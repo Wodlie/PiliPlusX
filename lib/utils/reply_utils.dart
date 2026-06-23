@@ -281,13 +281,29 @@ abstract final class ReplyUtils {
         final index =
             response.replies?.indexWhere((item) => item.rpid == id) ?? -1;
         if (index != -1) {
-          // found in main list — check invisible
+          // found in main list — check invisible first
           final foundReply = response.replies![index];
-          showReplyCheckResult(
-            foundReply.invisible == true
-                ? replyStateInvisible
-                : replyStateNormal,
-          );
+          if (foundReply.invisible == true) {
+            showReplyCheckResult(replyStateInvisible);
+          } else {
+            // not invisible in main list — verify via reply/reply without account
+            final resVerify = await ReplyHttp.replyReplyList(
+              isLogin: false,
+              oid: oid,
+              root: id,
+              pageNum: 1,
+              type: type,
+              isCheck: true,
+            );
+            if (resVerify is Error &&
+                resVerify.errMsg?.startsWith('12022') == true) {
+              // reply/reply fails with 12022 → shadow ban
+              showReplyCheckResult(replyStateShadowBan);
+            } else {
+              // reply/reply succeeds or other error → normal
+              showReplyCheckResult(replyStateNormal);
+            }
+          }
         } else {
           // not found — cookie check
           final res1 = await ReplyHttp.replyReplyList(
