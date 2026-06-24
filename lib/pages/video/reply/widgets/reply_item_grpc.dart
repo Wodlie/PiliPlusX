@@ -164,7 +164,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         return morePanel(
           context: context,
           item: widget.replyItem,
-          onDelete: () => onDelete?.call(widget.replyItem, null),
+          onDelete: () => widget.onDelete?.call(widget.replyItem, null),
           isSubReply: false,
         );
       },
@@ -174,7 +174,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
       padding: const .fromLTRB(12, 14, 8, 5),
       child: _buildContent(context, theme),
     );
-    if (needDivider) {
+    if (widget.needDivider) {
       child = Column(
         mainAxisSize: .min,
         children: [
@@ -191,7 +191,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     return Material(
       type: MaterialType.transparency,
       child: InkWell(
-        onTap: () => replyReply?.call(widget.replyItem, null),
+        onTap: () => widget.replyReply?.call(widget.replyItem, null),
         onLongPress: showMore,
         onSecondaryTap: PlatformUtils.isMobile ? null : showMore,
         child: child,
@@ -251,7 +251,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                         height: 11,
                         cacheHeight: 11.cacheSize(context),
                       ),
-                      if (widget.replyItem.mid == upMid)
+                      if (widget.replyItem.mid == widget.upMid)
                         const PBadge(
                           text: 'UP',
                           size: PBadgeSize.small,
@@ -280,7 +280,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        replyLevel == 0
+                        widget.replyLevel == 0
                             ? DateFormatUtils.format(
                                 widget.replyItem.ctime.toInt(),
                                 format: DateFormatUtils.longFormatDs,
@@ -356,7 +356,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   }
 
   Widget _buildContent(BuildContext context, ThemeData theme) {
-    final padding = EdgeInsets.only(left: replyLevel == 0 ? 6 : 45, right: 6);
+    final padding = EdgeInsets.only(left: widget.replyLevel == 0 ? 6 : 45, right: 6);
     return Column(
       mainAxisSize: .min,
       crossAxisAlignment: .start,
@@ -369,7 +369,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (isTranslating) ...[
+              if (widget.isTranslating) ...[
                 Container(
                   margin: const EdgeInsets.only(bottom: 6),
                   padding: const EdgeInsets.symmetric(
@@ -404,7 +404,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     ],
                   ),
                 ),
-              ] else if (translatedText != null) ...[
+              ] else if (widget.translatedText != null) ...[
                 Container(
                   margin: const EdgeInsets.only(bottom: 6),
                   padding: const EdgeInsets.symmetric(
@@ -427,7 +427,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          translatedText!,
+                          widget.translatedText!,
                           style: TextStyle(
                             height: 1.75,
                             fontSize: theme.textTheme.bodyMedium!.fontSize,
@@ -445,7 +445,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                   height: 1.75,
                   fontSize: theme.textTheme.bodyMedium!.fontSize,
                 ),
-                maxLines: replyLevel == 1 ? replyLengthLimit : null,
+                maxLines: widget.replyLevel == 1 ? ReplyItemGrpc.replyLengthLimit : null,
                 TextSpan(
                   children: [
                     if (widget.replyItem.replyControl.isUpTop) ...[
@@ -482,16 +482,16 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     ),
                   )
                   .toList(),
-              onViewImage: onViewImage,
+              onViewImage: widget.onViewImage,
             ),
           ),
           const SizedBox(height: 4),
         ],
-        if (replyLevel != 0) ...[
+        if (widget.replyLevel != 0) ...[
           const SizedBox(height: 4),
           buttonAction(context, theme, widget.replyItem.replyControl),
         ],
-        if (replyLevel == 1 && widget.replyItem.count > Int64.ZERO) ...[
+        if (widget.replyLevel == 1 && widget.replyItem.count > Int64.ZERO) ...[
           Padding(
             padding: const EdgeInsets.only(top: 5, bottom: 12),
             child: replyItemRow(context, theme, widget.replyItem.replies),
@@ -542,7 +542,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             style: buttonStyle,
             onPressed: () {
               feedBack();
-              onReply?.call(widget.replyItem);
+              widget.onReply?.call(widget.replyItem);
             },
             child: Row(
               children: [
@@ -567,31 +567,31 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
           ),
           const SizedBox(width: 2),
         ],
-        if (replyLevel == 2 && needDivider && widget.replyItem.id != widget.replyItem.dialog)
+        if (widget.replyLevel == 2 && widget.needDivider && widget.replyItem.id != widget.replyItem.dialog)
           SizedBox(
             height: 32,
             child: TextButton(
-              onPressed: showDialogue,
+              onPressed: widget.showDialogue,
               style: buttonStyle,
               child: Text('查看对话', style: textStyle),
             ),
           )
-        else if (            replyLevel == 3 &&
-            needDivider &&
+        else if (            widget.replyLevel == 3 &&
+            widget.needDivider &&
             widget.replyItem.parent != widget.replyItem.root)
           SizedBox(
             height: 32,
             child: TextButton(
-              onPressed: jumpToDialogue,
+              onPressed: widget.jumpToDialogue,
               style: buttonStyle,
               child: Text('跳转回复', style: textStyle),
             ),
           ),
         const Spacer(),
-        if (onTranslate != null &&
+        if (widget.onTranslate != null &&
             Pref.enableCommentTranslate &&
             widget.replyItem.replyControl.translationSwitch == 2) ...[
-          if (isTranslating)
+          if (widget.isTranslating)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
@@ -618,20 +618,20 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               height: 32,
               child: TextButton(
                 style: buttonStyle,
-                onPressed: onTranslate,
+                onPressed: widget.onTranslate,
                 child: Row(
                   children: [
                     Icon(
                       Icons.translate,
                       size: 17,
-                      color: translatedText != null
+                      color: widget.translatedText != null
                           ? theme.colorScheme.primary
                           : theme.colorScheme.outline.withValues(alpha: 0.8),
                     ),
                     const SizedBox(width: 3),
                     Text(
-                      translatedText == null ? '翻译' : '原文',
-                      style: translatedText != null
+                      widget.translatedText == null ? '翻译' : '原文',
+                      style: widget.translatedText != null
                           ? textStyle.copyWith(
                               color: theme.colorScheme.primary)
                           : textStyle,
@@ -695,14 +695,14 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     return morePanel(
                       context: context,
                       item: childReply,
-                      onDelete: () => onDelete?.call(widget.replyItem, index),
+                      onDelete: () => widget.onDelete?.call(widget.replyItem, index),
                       isSubReply: true,
                     );
                   },
                 );
                 return InkWell(
                   onTap: () =>
-                      replyReply?.call(widget.replyItem, childReply.id.toInt()),
+                      widget.replyReply?.call(widget.replyItem, childReply.id.toInt()),
                   onLongPress: showMore,
                   onSecondaryTap: PlatformUtils.isMobile ? null : showMore,
                   child: Padding(
@@ -732,7 +732,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                                 );
                               },
                           ),
-                          if (childReply.mid == upMid) ...[
+                          if (childReply.mid == widget.upMid) ...[
                             const TextSpan(text: ' '),
                             const WidgetSpan(
                               alignment: PlaceholderAlignment.middle,
@@ -749,7 +749,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                           TextSpan(
                             text: childReply.root == childReply.parent
                                 ? ': '
-                                : childReply.mid == upMid
+                                : childReply.mid == widget.upMid
                                 ? ''
                                 : ' ',
                           ),
@@ -762,7 +762,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               }),
             if (extraRow)
               InkWell(
-        onTap: () => replyReply?.call(widget.replyItem, null),
+        onTap: () => widget.replyReply?.call(widget.replyItem, null),
                 child: Padding(
                   padding: length == 1
                       ? const EdgeInsets.fromLTRB(8, 6, 8, 6)
@@ -831,7 +831,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     }
 
     void addUrl(String matchStr, Url url, {bool addPlainText = false}) {
-      if (url.extra.isWordSearch && !enableWordRe) {
+      if (url.extra.isWordSearch && !ReplyItemGrpc.enableWordRe) {
         if (addPlainText) {
           addPlainTextSpan(matchStr);
         }
@@ -941,7 +941,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     Get.toNamed('/member?mid=${content.atNameToMid[name]}'),
             ),
           );
-        } else if (_voteRegExp.hasMatch(matchStr)) {
+        } else if (ReplyItemGrpc._voteRegExp.hasMatch(matchStr)) {
           spanChildren.add(
             TextSpan(
               text: '投票: ${content.vote.title}',
@@ -951,12 +951,12 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     showVoteDialog(context, content.vote.id.toInt()),
             ),
           );
-        } else if (_timeRegExp.hasMatch(matchStr)) {
+        } else if (ReplyItemGrpc._timeRegExp.hasMatch(matchStr)) {
           matchStr = matchStr.replaceAll('：', ':');
           bool isValid = false;
           try {
             final ctr = Get.find<VideoDetailController>(
-              tag: getTag?.call() ?? Get.arguments['heroTag'],
+              tag: widget.getTag?.call() ?? Get.arguments['heroTag'],
             );
             isValid =
                 DurationUtils.parseDuration(matchStr) * 1000 <=
@@ -1163,7 +1163,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               ),
             ),
           ],
-          if (ownerMid == upMid || ownerMid == item.member.mid)
+          if (ownerMid == widget.upMid || ownerMid == item.member.mid)
             ListTile(
               onTap: () async {
                 Get.back();
@@ -1255,11 +1255,11 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               leading: Icon(Icons.error_outline, color: errorColor, size: 19),
               title: Text('举报', style: style.copyWith(color: errorColor)),
             ),
-          if (replyLevel == 1 && !isSubReply && ownerMid == upMid)
+          if (widget.replyLevel == 1 && !isSubReply && ownerMid == widget.upMid)
             ListTile(
               onTap: () {
                 Get.back();
-                onToggleTop?.call(item);
+                widget.onToggleTop?.call(item);
               },
               minLeadingWidth: 0,
               leading: const Icon(Icons.vertical_align_top, size: 19),
@@ -1300,7 +1300,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
           ListTile(
             onTap: () {
               Get.back();
-              SavePanel.toSavePanel(upMid: upMid, item: item);
+              SavePanel.toSavePanel(upMid: widget.upMid, item: item);
             },
             minLeadingWidth: 0,
             leading: const Icon(Icons.save_alt, size: 19),
@@ -1310,7 +1310,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             ListTile(
               onTap: () {
                 Get.back();
-                onCheckReply?.call(item);
+                widget.onCheckReply?.call(item);
               },
               minLeadingWidth: 0,
               leading: const Stack(
