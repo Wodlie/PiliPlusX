@@ -242,6 +242,59 @@ void main() {
       expect(ReplyGrpc.getBlockReason(reply), isNull);
     });
   });
+
+  group('checkBlockReason – reply prefix stripping', () {
+    test('strips "回复 @user:" prefix for replies before applying @ filter',
+        () async {
+      await GStorage.setting.put(SettingBoxKey.enableAtFilter, true);
+      await GStorage.setting.put(SettingBoxKey.enableAtFilterPureAt, true);
+
+      // Reply with "回复 @user:" prefix and substantive content after
+      final reply = _makeReply(
+        message: '回复 @syocn :可是这个奥托真的纯良[笑哭][笑哭]',
+        atMap: {'syocn': 100},
+        root: 12345, // non-zero = reply
+      );
+
+      // Should NOT be filtered – the "回复 @" is system-generated
+      expect(ReplyGrpc.checkBlockReason(reply), isNull);
+    });
+
+    test('filters reply with user-initiated @ after stripping prefix', () async {
+      await GStorage.setting.put(SettingBoxKey.enableAtFilter, true);
+      await GStorage.setting.put(SettingBoxKey.enableAtFilterAtCount, true);
+      await GStorage.setting.put(SettingBoxKey.atFilterAtCountThreshold, 3);
+
+      // Reply with prefix + user spamming @ mentions
+      final reply = _makeReply(
+        message: '回复 @111: @112 @113 @114 @115 快来看',
+        atMap: {'111': 1, '112': 2, '113': 3, '114': 4, '115': 5},
+        root: 12345, // non-zero = reply
+      );
+
+      // Should be filtered – user is spamming @ in a reply
+      final reason = ReplyGrpc.checkBlockReason(reply);
+      expect(reason, isNotNull);
+      expect(reason, contains('@数量过多'));
+    });
+
+    test('does not strip prefix for top-level comments', () async {
+      await GStorage.setting.put(SettingBoxKey.enableAtFilter, true);
+      await GStorage.setting.put(SettingBoxKey.enableAtFilterPureAt, true);
+
+      // Top-level comment with @ mention but no substantive body
+      final reply = _makeReply(
+        message: '@syocn',
+        atMap: {'syocn': 100},
+        root: 0, // zero = top-level comment
+      );
+
+      // Should be filtered – it's a top-level comment with only @ and no body
+      final reason = ReplyGrpc.checkBlockReason(reply);
+      expect(reason, isNotNull);
+      expect(reason, contains('纯@无正文'));
+    });
+  });
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -252,6 +305,8 @@ ReplyInfo _makeReply({
   int level = 6,
   Map<String, int> atMap = const {},
   int like = 0,
+  int root = 0,
+  int parent = 0,
 }) {
   final content = Content()..message = message;
   if (atMap.isNotEmpty) {
@@ -263,5 +318,7 @@ ReplyInfo _makeReply({
     content: content,
     member: Member()..level = Int64(level),
     like: Int64(like),
+    root: Int64(root),
+    parent: Int64(parent),
   );
 }

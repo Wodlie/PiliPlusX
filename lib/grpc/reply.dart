@@ -133,11 +133,24 @@ abstract final class ReplyGrpc {
     return false;
   }
 
+  static final RegExp _replyPrefixRegExp =
+      RegExp(r'^回复 @\S+?\s*:\s*');
+
+  static String _stripReplyPrefix(String message, ReplyInfo reply) {
+    // Only strip for replies (root != 0), not top-level comments
+    if (reply.root.toInt() == 0) {
+      return message;
+    }
+    return message.replaceFirst(_replyPrefixRegExp, '');
+  }
+
   static ReplyNormalizedBody normalizeReplyBody(ReplyInfo reply) {
     final Content content = reply.content;
+    // Strip "回复 @username:" prefix for replies before processing
+    final String message = _stripReplyPrefix(content.message, reply);
     final String bodyWithoutMentions = _normalizeReplyWhitespace(
       _replaceReplyTokens(
-        content.message,
+        message,
         content.atNameToMid.keys.map((name) => '@$name'),
       ),
     );
