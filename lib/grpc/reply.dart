@@ -5,6 +5,7 @@ import 'package:PiliPlus/grpc/grpc_req.dart';
 import 'package:PiliPlus/grpc/reply_translate.dart';
 import 'package:PiliPlus/grpc/url.dart';
 import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:fixnum/fixnum.dart';
 
@@ -281,6 +282,12 @@ abstract final class ReplyGrpc {
         }
       }
     }
+    // Strategy 5: Local blacklist
+    final mid = reply.mid.toInt();
+    if (mid > 0 && GlobalData().blackMids.contains(mid)) {
+      return '黑名单用户';
+    }
+    
 
     return null;
   }
