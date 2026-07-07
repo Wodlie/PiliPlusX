@@ -58,7 +58,7 @@
 
 ## 构建与开发信息
 
-- 当前版本：`2.0.8+1`（以 `pubspec.yaml` 为准）
+- 当前版本：`1.2.1+5468`（以 `pubspec.yaml` 为准）
 - 当前主开发分支：`dev`；`main` 用于稳定版本/上游同步
 - Flutter：`3.44.4`（`.fvmrc` 与 `pubspec.yaml` 同步）；Dart SDK：`>=3.12.0`
 - CI 会构建 Android、iOS、macOS、Windows x64、Linux x64；Release 产物由 GitHub Actions 生成草稿预发布
