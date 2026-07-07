@@ -303,6 +303,13 @@ abstract final class ReplyGrpc {
 
   static void clearBlockedReasons() => _blockedReasons.clear();
 
+  /// Mark a reply as locally blocked (e.g. after user blocks the commenter).
+  /// The reply will immediately show as blocked in the UI when
+  /// [Pref.showBlockedReplyBanner] is true.
+  static void blockReply(ReplyInfo reply) {
+    _blockedReasons[reply.id.toInt()] = '黑名单用户';
+  }
+
   static Future<LoadingState<MainListReply>> mainList({
     int type = 1,
     required int oid,

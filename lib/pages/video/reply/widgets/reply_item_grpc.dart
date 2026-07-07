@@ -600,7 +600,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                   color: colorScheme.outline.withValues(alpha: 0.8),
                 ),
                 const SizedBox(width: 3),
-                Text('鍥炲', style: textStyle),
+                Text('回复', style: textStyle),
               ],
             ),
           ),
@@ -621,7 +621,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             child: TextButton(
               onPressed: widget.showDialogue,
               style: buttonStyle,
-              child: Text('鏌ョ湅瀵硅瘽', style: textStyle),
+              child: Text('查看对话', style: textStyle),
             ),
           )
         else if (widget.replyLevel == 3 &&
@@ -632,7 +632,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             child: TextButton(
               onPressed: widget.jumpToDialogue,
               style: buttonStyle,
-              child: Text('璺宠浆鍥炲', style: textStyle),
+              child: Text('跳转回复', style: textStyle),
             ),
           ),
         const Spacer(),
@@ -866,7 +866,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     ];
     String patternStr = [
       ...specialTokens.map(RegExp.escape),
-      r'(?:\d+[:锛歖)?\d+[:锛歖\d+',
+      r'(?:\d+[:：])?\d+[:：]\d+',
       r'\{vote:\d+?\}',
       Constants.urlRegex.pattern,
     ].join('|');
@@ -901,7 +901,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             ),
           ),
         TextSpan(
-          text: isCv ? '[绗旇] ' : url.title,
+          text: isCv ? '[笔记] ' : url.title,
           style: TextStyle(color: colorScheme.primary),
           recognizer: NoDeadlineTapGestureRecognizer()
             ..onTap = () {
@@ -990,7 +990,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         } else if (ReplyItemGrpc._voteRegExp.hasMatch(matchStr)) {
           spanChildren.add(
             TextSpan(
-              text: '鎶曠エ: ${content.vote.title}',
+              text: '投票: ${content.vote.title}',
               style: TextStyle(color: colorScheme.primary),
               recognizer: NoDeadlineTapGestureRecognizer()
                 ..onTap = () =>
@@ -1019,7 +1019,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                       ..onTap = () {
                         // 璺宠浆鍒版寚瀹氫綅缃?
                         try {
-                          SmartDialog.showToast('璺宠浆鑷筹細$matchStr');
+                          SmartDialog.showToast('跳转至：$matchStr');
                           Get.find<VideoDetailController>(
                             tag: Get.arguments['heroTag'],
                           ).plPlayerController.seekTo(
@@ -1029,7 +1029,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                             isSeek: false,
                           );
                         } catch (e) {
-                          SmartDialog.showToast('璺宠浆澶辫触: $e');
+                          SmartDialog.showToast('跳转失败: $e');
                         }
                       })
                   : null,
@@ -1110,7 +1110,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
       spanChildren.insert(
         0,
         TextSpan(
-          text: '[绗旇] ',
+          text: '[笔记] ',
           style: TextStyle(color: color),
           recognizer: recognizer,
         ),
@@ -1215,11 +1215,11 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                   builder: (context) {
                     final colorScheme = ColorScheme.of(context);
                     return AlertDialog(
-                      title: const Text('鍒犻櫎璇勮'),
+                      title: const Text('删除评论'),
                       content: Text.rich(
                         TextSpan(
                           children: [
-                            const TextSpan(text: '纭畾鍒犻櫎杩欐潯璇勮鍚楋紵\n\n'),
+                            const TextSpan(text: '确定删除这条评论吗？\n\n'),
                             if (ownerMid != item.member.mid.toInt()) ...[
                               TextSpan(
                                 text: '@${item.member.name}',
@@ -1237,7 +1237,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                         TextButton(
                           onPressed: () => Get.back(result: false),
                           child: Text(
-                            '鍙栨秷',
+                            '取消',
                             style: TextStyle(
                               color: colorScheme.outline,
                             ),
@@ -1245,7 +1245,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                         ),
                         TextButton(
                           onPressed: () => Get.back(result: true),
-                          child: const Text('纭畾'),
+                          child: const Text('确定'),
                         ),
                       ],
                     );
@@ -1254,7 +1254,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                 if (isDelete == null || !isDelete) {
                   return;
                 }
-                SmartDialog.showLoading(msg: '鍒犻櫎涓?..');
+                SmartDialog.showLoading(msg: '删除中...');
                 final res = await VideoHttp.replyDel(
                   type: item.type.toInt(),
                   oid: item.oid.toInt(),
@@ -1262,15 +1262,15 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                 );
                 SmartDialog.dismiss();
                 if (res.isSuccess) {
-                  SmartDialog.showToast('鍒犻櫎鎴愬姛');
+                  SmartDialog.showToast('删除成功');
                   onDelete();
                 } else {
-                  SmartDialog.showToast('鍒犻櫎澶辫触, $res');
+                  SmartDialog.showToast('删除失败, $res');
                 }
               },
               minLeadingWidth: 0,
               leading: Icon(Icons.delete_outlined, color: errorColor, size: 19),
-              title: Text('鍒犻櫎', style: style.copyWith(color: errorColor)),
+              title: Text('删除', style: style.copyWith(color: errorColor)),
             ),
           if (ownerMid != Int64.ZERO)
             ListTile(
@@ -1296,7 +1296,70 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               },
               minLeadingWidth: 0,
               leading: Icon(Icons.error_outline, color: errorColor, size: 19),
-              title: Text('涓炬姤', style: style.copyWith(color: errorColor)),
+              title: Text('举报', style: style.copyWith(color: errorColor)),
+            ),
+          if (ownerMid != Int64.ZERO)
+            ListTile(
+              onTap: () async {
+                Get.back();
+                bool? isConfirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) {
+                    final colorScheme = ColorScheme.of(context);
+                    return AlertDialog(
+                      title: const Text('拉黑评论者'),
+                      content: Text.rich(
+                        TextSpan(
+                          children: [
+                            const TextSpan(
+                              text: '确定将该用户加入黑名单？\n\n',
+                            ),
+                            TextSpan(
+                              text: '@${item.member.name}',
+                              style: TextStyle(color: colorScheme.primary),
+                            ),
+                            const TextSpan(text: '\n该评论将被屏蔽，无需再次拉黑'),
+                          ],
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Get.back(result: false),
+                          child: Text(
+                            '取消',
+                            style: TextStyle(color: colorScheme.outline),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Get.back(result: true),
+                          child: const Text('确定'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+                if (isConfirm != true) return;
+                SmartDialog.showLoading(msg: '正在拉黑...');
+                final res = await VideoHttp.relationMod(
+                  mid: item.member.mid.toInt(),
+                  act: 5,
+                  reSrc: 11,
+                );
+                SmartDialog.dismiss();
+                if (res.isSuccess) {
+                  final mid = item.member.mid.toInt();
+                  GlobalData().blackMids.add(mid);
+                  Pref.setBlackMid(mid);
+                  ReplyGrpc.blockReply(item);
+                  onDelete();
+                  SmartDialog.showToast('已拉黑该用户');
+                } else {
+                  SmartDialog.showToast('拉黑失败');
+                }
+              },
+              minLeadingWidth: 0,
+              leading: Icon(Icons.block, color: errorColor, size: 19),
+              title: Text('拉黑评论者', style: style.copyWith(color: errorColor)),
             ),
           if (widget.replyLevel == 1 && !isSubReply && ownerMid == widget.upMid)
             ListTile(
@@ -1318,7 +1381,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             },
             minLeadingWidth: 0,
             leading: const Icon(Icons.copy_all_outlined, size: 19),
-            title: Text('澶嶅埗鍏ㄩ儴', style: style),
+            title: Text('复制全部', style: style),
           ),
           ListTile(
             onTap: () {
@@ -1338,7 +1401,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             },
             minLeadingWidth: 0,
             leading: const Icon(Icons.copy_outlined, size: 19),
-            title: Text('鑷敱澶嶅埗', style: style),
+            title: Text('自由复制', style: style),
           ),
           ListTile(
             onTap: () {
@@ -1347,7 +1410,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             },
             minLeadingWidth: 0,
             leading: const Icon(Icons.save_alt, size: 19),
-            title: Text('淇濆瓨璇勮', style: style),
+            title: Text('保存评论', style: style),
           ),
           if (kDebugMode || item.mid == ownerMid)
             ListTile(
