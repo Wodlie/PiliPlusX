@@ -31,11 +31,15 @@ final class IdentityValidationResult {
   final String? reason;
 }
 
-abstract interface class IdentityProfileValidator<T extends IdentityProfileView> {
+abstract interface class IdentityProfileValidator<
+  T extends IdentityProfileView
+> {
   IdentityValidationResult validate(T profile);
 }
 
-abstract interface class IdentityProfileGenerator<T extends IdentityProfileView> {
+abstract interface class IdentityProfileGenerator<
+  T extends IdentityProfileView
+> {
   T generate(IdentityGenerationContext context);
 }
 
@@ -67,6 +71,8 @@ abstract interface class IdentityResolvedSnapshot {
   String get buvid => profile.buvid;
 }
 
-abstract interface class IdentitySnapshotResolver<T extends IdentityResolvedSnapshot> {
+abstract interface class IdentitySnapshotResolver<
+  T extends IdentityResolvedSnapshot
+> {
   FutureOr<T> resolve(IdentityOwnerKey owner);
 }

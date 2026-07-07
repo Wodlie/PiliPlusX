@@ -772,7 +772,8 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
   }
 
   bool get canReuseAiConclusionResult =>
-      aiConclusionResult != null && aiConclusionResultService == Pref.aiSummaryService;
+      aiConclusionResult != null &&
+      aiConclusionResultService == Pref.aiSummaryService;
 
   AiSummaryServiceSuccess? get cachedAiConclusionSuccess {
     final result = aiConclusionResult;

@@ -72,7 +72,8 @@ abstract final class OpenAiCompatibleSummaryProvider {
     }
   }
 
-  static VideoSummaryProviderResult<OpenAiCompatibleSummaryResponse> _mapResponse(
+  static VideoSummaryProviderResult<OpenAiCompatibleSummaryResponse>
+  _mapResponse(
     Response response,
     VideoSummaryProviderModelPath path,
   ) {
@@ -167,18 +168,19 @@ abstract final class OpenAiCompatibleSummaryProvider {
         error.response?.data,
         path,
       ),
-      DioExceptionType.connectionError || DioExceptionType.badCertificate =>
-        VideoSummaryProviderFailure(
-          type: VideoSummaryProviderErrorType.network,
-          message: message.isEmpty ? 'Provider 网络连接失败' : message,
-          statusCode: error.response?.statusCode,
-        ),
+      DioExceptionType.connectionError ||
+      DioExceptionType.badCertificate => VideoSummaryProviderFailure(
+        type: VideoSummaryProviderErrorType.network,
+        message: message.isEmpty ? 'Provider 网络连接失败' : message,
+        statusCode: error.response?.statusCode,
+      ),
       _ => VideoSummaryProviderFailure(
-        type: _isUnsupportedCapability(
-                error.response?.statusCode,
-                message,
-                path,
-              )
+        type:
+            _isUnsupportedCapability(
+              error.response?.statusCode,
+              message,
+              path,
+            )
             ? VideoSummaryProviderErrorType.unsupportedCapability
             : VideoSummaryProviderErrorType.unknown,
         message: message.isEmpty ? 'Provider 请求失败：${error.message}' : message,

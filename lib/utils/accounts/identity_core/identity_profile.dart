@@ -32,7 +32,11 @@ final class IdentityCoreProfile implements IdentityProfileView {
   static String _normalizeBuvid(String buvid) {
     final normalized = buvid.trim();
     if (normalized.isEmpty) {
-      throw ArgumentError.value(buvid, 'buvid', 'Identity core profile requires a non-empty BUVID.');
+      throw ArgumentError.value(
+        buvid,
+        'buvid',
+        'Identity core profile requires a non-empty BUVID.',
+      );
     }
     return normalized;
   }

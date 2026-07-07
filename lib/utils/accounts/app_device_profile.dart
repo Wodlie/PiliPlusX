@@ -49,15 +49,26 @@ final class AppDeviceProfile {
   static String _normalizeBrand(String value) {
     final normalized = value.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (normalized.isEmpty) {
-      throw ArgumentError.value(value, 'brand', 'Device brand cannot be empty.');
+      throw ArgumentError.value(
+        value,
+        'brand',
+        'Device brand cannot be empty.',
+      );
     }
     return _brandAliases[normalized.toLowerCase()] ?? normalized;
   }
 
   static String _normalizeModel(String value) {
-    final normalized = value.trim().replaceAll(RegExp(r'\s+'), ' ').toUpperCase();
+    final normalized = value
+        .trim()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .toUpperCase();
     if (normalized.isEmpty) {
-      throw ArgumentError.value(value, 'model', 'Device model cannot be empty.');
+      throw ArgumentError.value(
+        value,
+        'model',
+        'Device model cannot be empty.',
+      );
     }
     return normalized;
   }
@@ -253,10 +264,13 @@ abstract final class AppDeviceProfiles {
   static AppDeviceProfile get defaultDeviceProfile =>
       defaultDeviceProfileForOwner('guest');
 
-  static List<AppDeviceProfile> get curatedPool => List.unmodifiable(_curatedPool);
+  static List<AppDeviceProfile> get curatedPool =>
+      List.unmodifiable(_curatedPool);
 
   static AppDeviceProfile defaultDeviceProfileForOwner(String ownerKey) {
-    final normalizedOwnerKey = ownerKey.trim().isEmpty ? 'guest' : ownerKey.trim();
+    final normalizedOwnerKey = ownerKey.trim().isEmpty
+        ? 'guest'
+        : ownerKey.trim();
     return _curatedPool[_stableIndex('device-profile:$normalizedOwnerKey')];
   }
 

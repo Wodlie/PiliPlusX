@@ -205,12 +205,15 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
                 }
                 return _header(theme, firstFloor);
               }),
-          _sortWidget(theme.colorScheme),
-        ],
+            _sortWidget(theme.colorScheme),
+          ],
           Obx(() {
             // trigger rebuild when translation state changes
             _controller.translatedReplies.length;
-            return _buildBody(theme.colorScheme, _controller.loadingState.value);
+            return _buildBody(
+              theme.colorScheme,
+              _controller.loadingState.value,
+            );
           }),
         ],
       ),
@@ -235,8 +238,9 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
             upMid: widget.upMid ?? _controller.upMid,
             onCheckReply: (item) =>
                 _controller.onCheckReply(item, isManual: true),
-            translatedText:
-                translated != null && translated.isNotEmpty ? translated : null,
+            translatedText: translated != null && translated.isNotEmpty
+                ? translated
+                : null,
             isTranslating: translated != null && translated.isEmpty,
             onTranslate: () => _controller.translateReply(firstFloor),
           ),
@@ -369,8 +373,9 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
         }
       },
       onCheckReply: (item) => _controller.onCheckReply(item, isManual: true),
-      translatedText:
-          translated != null && translated.isNotEmpty ? translated : null,
+      translatedText: translated != null && translated.isNotEmpty
+          ? translated
+          : null,
       isTranslating: translated != null && translated.isEmpty,
       onTranslate: () => _controller.translateReply(replyItem),
     );

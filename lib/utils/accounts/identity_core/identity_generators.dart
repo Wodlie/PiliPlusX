@@ -121,7 +121,9 @@ abstract final class IdentityCoreGenerators {
     final profile = const IdentityCoreProfileGenerator().generate(
       IdentityCoreGenerationContext(owner: owner, storedProfile: storedProfile),
     );
-    final derivedNow = now ?? _pseudoTimestamp(_seedBytes('runtime:${owner.key}:${profile.buvid}'));
+    final derivedNow =
+        now ??
+        _pseudoTimestamp(_seedBytes('runtime:${owner.key}:${profile.buvid}'));
     final fp = generateFp(owner: owner, buvid: profile.buvid, now: derivedNow);
     return IdentityDerivedProfile(
       profile: profile,
@@ -135,7 +137,10 @@ abstract final class IdentityCoreGenerators {
   }
 
   static String generateBuvid({String prefix = _defaultBuvidPrefix}) {
-    return generateBuvidForOwner(const IdentityOwnerKey.guest(), prefix: prefix);
+    return generateBuvidForOwner(
+      const IdentityOwnerKey.guest(),
+      prefix: prefix,
+    );
   }
 
   static String generateBuvidForOwner(
@@ -145,9 +150,14 @@ abstract final class IdentityCoreGenerators {
     return deriveBuvidFromSeed('buvid:${owner.key}', prefix: prefix);
   }
 
-  static String deriveBuvidFromSeed(String rawId, {String prefix = _defaultBuvidPrefix}) {
+  static String deriveBuvidFromSeed(
+    String rawId, {
+    String prefix = _defaultBuvidPrefix,
+  }) {
     final normalizedPrefix = _normalizeBuvidPrefix(prefix);
-    final normalizedId = rawId.replaceAll(RegExp(r'[^0-9A-Za-z]'), '').toUpperCase();
+    final normalizedId = rawId
+        .replaceAll(RegExp(r'[^0-9A-Za-z]'), '')
+        .toUpperCase();
     if (normalizedId.isEmpty) {
       throw ArgumentError.value(
         rawId,
@@ -156,7 +166,10 @@ abstract final class IdentityCoreGenerators {
       );
     }
 
-    final digest = md5.convert(ascii.encode(normalizedId)).toString().toUpperCase();
+    final digest = md5
+        .convert(ascii.encode(normalizedId))
+        .toString()
+        .toUpperCase();
     final extracted = '${digest[2]}${digest[12]}${digest[22]}';
     return '$normalizedPrefix$extracted$digest';
   }
@@ -171,7 +184,9 @@ abstract final class IdentityCoreGenerators {
 
     final prefix = normalized.substring(0, 2);
     if (!_buvidPrefixes.contains(prefix)) {
-      return IdentityValidationResult.invalid('Unsupported BUVID prefix: $prefix.');
+      return IdentityValidationResult.invalid(
+        'Unsupported BUVID prefix: $prefix.',
+      );
     }
 
     final md5Body = normalized.substring(5);
@@ -243,7 +258,8 @@ abstract final class IdentityCoreGenerators {
     final radio = _hexBytes(seed.skip(4).take(8)).toUpperCase();
     final timestamp = _formatFpTimestamp(now ?? _pseudoTimestamp(seed));
     final randomTail = _hexBytes(seed.skip(12).take(8));
-    final raw = '${md5.convert(ascii.encode('$normalizedBuvid$model$radio')).toString()}$timestamp$randomTail';
+    final raw =
+        '${md5.convert(ascii.encode('$normalizedBuvid$model$radio')).toString()}$timestamp$randomTail';
     return '$raw${_pairedHexChecksum(raw)}';
   }
 
@@ -264,7 +280,8 @@ abstract final class IdentityCoreGenerators {
     return const IdentityValidationResult.valid();
   }
 
-  static String generateSessionId() => _randomFromAlphabet(_sessionIdLength, _alphanumeric);
+  static String generateSessionId() =>
+      _randomFromAlphabet(_sessionIdLength, _alphanumeric);
 
   static IdentityValidationResult validateSessionId(String sessionId) {
     return sessionIdRegExp.hasMatch(sessionId)
@@ -275,11 +292,13 @@ abstract final class IdentityCoreGenerators {
   }
 
   static String generateTraceId({DateTime? now}) {
-    final timestamp = (((now ?? DateTime.now()).millisecondsSinceEpoch ~/ 1000) >> 8)
-        .toRadixString(16)
-        .padLeft(6, '0')
-        .substring(0, 6);
-    final body = '${_randomFromAlphabet(24, _alphanumeric)}$timestamp${_randomFromAlphabet(2, _alphanumeric)}';
+    final timestamp =
+        (((now ?? DateTime.now()).millisecondsSinceEpoch ~/ 1000) >> 8)
+            .toRadixString(16)
+            .padLeft(6, '0')
+            .substring(0, 6);
+    final body =
+        '${_randomFromAlphabet(24, _alphanumeric)}$timestamp${_randomFromAlphabet(2, _alphanumeric)}';
     return '$body:${body.substring(16, 32)}:0:0';
   }
 
@@ -322,7 +341,8 @@ abstract final class IdentityCoreGenerators {
     return 'XU${normalized.substring(2)}';
   }
 
-  static List<int> _seedBytes(String seed) => sha256.convert(utf8.encode(seed)).bytes;
+  static List<int> _seedBytes(String seed) =>
+      sha256.convert(utf8.encode(seed)).bytes;
 
   static DateTime _pseudoTimestamp(List<int> seed) {
     return DateTime.utc(
@@ -367,7 +387,8 @@ abstract final class IdentityCoreGenerators {
     final evenLength = normalized.length - normalized.length % 2;
     final boundedLength = evenLength < 62 ? evenLength : 62;
     for (var index = 0; index < boundedLength; index += 2) {
-      checksum += int.tryParse(normalized.substring(index, index + 2), radix: 16) ?? 0;
+      checksum +=
+          int.tryParse(normalized.substring(index, index + 2), radix: 16) ?? 0;
     }
     return (checksum % 256).toRadixString(16).padLeft(2, '0');
   }
@@ -392,13 +413,17 @@ abstract final class IdentityCoreGenerators {
     final codeUnits = alphabet.codeUnits;
     final buffer = StringBuffer();
     for (var index = 0; index < length; index++) {
-      buffer.writeCharCode(codeUnits[_secureishIndex(length: codeUnits.length, salt: index)]);
+      buffer.writeCharCode(
+        codeUnits[_secureishIndex(length: codeUnits.length, salt: index)],
+      );
     }
     return buffer.toString();
   }
 
   static int _secureishIndex({required int length, required int salt}) {
-    final bytes = _seedBytes('random:$salt:${DateTime.now().microsecondsSinceEpoch}');
+    final bytes = _seedBytes(
+      'random:$salt:${DateTime.now().microsecondsSinceEpoch}',
+    );
     return bytes[salt % bytes.length] % length;
   }
 }

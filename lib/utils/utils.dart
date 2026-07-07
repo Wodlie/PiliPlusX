@@ -25,8 +25,8 @@ abstract final class Utils {
       Iterable.generate(
         length,
         (_) => characters.codeUnitAt(random.nextInt(characters.length)),
-        ),
-     );
+      ),
+    );
   }
 
   static String generateSecureRandomString(int length) {

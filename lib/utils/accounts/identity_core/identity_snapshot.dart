@@ -19,7 +19,9 @@ final class OwnerScopedIdentitySnapshot implements IdentityResolvedSnapshot {
 
   factory OwnerScopedIdentitySnapshot.fromAccount(Account account) {
     if (account is NoAccount) {
-      throw StateError('NoAccount cannot resolve into an owner-scoped identity snapshot.');
+      throw StateError(
+        'NoAccount cannot resolve into an owner-scoped identity snapshot.',
+      );
     }
 
     final owner = _ownerFromAccount(account);
@@ -69,6 +71,8 @@ final class OwnerScopedIdentitySnapshot implements IdentityResolvedSnapshot {
     if (account is AnonymousAccount) {
       return const IdentityOwnerKey.guest();
     }
-    throw StateError('No canonical identity owner exists for ${account.runtimeType}.');
+    throw StateError(
+      'No canonical identity owner exists for ${account.runtimeType}.',
+    );
   }
 }

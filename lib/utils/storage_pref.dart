@@ -89,10 +89,9 @@ abstract final class Pref {
   static bool get accountDisplayName =>
       _setting.get(SettingBoxKey.accountDisplayName, defaultValue: false);
 
-  static Map<int, String> get accountUnameMap =>
-      Map<int, String>.from(
-        _localCache.get(LocalCacheKey.accountUnameMap, defaultValue: {}),
-      );
+  static Map<int, String> get accountUnameMap => Map<int, String>.from(
+    _localCache.get(LocalCacheKey.accountUnameMap, defaultValue: {}),
+  );
 
   static void setAccountUname(int mid, String uname) {
     if (mid <= 0) return;
@@ -839,8 +838,10 @@ abstract final class Pref {
   static bool get enableSponsorBlock =>
       _setting.get(SettingBoxKey.enableSponsorBlock, defaultValue: false);
 
-  static bool get suppressSponsorBlockIncognito =>
-      _setting.get(SettingBoxKey.suppressSponsorBlockIncognito, defaultValue: false);
+  static bool get suppressSponsorBlockIncognito => _setting.get(
+    SettingBoxKey.suppressSponsorBlockIncognito,
+    defaultValue: false,
+  );
 
   // ===== @评论过滤 (At-filter) =====
 
@@ -942,11 +943,14 @@ abstract final class Pref {
   static bool get enableAi =>
       _setting.get(SettingBoxKey.enableAi, defaultValue: false);
 
-  static bool get enableAiSummaryBackground =>
-      _setting.get(SettingBoxKey.enableAiSummaryBackground, defaultValue: false);
+  static bool get enableAiSummaryBackground => _setting.get(
+    SettingBoxKey.enableAiSummaryBackground,
+    defaultValue: false,
+  );
 
   static AiSummaryService get aiSummaryService {
-    if (_setting.get(SettingBoxKey.aiSummaryService) case final String service) {
+    if (_setting.get(SettingBoxKey.aiSummaryService)
+        case final String service) {
       return AiSummaryService.values.firstWhere(
         (item) => item.name == service,
         orElse: () => AiSummaryService.bilibiliLegacyDeprecated,

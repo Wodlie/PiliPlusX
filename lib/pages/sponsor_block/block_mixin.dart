@@ -65,8 +65,7 @@ mixin BlockMixin on GetxController {
   }) async {
     resetBlock();
 
-    if (Pref.suppressSponsorBlockIncognito &&
-        MineController.anonymity.value) {
+    if (Pref.suppressSponsorBlockIncognito && MineController.anonymity.value) {
       return;
     }
 
@@ -325,12 +324,15 @@ mixin BlockMixin on GetxController {
     );
   }
 
-  void _doVote(String uuid, int type) => SponsorBlock.voteOnSponsorTime(
-    uuid: uuid,
-    type: type,
-  ).then((i) => SmartDialog.showToast(i.isSuccess ? '投票成功' : '投票失败: $i')).catchError((e) {
-    debugPrint('SponsorBlock vote error: $e');
-  });
+  void _doVote(String uuid, int type) =>
+      SponsorBlock.voteOnSponsorTime(
+            uuid: uuid,
+            type: type,
+          )
+          .then((i) => SmartDialog.showToast(i.isSuccess ? '投票成功' : '投票失败: $i'))
+          .catchError((e) {
+            debugPrint('SponsorBlock vote error: $e');
+          });
 
   void _showCategoryDialog(SegmentModel segment) {
     showDialog(

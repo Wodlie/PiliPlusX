@@ -59,56 +59,92 @@ void main() {
     expect(dmFields['dm_img_str'], isNotEmpty);
     expect(dmFields['dm_cover_img_str'], isNotEmpty);
     expect(dmFields['dm_img_inter'], '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}');
-    expect(dmFields['dm_img_str'], equals(identity.webDmImageQueryFields['dm_img_str']));
+    expect(
+      dmFields['dm_img_str'],
+      equals(identity.webDmImageQueryFields['dm_img_str']),
+    );
     expect(
       dmFields['dm_cover_img_str'],
       equals(identity.webDmImageQueryFields['dm_cover_img_str']),
     );
   });
 
-  test('video and live app requests expose validated owner-scoped fp and session fields', () {
-    final account = _createLoginAccount(
-      mid: 3302,
-      buvid: IdentityCoreGenerators.generateBuvid(),
-    );
+  test(
+    'video and live app requests expose validated owner-scoped fp and session fields',
+    () {
+      final account = _createLoginAccount(
+        mid: 3302,
+        buvid: IdentityCoreGenerators.generateBuvid(),
+      );
 
-    final identity = RequestIdentityAdapter.fromAccount(
-      account: account,
-      userAgent: Constants.userAgentApp,
-    );
+      final identity = RequestIdentityAdapter.fromAccount(
+        account: account,
+        userAgent: Constants.userAgentApp,
+      );
 
-    final videoHeaders = VideoHttp.recommendAppIdentityHeaders(account);
-    final liveHeaders = LiveHttp.appIdentityHeaders(account);
+      final videoHeaders = VideoHttp.recommendAppIdentityHeaders(account);
+      final liveHeaders = LiveHttp.appIdentityHeaders(account);
 
-    expect(videoHeaders['fp_local'], identity.fpLocal);
-    expect(videoHeaders['fp_remote'], identity.fpRemote);
-    expect(IdentityCoreGenerators.validateSessionId(videoHeaders['session_id']!).isValid, isTrue);
-    expect(liveHeaders['fp_local'], identity.fpLocal);
-    expect(liveHeaders['fp_remote'], identity.fpRemote);
-    expect(IdentityCoreGenerators.validateSessionId(liveHeaders['session_id']!).isValid, isTrue);
-    expect(IdentityCoreGenerators.validateFp(videoHeaders['fp_local']!).isValid, isTrue);
-    expect(IdentityCoreGenerators.validateFp(videoHeaders['fp_remote']!).isValid, isTrue);
-    expect(
-      IdentityCoreGenerators.validateSessionId(videoHeaders['session_id']!).isValid,
-      isTrue,
-    );
-    expect(IdentityCoreGenerators.validateFp(liveHeaders['fp_local']!).isValid, isTrue);
-    expect(IdentityCoreGenerators.validateFp(liveHeaders['fp_remote']!).isValid, isTrue);
-    expect(
-      IdentityCoreGenerators.validateSessionId(liveHeaders['session_id']!).isValid,
-      isTrue,
-    );
-    expect(videoHeaders['session_id'], isNot('11111111'));
-    expect(
-      videoHeaders['fp_local'],
-        isNot('1111111111111111111111111111111111111111111111111111111111111111'),
-    );
-    expect(liveHeaders['session_id'], isNot('11111111'));
-    expect(
-      liveHeaders['fp_local'],
-      isNot('1111111111111111111111111111111111111111111111111111111111111111'),
-    );
-  });
+      expect(videoHeaders['fp_local'], identity.fpLocal);
+      expect(videoHeaders['fp_remote'], identity.fpRemote);
+      expect(
+        IdentityCoreGenerators.validateSessionId(
+          videoHeaders['session_id']!,
+        ).isValid,
+        isTrue,
+      );
+      expect(liveHeaders['fp_local'], identity.fpLocal);
+      expect(liveHeaders['fp_remote'], identity.fpRemote);
+      expect(
+        IdentityCoreGenerators.validateSessionId(
+          liveHeaders['session_id']!,
+        ).isValid,
+        isTrue,
+      );
+      expect(
+        IdentityCoreGenerators.validateFp(videoHeaders['fp_local']!).isValid,
+        isTrue,
+      );
+      expect(
+        IdentityCoreGenerators.validateFp(videoHeaders['fp_remote']!).isValid,
+        isTrue,
+      );
+      expect(
+        IdentityCoreGenerators.validateSessionId(
+          videoHeaders['session_id']!,
+        ).isValid,
+        isTrue,
+      );
+      expect(
+        IdentityCoreGenerators.validateFp(liveHeaders['fp_local']!).isValid,
+        isTrue,
+      );
+      expect(
+        IdentityCoreGenerators.validateFp(liveHeaders['fp_remote']!).isValid,
+        isTrue,
+      );
+      expect(
+        IdentityCoreGenerators.validateSessionId(
+          liveHeaders['session_id']!,
+        ).isValid,
+        isTrue,
+      );
+      expect(videoHeaders['session_id'], isNot('11111111'));
+      expect(
+        videoHeaders['fp_local'],
+        isNot(
+          '1111111111111111111111111111111111111111111111111111111111111111',
+        ),
+      );
+      expect(liveHeaders['session_id'], isNot('11111111'));
+      expect(
+        liveHeaders['fp_local'],
+        isNot(
+          '1111111111111111111111111111111111111111111111111111111111111111',
+        ),
+      );
+    },
+  );
 
   test('gaia workflow fields are preserved without local synthesis', () {
     expect(RequestIdentityAdapter.preserveGaiaFields(), isEmpty);

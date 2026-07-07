@@ -39,7 +39,8 @@ abstract final class LoginHttp {
     Account? account,
     RequestIdentityAdapter? identity,
   }) {
-    final resolvedIdentity = identity ??
+    final resolvedIdentity =
+        identity ??
         (account == null
             ? RequestIdentityAdapter.fromBuvid(
                 buvid: buvid,
@@ -58,8 +59,9 @@ abstract final class LoginHttp {
   }
 
   @pragma('vm:notify-debugger-on-exception')
-  static Future<LoadingState<({String authCode, String url})>>
-  getHDcode({required RequestIdentityAdapter identity}) async {
+  static Future<LoadingState<({String authCode, String url})>> getHDcode({
+    required RequestIdentityAdapter identity,
+  }) async {
     final params = {
       'local_id': identity.localId,
       'platform': 'android',

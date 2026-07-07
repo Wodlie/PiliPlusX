@@ -32,7 +32,11 @@ final class GuestIdentityOwnerKey extends IdentityOwnerKey {
 final class AccountIdentityOwnerKey extends IdentityOwnerKey {
   AccountIdentityOwnerKey(this.mid) : super._() {
     if (mid <= 0) {
-      throw ArgumentError.value(mid, 'mid', 'Account identity owner requires a positive mid.');
+      throw ArgumentError.value(
+        mid,
+        'mid',
+        'Account identity owner requires a positive mid.',
+      );
     }
   }
 
@@ -46,11 +50,13 @@ final class AccountIdentityOwnerKey extends IdentityOwnerKey {
 }
 
 final class WorkflowIdentityOwnerKey extends IdentityOwnerKey {
-  WorkflowIdentityOwnerKey(String scope)
-    : scope = scope.trim(),
-      super._() {
+  WorkflowIdentityOwnerKey(String scope) : scope = scope.trim(), super._() {
     if (this.scope.isEmpty) {
-      throw ArgumentError.value(scope, 'scope', 'Workflow identity owner requires a non-empty scope.');
+      throw ArgumentError.value(
+        scope,
+        'scope',
+        'Workflow identity owner requires a non-empty scope.',
+      );
     }
   }
 

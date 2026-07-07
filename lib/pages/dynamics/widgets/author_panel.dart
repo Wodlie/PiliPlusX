@@ -344,7 +344,8 @@ class AuthorPanel extends StatelessWidget {
                       final moduleDynamic = item.modules.moduleDynamic!;
                       final title =
                           moduleDynamic.desc?.text ??
-                          moduleDynamic.major?.opus?.summary?.text ?? '';
+                          moduleDynamic.major?.opus?.summary?.text ??
+                          '';
                       String? thumb = isDyn
                           ? moduleAuthor.face
                           : moduleDynamic.major?.opus?.pics?.firstOrNull?.url;

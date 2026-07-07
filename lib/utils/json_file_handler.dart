@@ -18,9 +18,9 @@ class JsonFileHandler extends ReportHandler {
       .then((raf) => raf.writeFrom(const []))
       .then(_flush)
       .catchError((e) {
-    debugPrint('JsonFileHandler init error: $e');
-    throw e;
-  });
+        debugPrint('JsonFileHandler init error: $e');
+        throw e;
+      });
 
   JsonFileHandler._({
     this.enableDeviceParameters = true,

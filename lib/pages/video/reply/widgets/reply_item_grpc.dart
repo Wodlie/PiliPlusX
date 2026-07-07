@@ -1,4 +1,4 @@
-﻿import 'dart:math';
+import 'dart:math';
 
 import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/constants.dart';
@@ -58,8 +58,7 @@ class BlockedReplyBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final Color disabledColor = theme.disabledColor;
-    final Color primaryWithOpacity =
-        theme.colorScheme.primary.withOpacity(0.6);
+    final Color primaryWithOpacity = theme.colorScheme.primary.withOpacity(0.6);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
       child: Row(
@@ -122,8 +121,10 @@ class ReplyItemGrpc extends StatefulWidget {
 
   /// Translated text for this reply. null/toggle to show original.
   final String? translatedText;
+
   /// Whether a translation request is in-flight.
   final bool isTranslating;
+
   /// Called when the translate button is tapped.
   final VoidCallback? onTranslate;
 
@@ -171,7 +172,8 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
 
     Widget child = Padding(
       padding: const .fromLTRB(12, 14, 8, 5),
-      child: (ReplyGrpc.isClientBlocked(widget.replyItem) &&
+      child:
+          (ReplyGrpc.isClientBlocked(widget.replyItem) &&
               Pref.showBlockedReplyBanner &&
               _expanded)
           ? _buildExpandedBlocked(context, Theme.of(context))
@@ -389,7 +391,10 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
 
   Widget _buildContent(BuildContext context, ColorScheme colorScheme) {
     final replyControl = widget.replyItem.replyControl;
-    final padding = EdgeInsets.only(left: widget.replyLevel == 0 ? 6 : 45, right: 6);
+    final padding = EdgeInsets.only(
+      left: widget.replyLevel == 0 ? 6 : 45,
+      right: 6,
+    );
     return Column(
       mainAxisSize: .min,
       crossAxisAlignment: .start,
@@ -480,7 +485,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               custom_text.Text.rich(
                 primary: colorScheme.primary,
                 style: const TextStyle(height: 1.75, fontSize: 14),
-                maxLines: widget.replyLevel == 1 ? ReplyItemGrpc.replyLengthLimit : null,
+                maxLines: widget.replyLevel == 1
+                    ? ReplyItemGrpc.replyLengthLimit
+                    : null,
                 TextSpan(
                   children: [
                     if (widget.replyItem.replyControl.isUpTop) ...[
@@ -497,7 +504,12 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                       ),
                       const TextSpan(text: ' '),
                     ],
-                    _buildMessage(context, colorScheme, widget.replyItem.content, widget.replyItem.replyControl),
+                    _buildMessage(
+                      context,
+                      colorScheme,
+                      widget.replyItem.content,
+                      widget.replyItem.replyControl,
+                    ),
                   ],
                 ),
               ),
@@ -601,7 +613,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
           ),
           const SizedBox(width: 2),
         ],
-        if (widget.replyLevel == 2 && widget.needDivider && widget.replyItem.id != widget.replyItem.dialog)
+        if (widget.replyLevel == 2 &&
+            widget.needDivider &&
+            widget.replyItem.id != widget.replyItem.dialog)
           SizedBox(
             height: 32,
             child: TextButton(
@@ -610,7 +624,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               child: Text('鏌ョ湅瀵硅瘽', style: textStyle),
             ),
           )
-        else if (            widget.replyLevel == 3 &&
+        else if (widget.replyLevel == 3 &&
             widget.needDivider &&
             widget.replyItem.parent != widget.replyItem.root)
           SizedBox(
@@ -666,8 +680,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     Text(
                       widget.translatedText == null ? '翻译' : '原文',
                       style: widget.translatedText != null
-                          ? textStyle.copyWith(
-                              color: colorScheme.primary)
+                          ? textStyle.copyWith(color: colorScheme.primary)
                           : textStyle,
                     ),
                   ],
@@ -690,8 +703,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     final visibleReplies = replies
         .where((r) => !ReplyGrpc.isClientBlocked(r))
         .toList();
-    final extraRow =
-        visibleReplies.length < widget.replyItem.count.toInt();
+    final extraRow = visibleReplies.length < widget.replyItem.count.toInt();
     late final length = visibleReplies.length + (extraRow ? 1 : 0);
     return Padding(
       padding: const EdgeInsets.only(left: 42, right: 4),
@@ -729,14 +741,17 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     return morePanel(
                       context: context,
                       item: childReply,
-                      onDelete: () => widget.onDelete?.call(widget.replyItem, index),
+                      onDelete: () =>
+                          widget.onDelete?.call(widget.replyItem, index),
                       isSubReply: true,
                     );
                   },
                 );
                 return InkWell(
-                  onTap: () =>
-                      widget.replyReply?.call(widget.replyItem, childReply.id.toInt()),
+                  onTap: () => widget.replyReply?.call(
+                    widget.replyItem,
+                    childReply.id.toInt(),
+                  ),
                   onLongPress: showMore,
                   onSecondaryTap: PlatformUtils.isMobile ? null : showMore,
                   child: Padding(
@@ -797,7 +812,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               }),
             if (extraRow)
               InkWell(
-        onTap: () => widget.replyReply?.call(widget.replyItem, null),
+                onTap: () => widget.replyReply?.call(widget.replyItem, null),
                 child: Padding(
                   padding: length == 1
                       ? const EdgeInsets.fromLTRB(8, 6, 8, 6)
@@ -1072,9 +1087,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     //   }
     // }
 
-    if (!hasNote &&
-        replyControl.isNote &&
-        replyControl.isNoteV2) {
+    if (!hasNote && replyControl.isNote && replyControl.isNoteV2) {
       final Color color;
       NoDeadlineTapGestureRecognizer? recognizer;
 
@@ -1358,4 +1371,3 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     );
   }
 }
-

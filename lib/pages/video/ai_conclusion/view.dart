@@ -142,12 +142,10 @@ class AiConclusionPanel extends CommonSlidePage {
     return switch (result) {
       AiSummaryServiceSuccess(:final data) =>
         hasContent(data) ? '' : '当前视频暂不支持 AI 视频总结',
-      AiSummaryServiceNoSubtitle(:final message) =>
-        message ?? '当前视频暂无可用字幕',
+      AiSummaryServiceNoSubtitle(:final message) => message ?? '当前视频暂无可用字幕',
       AiSummaryServiceMisconfigured(:final message) =>
         message ?? '请先完成 AI 总结服务配置',
-      AiSummaryServiceProviderError(:final message) =>
-        message ?? 'AI 总结生成失败',
+      AiSummaryServiceProviderError(:final message) => message ?? 'AI 总结生成失败',
       AiSummaryServiceLegacyError(:final message) =>
         message ?? '哔哩哔哩 AI 总结生成失败',
       AiSummaryServiceUnavailable(:final message) =>

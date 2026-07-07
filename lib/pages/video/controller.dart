@@ -1077,8 +1077,9 @@ class VideoDetailController extends GetxController
     if (requestedEdgeId != null) {
       // 先在 storyList 中查找
       if (storyList != null && storyList.isNotEmpty) {
-        final byEdge =
-            storyList.where((e) => e.edgeId == requestedEdgeId).firstOrNull;
+        final byEdge = storyList
+            .where((e) => e.edgeId == requestedEdgeId)
+            .firstOrNull;
         if (byEdge != null) return byEdge;
       }
       // 如果找不到，从 steinEdgeInfo 顶层字段创建（API 的 story_list 可能只有起点）
@@ -1092,7 +1093,8 @@ class VideoDetailController extends GetxController
       }
     }
     if (storyList == null || storyList.isEmpty) return null;
-    return storyList.where((e) => e.isCurrent == 1).firstOrNull ?? storyList.last;
+    return storyList.where((e) => e.isCurrent == 1).firstOrNull ??
+        storyList.last;
   }
 
   /// 记录当前节点到本地历史栈，在用户点击选项前调用
@@ -1114,7 +1116,8 @@ class VideoDetailController extends GetxController
       return steinEdgeInfo?.storyList ?? [];
     }
 
-    if (current != null && !_isSameSteinNode(_localSteinHistory.last, current)) {
+    if (current != null &&
+        !_isSameSteinNode(_localSteinHistory.last, current)) {
       return [..._localSteinHistory, current];
     }
     return List.unmodifiable(_localSteinHistory);
@@ -1161,7 +1164,8 @@ class VideoDetailController extends GetxController
       // 若故事列表只有1个条目且是起点，说明没有历史进度可恢复
       if (storyList.length == 1 &&
           (storyList.first.isCurrent == 1) &&
-          storyList.first.cid == cid.value) return;
+          storyList.first.cid == cid.value)
+        return;
       // 若 historyNode.cid 与当前 cid 相同，且故事列表长度为1，则不需要恢复
       if (historyNode.cid == cid.value && storyList.length <= 1) return;
       // 发出恢复信号
@@ -1237,8 +1241,7 @@ class VideoDetailController extends GetxController
             graphVersion = response.interaction?.graphVersion;
             // 保存服务器返回的历史观看节点，用于判断是否需要恢复进度
             final historyNode = response.interaction?.historyNode;
-            if (historyNode?.cid != null &&
-                historyNode!.cid != cid.value) {
+            if (historyNode?.cid != null && historyNode!.cid != cid.value) {
               _steinHistoryNode = historyNode;
               getSteinEdgeInfo(null, true); // checkResume = true
             } else {

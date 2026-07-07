@@ -15,10 +15,12 @@ import 'package:protobuf/protobuf.dart' as $pb;
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
     show ReplyInfo;
 
-const $core.bool _omitFieldNames =
-    $core.bool.fromEnvironment('protobuf.omit_field_names');
-const $core.bool _omitMessageNames =
-    $core.bool.fromEnvironment('protobuf.omit_message_names');
+const $core.bool _omitFieldNames = $core.bool.fromEnvironment(
+  'protobuf.omit_field_names',
+);
+const $core.bool _omitMessageNames = $core.bool.fromEnvironment(
+  'protobuf.omit_message_names',
+);
 
 class TranslateReplyReq extends $pb.GeneratedMessage {
   factory TranslateReplyReq({
@@ -35,23 +37,31 @@ class TranslateReplyReq extends $pb.GeneratedMessage {
 
   TranslateReplyReq._();
 
-  factory TranslateReplyReq.fromBuffer($core.List<$core.int> data,
-          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
-  factory TranslateReplyReq.fromJson($core.String json,
-          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+  factory TranslateReplyReq.fromBuffer(
+    $core.List<$core.int> data, [
+    $pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY,
+  ]) => create()..mergeFromBuffer(data, registry);
+  factory TranslateReplyReq.fromJson(
+    $core.String json, [
+    $pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY,
+  ]) => create()..mergeFromJson(json, registry);
 
-  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
-      _omitMessageNames ? '' : 'TranslateReplyReq',
-      package: const $pb.PackageName(
-          _omitMessageNames ? '' : 'bilibili.main.community.reply.v1'),
-      createEmptyInstance: create)
-    ..aInt64(1, _omitFieldNames ? '' : 'type')
-    ..aInt64(2, _omitFieldNames ? '' : 'oid')
-    ..p<$fixnum.Int64>(3, _omitFieldNames ? '' : 'rpids',
-        $pb.PbFieldType.P6)
-    ..hasRequiredFields = false;
+  static final $pb.BuilderInfo _i =
+      $pb.BuilderInfo(
+          _omitMessageNames ? '' : 'TranslateReplyReq',
+          package: const $pb.PackageName(
+            _omitMessageNames ? '' : 'bilibili.main.community.reply.v1',
+          ),
+          createEmptyInstance: create,
+        )
+        ..aInt64(1, _omitFieldNames ? '' : 'type')
+        ..aInt64(2, _omitFieldNames ? '' : 'oid')
+        ..p<$fixnum.Int64>(
+          3,
+          _omitFieldNames ? '' : 'rpids',
+          $pb.PbFieldType.P6,
+        )
+        ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   TranslateReplyReq clone() => deepCopy();
@@ -96,8 +106,7 @@ class TranslateReplyReq extends $pb.GeneratedMessage {
 
 class TranslateReplyResp extends $pb.GeneratedMessage {
   factory TranslateReplyResp({
-    $core.Iterable<$core.MapEntry<$fixnum.Int64, ReplyInfo>>?
-        translatedReplies,
+    $core.Iterable<$core.MapEntry<$fixnum.Int64, ReplyInfo>>? translatedReplies,
   }) {
     final result = create();
     if (translatedReplies != null) {
@@ -108,27 +117,36 @@ class TranslateReplyResp extends $pb.GeneratedMessage {
 
   TranslateReplyResp._();
 
-  factory TranslateReplyResp.fromBuffer($core.List<$core.int> data,
-          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
-  factory TranslateReplyResp.fromJson($core.String json,
-          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+  factory TranslateReplyResp.fromBuffer(
+    $core.List<$core.int> data, [
+    $pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY,
+  ]) => create()..mergeFromBuffer(data, registry);
+  factory TranslateReplyResp.fromJson(
+    $core.String json, [
+    $pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY,
+  ]) => create()..mergeFromJson(json, registry);
 
-  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
-      _omitMessageNames ? '' : 'TranslateReplyResp',
-      package: const $pb.PackageName(
-          _omitMessageNames ? '' : 'bilibili.main.community.reply.v1'),
-      createEmptyInstance: create)
-    ..m<$fixnum.Int64, ReplyInfo>(1, _omitFieldNames ? '' : 'translatedReplies',
-        entryClassName: 'TranslateReplyResp.TranslatedRepliesEntry',
-        keyFieldType: $pb.PbFieldType.O6,
-        valueFieldType: $pb.PbFieldType.OM,
-        valueCreator: ReplyInfo.create,
-        valueDefaultOrMaker: ReplyInfo.getDefault,
-        packageName: const $pb.PackageName(
-            'bilibili.main.community.reply.v1'))
-    ..hasRequiredFields = false;
+  static final $pb.BuilderInfo _i =
+      $pb.BuilderInfo(
+          _omitMessageNames ? '' : 'TranslateReplyResp',
+          package: const $pb.PackageName(
+            _omitMessageNames ? '' : 'bilibili.main.community.reply.v1',
+          ),
+          createEmptyInstance: create,
+        )
+        ..m<$fixnum.Int64, ReplyInfo>(
+          1,
+          _omitFieldNames ? '' : 'translatedReplies',
+          entryClassName: 'TranslateReplyResp.TranslatedRepliesEntry',
+          keyFieldType: $pb.PbFieldType.O6,
+          valueFieldType: $pb.PbFieldType.OM,
+          valueCreator: ReplyInfo.create,
+          valueDefaultOrMaker: ReplyInfo.getDefault,
+          packageName: const $pb.PackageName(
+            'bilibili.main.community.reply.v1',
+          ),
+        )
+        ..hasRequiredFields = false;
 
   @$core.override
   $pb.BuilderInfo get info_ => _i;
@@ -148,8 +166,7 @@ class TranslateReplyResp extends $pb.GeneratedMessage {
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   TranslateReplyResp clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  TranslateReplyResp copyWith(
-          void Function(TranslateReplyResp) updates) =>
+  TranslateReplyResp copyWith(void Function(TranslateReplyResp) updates) =>
       super.copyWith((message) => updates(message as TranslateReplyResp))
           as TranslateReplyResp;
 }

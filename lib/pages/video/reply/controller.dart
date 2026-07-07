@@ -70,8 +70,7 @@ class VideoReplyController extends ReplyController<MainListReply>
       if (translatedInfo != null &&
           translatedInfo.hasTranslatedContent() &&
           translatedInfo.translatedContent.message.isNotEmpty) {
-        translatedReplies[rpid] =
-            translatedInfo.translatedContent.message;
+        translatedReplies[rpid] = translatedInfo.translatedContent.message;
       } else {
         translatedReplies.remove(rpid);
         SmartDialog.showToast('未获取到翻译结果');

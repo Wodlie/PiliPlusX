@@ -33,7 +33,9 @@ final class RequestIdentityAdapter {
     required String userAgent,
   }) {
     final snapshot = OwnerScopedIdentitySnapshot.fromAccount(account);
-    final storedDeviceProfile = account is LoginAccount ? account.deviceProfile : null;
+    final storedDeviceProfile = account is LoginAccount
+        ? account.deviceProfile
+        : null;
     final derived = IdentityCoreGenerators.deriveProfile(
       owner: snapshot.owner,
       storedProfile: snapshot.profile,

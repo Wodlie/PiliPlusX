@@ -172,7 +172,8 @@ class LoginAccount extends Account {
     required bool persistResolvedDeviceProfile,
   }) {
     final resolved = _resolveLoginAccountIdentity(cookieJar, buvid);
-    final resolvedDeviceProfile = deviceProfile ??
+    final resolvedDeviceProfile =
+        deviceProfile ??
         (persistResolvedDeviceProfile
             ? AppDeviceProfiles.defaultDeviceProfileForOwner(
                 resolved.resolution.profile.owner.key,
@@ -205,19 +206,18 @@ class LoginAccount extends Account {
   }
 
   factory LoginAccount.fromJson(Map json) => LoginAccount.restored(
-      BiliCookieJar.fromJson(json['cookies']),
-      json['accessKey'],
-      json['refresh'],
-      (json['type'] as Iterable?)?.map((i) => AccountType.values[i]).toSet(),
-      json['buvid'],
-      switch (json['deviceProfile']) {
-        final Map deviceProfile => AppDeviceProfile.fromJson(deviceProfile),
-        _ => null,
-      },
+    BiliCookieJar.fromJson(json['cookies']),
+    json['accessKey'],
+    json['refresh'],
+    (json['type'] as Iterable?)?.map((i) => AccountType.values[i]).toSet(),
+    json['buvid'],
+    switch (json['deviceProfile']) {
+      final Map deviceProfile => AppDeviceProfile.fromJson(deviceProfile),
+      _ => null,
+    },
   );
 
-  LoginAccount get _persistedAccount =>
-      deviceProfile == null
+  LoginAccount get _persistedAccount => deviceProfile == null
       ? LoginAccount._(
           cookieJar,
           accessKey,
@@ -291,7 +291,8 @@ class AnonymousAccount extends Account {
 ({
   String midStr,
   IdentityPersistenceResolution resolution,
-}) _resolveLoginAccountIdentity(
+})
+_resolveLoginAccountIdentity(
   DefaultCookieJar cookieJar,
   String? storedBuvid,
 ) {

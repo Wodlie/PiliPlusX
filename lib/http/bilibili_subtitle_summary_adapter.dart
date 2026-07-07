@@ -36,8 +36,7 @@ abstract final class BilibiliSubtitleSummaryAdapter {
       return const AiSummaryServiceNoSubtitle('当前视频暂无可用字幕');
     }
 
-    final String subtitleUrl =
-        subtitle.subtitleUrl?.trim().isNotEmpty == true
+    final String subtitleUrl = subtitle.subtitleUrl?.trim().isNotEmpty == true
         ? subtitle.subtitleUrl!.trim()
         : subtitle.subtitleUrlV2?.trim() ?? '';
     if (subtitleUrl.isEmpty) {
@@ -73,9 +72,10 @@ abstract final class BilibiliSubtitleSummaryAdapter {
 
     final VideoSummaryProviderFailure failure = providerResult.errorOrNull!;
     return switch (failure.type) {
-      VideoSummaryProviderErrorType.misconfigured => AiSummaryServiceMisconfigured(
-        failure.message,
-      ),
+      VideoSummaryProviderErrorType.misconfigured =>
+        AiSummaryServiceMisconfigured(
+          failure.message,
+        ),
       _ => AiSummaryServiceProviderError(failure.message),
     };
   }
@@ -191,7 +191,8 @@ $transcript
       }
       final String? title = item['title']?.toString().trim();
       final List<PartOutline> parts = <PartOutline>[];
-      final dynamic rawPartOutline = item['part_outline'] ?? item['partOutline'];
+      final dynamic rawPartOutline =
+          item['part_outline'] ?? item['partOutline'];
       if (rawPartOutline is List) {
         for (final rawPart in rawPartOutline) {
           if (rawPart is! Map) {

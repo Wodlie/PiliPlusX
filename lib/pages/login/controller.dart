@@ -718,9 +718,7 @@ class LoginPageController extends GetxController
       ...Accounts.account.toMap().map(
         (k, v) => MapEntry(
           v,
-          useDisplayName
-              ? Pref.getAccountDisplayName(v.mid)
-              : k as String,
+          useDisplayName ? Pref.getAccountDisplayName(v.mid) : k as String,
         ),
       ),
     };

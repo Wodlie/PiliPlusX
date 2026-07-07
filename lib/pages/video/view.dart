@@ -323,9 +323,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                       node.title ?? '节点 ${i + 1}',
                       style: TextStyle(
                         fontWeight: isCurrent ? FontWeight.bold : null,
-                        color: isCurrent
-                            ? theme.colorScheme.primary
-                            : null,
+                        color: isCurrent ? theme.colorScheme.primary : null,
                       ),
                     ),
                     onTap: () {
@@ -1452,7 +1450,8 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                           padding: EdgeInsets.only(
                             left: 16,
                             right: 16,
-                            bottom: plPlayerController?.showControls.value == true
+                            bottom:
+                                plPlayerController?.showControls.value == true
                                 ? 75
                                 : 16,
                           ),
@@ -1495,9 +1494,10 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                                             item,
                                             isStein: true,
                                           );
-                                          videoDetailController.getSteinEdgeInfo(
-                                            item.id,
-                                          );
+                                          videoDetailController
+                                              .getSteinEdgeInfo(
+                                                item.id,
+                                              );
                                         },
                                         child: Text(item.option!),
                                       );
@@ -1525,7 +1525,10 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                                       ),
                                     ),
                                     onPressed: _showSteinHistorySheet,
-                                    icon: const Icon(Icons.history_rounded, size: 18),
+                                    icon: const Icon(
+                                      Icons.history_rounded,
+                                      size: 18,
+                                    ),
                                     label: const Text('进度回溯'),
                                   ),
                                 ),

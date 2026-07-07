@@ -19,7 +19,9 @@ void main() {
   late Directory tempDir;
 
   setUpAll(() async {
-    tempDir = await Directory.systemTemp.createTemp('pili_identity_migration_test_');
+    tempDir = await Directory.systemTemp.createTemp(
+      'pili_identity_migration_test_',
+    );
     debugSetAppSupportDirPath(tempDir.path);
     await GStorage.init();
   });
@@ -41,96 +43,123 @@ void main() {
   });
 
   group('identity migration', () {
-    test('guest migration repairs a malformed stored BUVID once and keeps repeated reads stable', () {
-      GStorage.localCache.put(LocalCacheKey.guestBuvid, 'broken-guest');
+    test(
+      'guest migration repairs a malformed stored BUVID once and keeps repeated reads stable',
+      () {
+        GStorage.localCache.put(LocalCacheKey.guestBuvid, 'broken-guest');
 
-      final repaired = Pref.guestBuvid;
-      final repeated = Pref.guestBuvid;
+        final repaired = Pref.guestBuvid;
+        final repeated = Pref.guestBuvid;
 
-      expect(
-        IdentityCoreGenerators.validateBuvid(repaired).isValid,
-        isTrue,
-      );
-      expect(repeated, repaired);
-      expect(GStorage.localCache.get(LocalCacheKey.guestBuvid), repaired);
-    });
+        expect(
+          IdentityCoreGenerators.validateBuvid(repaired).isValid,
+          isTrue,
+        );
+        expect(repeated, repaired);
+        expect(GStorage.localCache.get(LocalCacheKey.guestBuvid), repaired);
+      },
+    );
 
     test('guest migration preserves a valid stored BUVID', () {
-      final validGuest = IdentityCoreGenerators.deriveBuvidFromSeed('guest-valid');
+      final validGuest = IdentityCoreGenerators.deriveBuvidFromSeed(
+        'guest-valid',
+      );
       GStorage.localCache.put(LocalCacheKey.guestBuvid, validGuest);
 
       expect(Pref.guestBuvid, validGuest);
       expect(GStorage.localCache.get(LocalCacheKey.guestBuvid), validGuest);
     });
 
-    test('guest migration recovers from a corrupt stored BUVID by promoting a valid legacy entry', () {
-      final validLegacyGuest = IdentityCoreGenerators.deriveBuvidFromSeed(
-        'guest-legacy-valid',
-      );
-      GStorage.localCache.put(LocalCacheKey.guestBuvid, 'broken-guest');
-      GStorage.localCache.put(LocalCacheKey.legacyBuvid, validLegacyGuest);
+    test(
+      'guest migration recovers from a corrupt stored BUVID by promoting a valid legacy entry',
+      () {
+        final validLegacyGuest = IdentityCoreGenerators.deriveBuvidFromSeed(
+          'guest-legacy-valid',
+        );
+        GStorage.localCache.put(LocalCacheKey.guestBuvid, 'broken-guest');
+        GStorage.localCache.put(LocalCacheKey.legacyBuvid, validLegacyGuest);
 
-      final recovered = Pref.guestBuvid;
-      final repeated = Pref.guestBuvid;
+        final recovered = Pref.guestBuvid;
+        final repeated = Pref.guestBuvid;
 
-      expect(recovered, validLegacyGuest);
-      expect(repeated, validLegacyGuest);
-      expect(
-        IdentityCoreGenerators.validateBuvid(recovered).isValid,
-        isTrue,
-      );
-      expect(GStorage.localCache.get(LocalCacheKey.guestBuvid), validLegacyGuest);
-      expect(GStorage.localCache.get(LocalCacheKey.legacyBuvid), isNull);
-    });
+        expect(recovered, validLegacyGuest);
+        expect(repeated, validLegacyGuest);
+        expect(
+          IdentityCoreGenerators.validateBuvid(recovered).isValid,
+          isTrue,
+        );
+        expect(
+          GStorage.localCache.get(LocalCacheKey.guestBuvid),
+          validLegacyGuest,
+        );
+        expect(GStorage.localCache.get(LocalCacheKey.legacyBuvid), isNull);
+      },
+    );
 
-    test('account migration repairs a malformed account BUVID and marks it for persistence', () async {
-      final account = _createLoginAccount(mid: 2001, buvid: 'broken-account-buvid');
+    test(
+      'account migration repairs a malformed account BUVID and marks it for persistence',
+      () async {
+        final account = _createLoginAccount(
+          mid: 2001,
+          buvid: 'broken-account-buvid',
+        );
 
-      expect(
-        IdentityCoreGenerators.validateBuvid(account.buvid).isValid,
-        isTrue,
-      );
-      expect(account.needsBuvidPersist, isTrue);
+        expect(
+          IdentityCoreGenerators.validateBuvid(account.buvid).isValid,
+          isTrue,
+        );
+        expect(account.needsBuvidPersist, isTrue);
 
-      await account.onChange();
+        await account.onChange();
 
-      final persisted = Accounts.account.get(account.mid.toString());
-      expect(persisted, isNotNull);
-      expect(persisted!.buvid, account.buvid);
-      expect(persisted.needsBuvidPersist, isTrue);
-    });
+        final persisted = Accounts.account.get(account.mid.toString());
+        expect(persisted, isNotNull);
+        expect(persisted!.buvid, account.buvid);
+        expect(persisted.needsBuvidPersist, isTrue);
+      },
+    );
 
     test('account migration preserves a valid account BUVID', () {
-      final validAccountBuvid = IdentityCoreGenerators.deriveBuvidFromSeed('account-valid');
+      final validAccountBuvid = IdentityCoreGenerators.deriveBuvidFromSeed(
+        'account-valid',
+      );
       final account = _createLoginAccount(mid: 2002, buvid: validAccountBuvid);
 
       expect(account.buvid, validAccountBuvid);
       expect(account.needsBuvidPersist, isFalse);
     });
 
-    test('old account records without device profile still deserialize and fall back safely', () {
-      final restored = LoginAccount.restored(
-        _createCookieJar(mid: 2004),
-        'ACCESS_KEY_2004',
-        'REFRESH_2004',
-        {AccountType.main},
-        IdentityCoreGenerators.deriveBuvidFromSeed('legacy-device-profile-2004'),
-      );
-      
-      expect(restored.deviceProfile, isNull);
-      final fallbackProfile = AppDeviceProfiles.defaultDeviceProfileForOwner(
-        'account:2004',
-      );
-      final identity = RequestIdentityAdapter.fromAccount(
-        account: restored,
-        userAgent: AppDeviceProfiles.androidHd.userAgent,
-      );
-      expect(identity.profile.deviceProfile, fallbackProfile);
-      expect(identity.deviceName, fallbackProfile.deviceName);
-      expect(identity.devicePlatform, fallbackProfile.devicePlatform);
-      expect(identity.profile.deviceProfile.hasGenericPlaceholderFields, isFalse);
-      expect(restored.needsBuvidPersist, isTrue);
-    });
+    test(
+      'old account records without device profile still deserialize and fall back safely',
+      () {
+        final restored = LoginAccount.restored(
+          _createCookieJar(mid: 2004),
+          'ACCESS_KEY_2004',
+          'REFRESH_2004',
+          {AccountType.main},
+          IdentityCoreGenerators.deriveBuvidFromSeed(
+            'legacy-device-profile-2004',
+          ),
+        );
+
+        expect(restored.deviceProfile, isNull);
+        final fallbackProfile = AppDeviceProfiles.defaultDeviceProfileForOwner(
+          'account:2004',
+        );
+        final identity = RequestIdentityAdapter.fromAccount(
+          account: restored,
+          userAgent: AppDeviceProfiles.androidHd.userAgent,
+        );
+        expect(identity.profile.deviceProfile, fallbackProfile);
+        expect(identity.deviceName, fallbackProfile.deviceName);
+        expect(identity.devicePlatform, fallbackProfile.devicePlatform);
+        expect(
+          identity.profile.deviceProfile.hasGenericPlaceholderFields,
+          isFalse,
+        );
+        expect(restored.needsBuvidPersist, isTrue);
+      },
+    );
 
     test('new account records persist and reload the device profile', () async {
       final storedProfile = AppDeviceProfile(
@@ -140,7 +169,9 @@ void main() {
       );
       final account = _createLoginAccount(
         mid: 2005,
-        buvid: IdentityCoreGenerators.deriveBuvidFromSeed('persisted-device-profile-2005'),
+        buvid: IdentityCoreGenerators.deriveBuvidFromSeed(
+          'persisted-device-profile-2005',
+        ),
         deviceProfile: storedProfile,
       );
 
@@ -160,33 +191,46 @@ void main() {
       expect(fromJson.deviceProfile!.hasGenericPlaceholderFields, isFalse);
     });
 
-    test('fallback device profile selection is deterministic for the same owner', () {
-      final first = AppDeviceProfiles.defaultDeviceProfileForOwner('account:2333');
-      final second = AppDeviceProfiles.defaultDeviceProfileForOwner('account:2333');
-      final guest = AppDeviceProfiles.defaultDeviceProfileForOwner('guest');
+    test(
+      'fallback device profile selection is deterministic for the same owner',
+      () {
+        final first = AppDeviceProfiles.defaultDeviceProfileForOwner(
+          'account:2333',
+        );
+        final second = AppDeviceProfiles.defaultDeviceProfileForOwner(
+          'account:2333',
+        );
+        final guest = AppDeviceProfiles.defaultDeviceProfileForOwner('guest');
 
-      expect(first, second);
-      expect(first.hasGenericPlaceholderFields, isFalse);
-      expect(guest.hasGenericPlaceholderFields, isFalse);
-    });
+        expect(first, second);
+        expect(first.hasGenericPlaceholderFields, isFalse);
+        expect(guest.hasGenericPlaceholderFields, isFalse);
+      },
+    );
 
-    test('logout clears account identity and creates a fresh guest profile', () async {
-      await Pref.deleteGuestBuvid();
-      final account = _createLoginAccount(mid: 2003)..activated = true;
+    test(
+      'logout clears account identity and creates a fresh guest profile',
+      () async {
+        await Pref.deleteGuestBuvid();
+        final account = _createLoginAccount(mid: 2003)..activated = true;
 
-      await Accounts.set(AccountType.video, account);
-      await Accounts.deleteAll({account});
+        await Accounts.set(AccountType.video, account);
+        await Accounts.deleteAll({account});
 
-      expect(Accounts.get(AccountType.video), isA<AnonymousAccount>());
-      expect(Accounts.account.get(account.mid.toString()), isNull);
+        expect(Accounts.get(AccountType.video), isA<AnonymousAccount>());
+        expect(Accounts.account.get(account.mid.toString()), isNull);
 
-      final freshGuestBuvid = Pref.guestBuvid;
-      expect(
-        IdentityCoreGenerators.validateBuvid(freshGuestBuvid).isValid,
-        isTrue,
-      );
-      expect(GStorage.localCache.get(LocalCacheKey.guestBuvid), freshGuestBuvid);
-    });
+        final freshGuestBuvid = Pref.guestBuvid;
+        expect(
+          IdentityCoreGenerators.validateBuvid(freshGuestBuvid).isValid,
+          isTrue,
+        );
+        expect(
+          GStorage.localCache.get(LocalCacheKey.guestBuvid),
+          freshGuestBuvid,
+        );
+      },
+    );
   });
 }
 

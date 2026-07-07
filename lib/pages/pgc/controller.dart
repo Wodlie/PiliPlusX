@@ -77,7 +77,12 @@ class PgcController
     }
     final res = await Future.wait([
       PgcHttp.pgcTimeline(types: 1, before: 6, after: 6, apiUrl: apiUrl),
-      PgcHttp.pgcTimeline(types: 4, before: 6, after: 6, apiUrl: Api.pgcTimeline,),
+      PgcHttp.pgcTimeline(
+        types: 4,
+        before: 6,
+        after: 6,
+        apiUrl: Api.pgcTimeline,
+      ),
     ]);
     final list1 = res.first.dataOrNull;
     final list2 = res[1].dataOrNull;
@@ -101,7 +106,9 @@ class PgcController
     }
     followLoading = true;
     final res = await FavHttp.favPgc(
-      type: tabType == HomeTabType.bangumi || tabType == HomeTabType.hk_bangumi ? 1 : 2,
+      type: tabType == HomeTabType.bangumi || tabType == HomeTabType.hk_bangumi
+          ? 1
+          : 2,
       pn: followPage,
     );
 

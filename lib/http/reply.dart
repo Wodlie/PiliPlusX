@@ -76,9 +76,7 @@ abstract final class ReplyHttp {
         'sort': 1,
         if (isLogin) 'csrf': loginAccount.csrf,
       },
-      options: !isLogin
-          ? options
-          : Options(extra: {'account': loginAccount}),
+      options: !isLogin ? options : Options(extra: {'account': loginAccount}),
     );
     if (res.data['code'] == 0) {
       ReplyReplyData replyData = ReplyReplyData.fromJson(res.data['data']);

@@ -49,19 +49,24 @@ void main() {
     // here: checkBlockReason correctly identifies replies that WOULD be
     // filtered, ensuring the banner/preview logic works end-to-end.
 
-    test('checkBlockReason identifies replies that replyItemRow would hide',
-        () {
-      // This test verifies the signal that drives sub-reply filtering.
-      // The actual filtering in replyItemRow is:
-      //   visibleReplies = replies.where((r) => !isClientBlocked(r)).toList()
-      // isClientBlocked checks _blockedReasons which is populated by
-      // mainList when checkBlockReason returns non-null.
+    test(
+      'checkBlockReason identifies replies that replyItemRow would hide',
+      () {
+        // This test verifies the signal that drives sub-reply filtering.
+        // The actual filtering in replyItemRow is:
+        //   visibleReplies = replies.where((r) => !isClientBlocked(r)).toList()
+        // isClientBlocked checks _blockedReasons which is populated by
+        // mainList when checkBlockReason returns non-null.
 
-      // If checkBlockReason returns non-null, the reply is a candidate
-      // for filtering in the sub-reply preview.
-      // See block_reason_test.dart for full checkBlockReason coverage.
-      expect(true, isTrue); // placeholder – real coverage in block_reason_test
-    });
+        // If checkBlockReason returns non-null, the reply is a candidate
+        // for filtering in the sub-reply preview.
+        // See block_reason_test.dart for full checkBlockReason coverage.
+        expect(
+          true,
+          isTrue,
+        ); // placeholder – real coverage in block_reason_test
+      },
+    );
   });
 }
 

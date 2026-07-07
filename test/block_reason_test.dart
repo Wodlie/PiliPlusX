@@ -14,8 +14,7 @@ void main() {
   late Directory tempDir;
 
   setUpAll(() async {
-    tempDir =
-        await Directory.systemTemp.createTemp('pili_block_reason_test_');
+    tempDir = await Directory.systemTemp.createTemp('pili_block_reason_test_');
     debugSetAppSupportDirPath(tempDir.path);
     await GStorage.init();
   });
@@ -35,13 +34,11 @@ void main() {
     await GStorage.setting.put(SettingBoxKey.enableAtFilter, false);
     await GStorage.setting.put(SettingBoxKey.enableAtFilterPureAt, false);
     await GStorage.setting.put(SettingBoxKey.enableAtFilterBodyLength, false);
-    await GStorage.setting
-        .put(SettingBoxKey.atFilterBodyLengthThreshold, 10);
+    await GStorage.setting.put(SettingBoxKey.atFilterBodyLengthThreshold, 10);
     await GStorage.setting.put(SettingBoxKey.enableAtFilterAtCount, false);
     await GStorage.setting.put(SettingBoxKey.atFilterAtCountThreshold, 5);
     await GStorage.setting.put(SettingBoxKey.enableAtFilterLikeExempt, false);
-    await GStorage.setting
-        .put(SettingBoxKey.atFilterLikeExemptThreshold, 50);
+    await GStorage.setting.put(SettingBoxKey.atFilterLikeExemptThreshold, 50);
   });
 
   tearDownAll(() async {
@@ -138,10 +135,8 @@ void main() {
   group('checkBlockReason – @ body-too-short filter', () {
     test('returns body-too-short reason for short effective body', () async {
       await GStorage.setting.put(SettingBoxKey.enableAtFilter, true);
-      await GStorage.setting
-          .put(SettingBoxKey.enableAtFilterBodyLength, true);
-      await GStorage.setting
-          .put(SettingBoxKey.atFilterBodyLengthThreshold, 10);
+      await GStorage.setting.put(SettingBoxKey.enableAtFilterBodyLength, true);
+      await GStorage.setting.put(SettingBoxKey.atFilterBodyLengthThreshold, 10);
 
       final reply = _makeReply(
         message: '@用户A 哈',
@@ -178,8 +173,7 @@ void main() {
       await GStorage.setting.put(SettingBoxKey.enableAtFilter, true);
       await GStorage.setting.put(SettingBoxKey.enableAtFilterPureAt, true);
       await GStorage.setting.put(SettingBoxKey.enableAtFilterLikeExempt, true);
-      await GStorage.setting
-          .put(SettingBoxKey.atFilterLikeExemptThreshold, 50);
+      await GStorage.setting.put(SettingBoxKey.atFilterLikeExemptThreshold, 50);
 
       final reply = _makeReply(
         message: '@用户A @用户B',
@@ -244,39 +238,44 @@ void main() {
   });
 
   group('checkBlockReason – reply prefix stripping', () {
-    test('strips "回复 @user:" prefix for replies before applying @ filter',
-        () async {
-      await GStorage.setting.put(SettingBoxKey.enableAtFilter, true);
-      await GStorage.setting.put(SettingBoxKey.enableAtFilterPureAt, true);
+    test(
+      'strips "回复 @user:" prefix for replies before applying @ filter',
+      () async {
+        await GStorage.setting.put(SettingBoxKey.enableAtFilter, true);
+        await GStorage.setting.put(SettingBoxKey.enableAtFilterPureAt, true);
 
-      // Reply with "回复 @user:" prefix and substantive content after
-      final reply = _makeReply(
-        message: '回复 @syocn :可是这个奥托真的纯良[笑哭][笑哭]',
-        atMap: {'syocn': 100},
-        root: 12345, // non-zero = reply
-      );
+        // Reply with "回复 @user:" prefix and substantive content after
+        final reply = _makeReply(
+          message: '回复 @syocn :可是这个奥托真的纯良[笑哭][笑哭]',
+          atMap: {'syocn': 100},
+          root: 12345, // non-zero = reply
+        );
 
-      // Should NOT be filtered – the "回复 @" is system-generated
-      expect(ReplyGrpc.checkBlockReason(reply), isNull);
-    });
+        // Should NOT be filtered – the "回复 @" is system-generated
+        expect(ReplyGrpc.checkBlockReason(reply), isNull);
+      },
+    );
 
-    test('filters reply with user-initiated @ after stripping prefix', () async {
-      await GStorage.setting.put(SettingBoxKey.enableAtFilter, true);
-      await GStorage.setting.put(SettingBoxKey.enableAtFilterAtCount, true);
-      await GStorage.setting.put(SettingBoxKey.atFilterAtCountThreshold, 3);
+    test(
+      'filters reply with user-initiated @ after stripping prefix',
+      () async {
+        await GStorage.setting.put(SettingBoxKey.enableAtFilter, true);
+        await GStorage.setting.put(SettingBoxKey.enableAtFilterAtCount, true);
+        await GStorage.setting.put(SettingBoxKey.atFilterAtCountThreshold, 3);
 
-      // Reply with prefix + user spamming @ mentions
-      final reply = _makeReply(
-        message: '回复 @111: @112 @113 @114 @115 快来看',
-        atMap: {'111': 1, '112': 2, '113': 3, '114': 4, '115': 5},
-        root: 12345, // non-zero = reply
-      );
+        // Reply with prefix + user spamming @ mentions
+        final reply = _makeReply(
+          message: '回复 @111: @112 @113 @114 @115 快来看',
+          atMap: {'111': 1, '112': 2, '113': 3, '114': 4, '115': 5},
+          root: 12345, // non-zero = reply
+        );
 
-      // Should be filtered – user is spamming @ in a reply
-      final reason = ReplyGrpc.checkBlockReason(reply);
-      expect(reason, isNotNull);
-      expect(reason, contains('@数量过多'));
-    });
+        // Should be filtered – user is spamming @ in a reply
+        final reason = ReplyGrpc.checkBlockReason(reply);
+        expect(reason, isNotNull);
+        expect(reason, contains('@数量过多'));
+      },
+    );
 
     test('does not strip prefix for top-level comments', () async {
       await GStorage.setting.put(SettingBoxKey.enableAtFilter, true);
@@ -310,8 +309,9 @@ ReplyInfo _makeReply({
 }) {
   final content = Content()..message = message;
   if (atMap.isNotEmpty) {
-    content.atNameToMid
-        .addEntries(atMap.entries.map((e) => MapEntry(e.key, Int64(e.value))));
+    content.atNameToMid.addEntries(
+      atMap.entries.map((e) => MapEntry(e.key, Int64(e.value))),
+    );
   }
   return ReplyInfo(
     id: Int64(id),

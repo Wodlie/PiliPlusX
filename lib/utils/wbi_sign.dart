@@ -108,9 +108,9 @@ abstract final class WbiSign {
           .put(LocalCacheKey.timeStamp, nowDate.millisecondsSinceEpoch)
           .then((_) => _getWbiKeys())
           .catchError((e) {
-        debugPrint('WBI sign error: $e');
-        return '';
-      });
+            debugPrint('WBI sign error: $e');
+            return '';
+          });
     }
   }
 

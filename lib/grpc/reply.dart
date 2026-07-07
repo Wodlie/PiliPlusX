@@ -74,7 +74,7 @@ abstract final class ReplyGrpc {
                   (url.extra.goodsCmControl == Int64.ONE ||
                       url.extra.hasGoodsItemId() ||
                       url.extra.hasGoodsPrefetchedCache());
-        })) ||
+            })) ||
         reply.content.message.contains(Constants.goodsUrlPrefix);
   }
 
@@ -133,8 +133,7 @@ abstract final class ReplyGrpc {
     return false;
   }
 
-  static final RegExp _replyPrefixRegExp =
-      RegExp(r'^回复 @\S+?\s*:\s*');
+  static final RegExp _replyPrefixRegExp = RegExp(r'^回复 @\S+?\s*:\s*');
 
   static String _stripReplyPrefix(String message, ReplyInfo reply) {
     // Only strip for replies (root != 0), not top-level comments
@@ -156,11 +155,9 @@ abstract final class ReplyGrpc {
     );
     final String normalizedBody = _normalizeReplyWhitespace(
       _replaceReplyTokens(
-            bodyWithoutMentions,
-            _buildNonSubstantiveReplyTokens(content),
-          )
-          .replaceAll(_voteTokenRegExp, ' ')
-          .replaceAll(Constants.urlRegex, ' '),
+        bodyWithoutMentions,
+        _buildNonSubstantiveReplyTokens(content),
+      ).replaceAll(_voteTokenRegExp, ' ').replaceAll(Constants.urlRegex, ' '),
     );
     final String effectiveBody = _extractReplyEffectiveBody(normalizedBody);
     return ReplyNormalizedBody(
@@ -179,11 +176,9 @@ abstract final class ReplyGrpc {
   }
 
   static String _replaceReplyTokens(String message, Iterable<String> tokens) {
-    final List<String> sortedTokens = tokens
-        .where((token) => token.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort((a, b) => b.length.compareTo(a.length));
+    final List<String> sortedTokens =
+        tokens.where((token) => token.isNotEmpty).toSet().toList()
+          ..sort((a, b) => b.length.compareTo(a.length));
     var result = message;
     for (final token in sortedTokens) {
       result = result.replaceAll(token, ' ');
@@ -261,8 +256,9 @@ abstract final class ReplyGrpc {
             final ReplyNormalizedBody normalized = normalizeReplyBody(reply);
             final bool isPureAtHit =
                 normalized.bodyWithoutMentions.isEmpty ||
-                _extractReplyEffectiveBody(normalized.bodyWithoutMentions)
-                    .isEmpty;
+                _extractReplyEffectiveBody(
+                  normalized.bodyWithoutMentions,
+                ).isEmpty;
             if (isPureAtHit) {
               return '低质量@评论：纯@无正文';
             }
@@ -275,8 +271,9 @@ abstract final class ReplyGrpc {
           }
 
           if (hasBodyLengthRule) {
-            final ReplyNormalizedBody normalizedBody =
-                normalizeReplyBody(reply);
+            final ReplyNormalizedBody normalizedBody = normalizeReplyBody(
+              reply,
+            );
             if (normalizedBody.effectiveLength <= bodyLengthThreshold) {
               return '低质量@评论：正文过短';
             }

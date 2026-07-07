@@ -208,8 +208,7 @@ abstract final class ReplyUtils {
                       );
                     } else if (result case Error(:final errMsg, :final code)) {
                       if (code == 12082) {
-                        resultMessage.value =
-                            '无可申诉评论，可能评论正常或正在审核中';
+                        resultMessage.value = '无可申诉评论，可能评论正常或正在审核中';
                       } else {
                         resultMessage.value = errMsg ?? '申诉失败';
                       }

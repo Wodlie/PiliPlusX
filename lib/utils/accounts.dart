@@ -18,7 +18,8 @@ abstract final class Accounts {
   static Account get main => get(AccountType.main);
   static Account get video => get(AccountType.video);
   static Account get heartbeat => get(AccountType.heartbeat);
-  static OwnerScopedIdentitySnapshot get mainIdentity => snapshot(AccountType.main);
+  static OwnerScopedIdentitySnapshot get mainIdentity =>
+      snapshot(AccountType.main);
   static OwnerScopedIdentitySnapshot get videoIdentity =>
       snapshot(AccountType.video);
   static OwnerScopedIdentitySnapshot get heartbeatIdentity =>
@@ -30,6 +31,7 @@ abstract final class Accounts {
     }
     return heartbeat;
   }
+
   static Account get reply {
     final reply = accountMode[AccountType.reply.index];
     if (reply is AnonymousAccount) {
@@ -156,7 +158,9 @@ abstract final class Accounts {
   }
 
   static void _publish(List<Account> accounts) {
-    final nextAccounts = List<Account>.unmodifiable(List<Account>.from(accounts));
+    final nextAccounts = List<Account>.unmodifiable(
+      List<Account>.from(accounts),
+    );
     final touchedAccounts = {
       ..._state.accounts.whereType<LoginAccount>(),
       ...nextAccounts.whereType<LoginAccount>(),

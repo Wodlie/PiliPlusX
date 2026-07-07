@@ -423,9 +423,8 @@ List<SettingsModel> get extraSettings => [
   NormalModel(
     title: '默认申诉理由',
     leading: const Icon(Icons.edit_note),
-    getSubtitle: () => Pref.defaultAppealReason.isEmpty
-        ? '点击设置'
-        : Pref.defaultAppealReason,
+    getSubtitle: () =>
+        Pref.defaultAppealReason.isEmpty ? '点击设置' : Pref.defaultAppealReason,
     onTap: (context, setState) {
       String editValue = Pref.defaultAppealReason;
       showDialog(
@@ -904,7 +903,7 @@ List<SettingsModel> get extraSettings => [
       return '当前港澳台代理配置: 「${url == '' ? '不代理' : Pref.apiHKUrl}」';
     },
 
-    onTap: (context,setState) {
+    onTap: (context, setState) {
       showDialog(
         context: context,
         builder: (context) {

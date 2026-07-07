@@ -147,7 +147,10 @@ class _AtFilterPageState extends State<AtFilterPage> {
     });
   }
 
-  void _showAtCountThresholdDialog(BuildContext context, VoidCallback setState) {
+  void _showAtCountThresholdDialog(
+    BuildContext context,
+    VoidCallback setState,
+  ) {
     showDialog<double>(
       context: context,
       builder: (context) => SliderDialog(
@@ -170,7 +173,10 @@ class _AtFilterPageState extends State<AtFilterPage> {
     });
   }
 
-  void _showLikeExemptThresholdDialog(BuildContext context, VoidCallback setState) {
+  void _showLikeExemptThresholdDialog(
+    BuildContext context,
+    VoidCallback setState,
+  ) {
     showDialog<double>(
       context: context,
       builder: (context) => SliderDialog(

@@ -43,7 +43,9 @@ void main() {
       mid: 2201,
       buvid: IdentityCoreGenerators.generateBuvid(),
     );
-    final hdProfile = AppDeviceProfiles.defaultDeviceProfileForOwner('account:2201');
+    final hdProfile = AppDeviceProfiles.defaultDeviceProfileForOwner(
+      'account:2201',
+    );
     final identity = RequestIdentityAdapter.fromAccount(
       account: account,
       userAgent: Constants.userAgent,
@@ -82,7 +84,9 @@ void main() {
       AppDeviceProfiles.androidHd.userAgent,
     );
     expect(
-      IdentityCoreGenerators.validateTraceId(headers['x-bili-trace-id']!).isValid,
+      IdentityCoreGenerators.validateTraceId(
+        headers['x-bili-trace-id']!,
+      ).isValid,
       isTrue,
     );
     expect(headers['x-bili-aurora-eid'], isNotEmpty);
@@ -106,15 +110,29 @@ void main() {
       account: guest,
     );
 
-    expect(IdentityCoreGenerators.validateDeviceLocalId(identity.localId).isValid, isTrue);
-    expect(identity.restPayloadFields, containsPair('local_id', identity.localId));
-    expect(identity.restPayloadFields, containsPair('device_name', hdProfile.deviceName));
-    expect(identity.restPayloadFields, containsPair('device_platform', hdProfile.devicePlatform));
+    expect(
+      IdentityCoreGenerators.validateDeviceLocalId(identity.localId).isValid,
+      isTrue,
+    );
+    expect(
+      identity.restPayloadFields,
+      containsPair('local_id', identity.localId),
+    );
+    expect(
+      identity.restPayloadFields,
+      containsPair('device_name', hdProfile.deviceName),
+    );
+    expect(
+      identity.restPayloadFields,
+      containsPair('device_platform', hdProfile.devicePlatform),
+    );
     expect(identity.profile.deviceProfile.hasGenericPlaceholderFields, isFalse);
     expect(headers.containsKey('x-bili-aurora-eid'), isFalse);
     expect(headers.containsKey('authorization'), isFalse);
     expect(
-      IdentityCoreGenerators.validateTraceId(headers['x-bili-trace-id']!).isValid,
+      IdentityCoreGenerators.validateTraceId(
+        headers['x-bili-trace-id']!,
+      ).isValid,
       isTrue,
     );
     expect(
@@ -128,7 +146,9 @@ void main() {
       mid: 2202,
       buvid: IdentityCoreGenerators.generateBuvid(),
     );
-    final appProfile = AppDeviceProfiles.defaultDeviceProfileForOwner('account:2202');
+    final appProfile = AppDeviceProfiles.defaultDeviceProfileForOwner(
+      'account:2202',
+    );
     final identity = RequestIdentityAdapter.fromAccount(
       account: account,
       userAgent: Constants.userAgentApp,
@@ -143,7 +163,10 @@ void main() {
       IdentityCoreGenerators.validateSessionId(identity.sessionId).isValid,
       isTrue,
     );
-    expect(identity.appIdentityHeaders, containsPair('fp_local', identity.fpLocal));
+    expect(
+      identity.appIdentityHeaders,
+      containsPair('fp_local', identity.fpLocal),
+    );
     expect(
       identity.appIdentityHeaders,
       containsPair('fp_remote', identity.fpRemote),
@@ -190,23 +213,30 @@ void main() {
     expect(identity.profile.mobiApp, AppDeviceProfiles.androidHd.mobiApp);
   });
 
-  test('fallback request profile stays deterministic for the same owner context', () {
-    final first = RequestIdentityAdapter.fromBuvid(
-      buvid: IdentityCoreGenerators.deriveBuvidFromSeed('deterministic-fallback'),
-      userAgent: Constants.userAgent,
-      scope: 'same-workflow-context',
-    );
-    final second = RequestIdentityAdapter.fromBuvid(
-      buvid: IdentityCoreGenerators.deriveBuvidFromSeed('deterministic-fallback'),
-      userAgent: Constants.userAgent,
-      scope: 'same-workflow-context',
-    );
+  test(
+    'fallback request profile stays deterministic for the same owner context',
+    () {
+      final first = RequestIdentityAdapter.fromBuvid(
+        buvid: IdentityCoreGenerators.deriveBuvidFromSeed(
+          'deterministic-fallback',
+        ),
+        userAgent: Constants.userAgent,
+        scope: 'same-workflow-context',
+      );
+      final second = RequestIdentityAdapter.fromBuvid(
+        buvid: IdentityCoreGenerators.deriveBuvidFromSeed(
+          'deterministic-fallback',
+        ),
+        userAgent: Constants.userAgent,
+        scope: 'same-workflow-context',
+      );
 
-    expect(first.profile.deviceProfile, second.profile.deviceProfile);
-    expect(first.deviceName, second.deviceName);
-    expect(first.devicePlatform, second.devicePlatform);
-    expect(first.profile.deviceProfile.hasGenericPlaceholderFields, isFalse);
-  });
+      expect(first.profile.deviceProfile, second.profile.deviceProfile);
+      expect(first.deviceName, second.deviceName);
+      expect(first.devicePlatform, second.devicePlatform);
+      expect(first.profile.deviceProfile.hasGenericPlaceholderFields, isFalse);
+    },
+  );
 
   test('login session identity keeps workflow device profile stable', () {
     final identity = LoginHttp.createLoginSessionIdentity(
@@ -221,10 +251,22 @@ void main() {
     );
 
     expect(identity.ownerKey, 'workflow:test-login-session-stable');
-    expect(identity.profile.deviceProfile, AppDeviceProfiles.defaultDeviceProfileForOwner(identity.ownerKey));
-    expect(identity.loginPayloadFields, containsPair('local_id', identity.localId));
-    expect(identity.loginPayloadFields, containsPair('device_name', identity.deviceName));
-    expect(identity.appIdentityHeaders, containsPair('session_id', identity.sessionId));
+    expect(
+      identity.profile.deviceProfile,
+      AppDeviceProfiles.defaultDeviceProfileForOwner(identity.ownerKey),
+    );
+    expect(
+      identity.loginPayloadFields,
+      containsPair('local_id', identity.localId),
+    );
+    expect(
+      identity.loginPayloadFields,
+      containsPair('device_name', identity.deviceName),
+    );
+    expect(
+      identity.appIdentityHeaders,
+      containsPair('session_id', identity.sessionId),
+    );
     expect(headers['buvid'], identity.buvid);
     expect(headers['x-bili-trace-id'], identity.traceId);
   });

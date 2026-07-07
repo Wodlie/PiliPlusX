@@ -43,8 +43,7 @@ class VideoSummaryProviderSuccess<T> extends VideoSummaryProviderResult<T> {
 }
 
 @immutable
-class VideoSummaryProviderErrorResult<T>
-    extends VideoSummaryProviderResult<T> {
+class VideoSummaryProviderErrorResult<T> extends VideoSummaryProviderResult<T> {
   final VideoSummaryProviderFailure error;
 
   const VideoSummaryProviderErrorResult(this.error);
@@ -62,7 +61,8 @@ class VideoSummaryProviderFailure {
     this.statusCode,
   });
 
-  bool get isMisconfigured => type == VideoSummaryProviderErrorType.misconfigured;
+  bool get isMisconfigured =>
+      type == VideoSummaryProviderErrorType.misconfigured;
 
   bool get isTimeout => type == VideoSummaryProviderErrorType.timeout;
 }
@@ -111,7 +111,9 @@ class VideoSummaryProviderConfig {
     if (trimmed.isEmpty) {
       return null;
     }
-    final Uri? uri = Uri.tryParse(trimmed.endsWith('/') ? trimmed : '$trimmed/');
+    final Uri? uri = Uri.tryParse(
+      trimmed.endsWith('/') ? trimmed : '$trimmed/',
+    );
     if (uri == null ||
         (uri.scheme != 'http' && uri.scheme != 'https') ||
         uri.host.isEmpty) {
@@ -124,12 +126,10 @@ class VideoSummaryProviderConfig {
 
   String? modelFor(VideoSummaryProviderModelPath path) {
     return switch (path) {
-      VideoSummaryProviderModelPath.text => textModel.trim().isEmpty
-          ? null
-          : textModel.trim(),
-      VideoSummaryProviderModelPath.multimodal => multimodalModel.trim().isEmpty
-          ? null
-          : multimodalModel.trim(),
+      VideoSummaryProviderModelPath.text =>
+        textModel.trim().isEmpty ? null : textModel.trim(),
+      VideoSummaryProviderModelPath.multimodal =>
+        multimodalModel.trim().isEmpty ? null : multimodalModel.trim(),
     };
   }
 

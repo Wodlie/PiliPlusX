@@ -185,7 +185,9 @@ class AccountManager extends Interceptor {
         (url.contains('skipSegments') && err.requestOptions.method == 'GET')) {
       // skip
     } else {
-      dioError(err).then((res) => SmartDialog.showToast(res + url)).catchError((e) {
+      dioError(err).then((res) => SmartDialog.showToast(res + url)).catchError((
+        e,
+      ) {
         debugPrint('dioError handler error: $e');
       });
     }
@@ -236,7 +238,8 @@ class AccountManager extends Interceptor {
   ({
     OwnerScopedIdentitySnapshot identity,
     Account account,
-  }) _resolveAccountSelection(
+  })
+  _resolveAccountSelection(
     RequestOptions options,
     String path,
   ) {

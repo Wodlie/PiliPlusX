@@ -64,36 +64,51 @@ abstract final class ThemeUtils {
               labelSmall: TextStyle(fontFamilyFallback: fontFamilyFallback),
             )
           : TextTheme(
-              displayLarge:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              displayMedium:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              displaySmall:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              headlineLarge:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              headlineMedium:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              headlineSmall:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              titleLarge:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              titleMedium:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              titleSmall:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              bodyLarge:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              bodyMedium:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              bodySmall:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              labelLarge:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              labelMedium:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
-              labelSmall:
-                  textStyle.copyWith(fontFamilyFallback: fontFamilyFallback),
+              displayLarge: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              displayMedium: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              displaySmall: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              headlineLarge: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              headlineMedium: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              headlineSmall: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              titleLarge: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              titleMedium: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              titleSmall: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              bodyLarge: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              bodyMedium: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              bodySmall: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              labelLarge: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              labelMedium: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
+              labelSmall: textStyle.copyWith(
+                fontFamilyFallback: fontFamilyFallback,
+              ),
             ),
       tabBarTheme: fontWeight == null
           ? null
@@ -129,8 +144,8 @@ abstract final class ThemeUtils {
         surfaceTintColor: isDynamic
             ? colorScheme.onSurfaceVariant
             : isDark
-                ? colorScheme.onSurfaceVariant
-                : null,
+            ? colorScheme.onSurfaceVariant
+            : null,
         shadowColor: Colors.transparent,
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
@@ -202,36 +217,51 @@ abstract final class ThemeUtils {
     return themeData.copyWith(
       scaffoldBackgroundColor: Colors.black,
       textTheme: themeData.textTheme.copyWith(
-        bodyLarge: themeData.textTheme.bodyLarge
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        bodyMedium: themeData.textTheme.bodyMedium
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        bodySmall: themeData.textTheme.bodySmall
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        displayLarge: themeData.textTheme.displayLarge
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        displayMedium: themeData.textTheme.displayMedium
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        displaySmall: themeData.textTheme.displaySmall
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        headlineLarge: themeData.textTheme.headlineLarge
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        headlineMedium: themeData.textTheme.headlineMedium
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        headlineSmall: themeData.textTheme.headlineSmall
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        titleLarge: themeData.textTheme.titleLarge
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        titleMedium: themeData.textTheme.titleMedium
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        titleSmall: themeData.textTheme.titleSmall
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        labelLarge: themeData.textTheme.labelLarge
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        labelMedium: themeData.textTheme.labelMedium
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
-        labelSmall: themeData.textTheme.labelSmall
-            ?.copyWith(fontFamilyFallback: fontFamilyFallback),
+        bodyLarge: themeData.textTheme.bodyLarge?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        bodyMedium: themeData.textTheme.bodyMedium?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        bodySmall: themeData.textTheme.bodySmall?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        displayLarge: themeData.textTheme.displayLarge?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        displayMedium: themeData.textTheme.displayMedium?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        displaySmall: themeData.textTheme.displaySmall?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        headlineLarge: themeData.textTheme.headlineLarge?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        headlineMedium: themeData.textTheme.headlineMedium?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        headlineSmall: themeData.textTheme.headlineSmall?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        titleLarge: themeData.textTheme.titleLarge?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        titleMedium: themeData.textTheme.titleMedium?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        titleSmall: themeData.textTheme.titleSmall?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        labelLarge: themeData.textTheme.labelLarge?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        labelMedium: themeData.textTheme.labelMedium?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
+        labelSmall: themeData.textTheme.labelSmall?.copyWith(
+          fontFamilyFallback: fontFamilyFallback,
+        ),
       ),
       appBarTheme: themeData.appBarTheme.copyWith(
         backgroundColor: Colors.black,

@@ -18,8 +18,7 @@ void main() {
   late Directory tempDir;
 
   setUpAll(() async {
-    tempDir =
-        await Directory.systemTemp.createTemp('pili_block_filter_test_');
+    tempDir = await Directory.systemTemp.createTemp('pili_block_filter_test_');
     debugSetAppSupportDirPath(tempDir.path);
     await GStorage.init();
   });
@@ -43,22 +42,22 @@ void main() {
   // ── helpers ────────────────────────────────────────────────────────────
 
   ReplyInfo _blocked({int id = 100}) => ReplyInfo(
-        id: Int64(id),
-        content: Content()..message = '广告内容',
-        member: Member()..level = Int64(6),
-      );
+    id: Int64(id),
+    content: Content()..message = '广告内容',
+    member: Member()..level = Int64(6),
+  );
 
   ReplyInfo _normal({int id = 200, String message = '正常评论'}) => ReplyInfo(
-        id: Int64(id),
-        content: Content()..message = message,
-        member: Member()..level = Int64(6),
-      );
+    id: Int64(id),
+    content: Content()..message = message,
+    member: Member()..level = Int64(6),
+  );
 
   ReplyInfo _blockedUpTop({int id = 300}) => ReplyInfo(
-        id: Int64(id),
-        content: Content()..message = '广告置顶',
-        member: Member()..level = Int64(6),
-      );
+    id: Int64(id),
+    content: Content()..message = '广告置顶',
+    member: Member()..level = Int64(6),
+  );
 
   /// Replicates the banner-mode filtering path in ReplyGrpc.mainList.
   /// Returns the set of reply ids that were marked as blocked.
@@ -138,8 +137,11 @@ void main() {
 
       final marked = _applyBannerMode(response);
 
-      expect(response.hasUpTop(), isTrue,
-          reason: 'Banner mode keeps upTop for rendering as banner');
+      expect(
+        response.hasUpTop(),
+        isTrue,
+        reason: 'Banner mode keeps upTop for rendering as banner',
+      );
       expect(marked, contains(300));
     });
 
@@ -173,8 +175,8 @@ void main() {
       // The auto-page condition in mainList:
       //   !showBlockedReplyBanner && response.replies.isEmpty && …
       // !showBlockedReplyBanner is false → condition never met.
-      final wouldAutoPage = !ReplyGrpc.showBlockedReplyBanner &&
-          response.replies.isEmpty;
+      final wouldAutoPage =
+          !ReplyGrpc.showBlockedReplyBanner && response.replies.isEmpty;
       expect(wouldAutoPage, isFalse);
     });
   });
@@ -205,8 +207,11 @@ void main() {
 
       _applyRemoveMode(response);
 
-      expect(response.hasUpTop(), isFalse,
-          reason: 'Remove mode clears blocked upTop');
+      expect(
+        response.hasUpTop(),
+        isFalse,
+        reason: 'Remove mode clears blocked upTop',
+      );
     });
 
     test('blocked sub-replies are removed, parent stays', () {
@@ -244,13 +249,17 @@ void main() {
       //   !response.cursor.isEnd && autoLoadDepth < 5 &&
       //   response.hasPaginationReply() &&
       //   response.paginationReply.nextOffset.isNotEmpty
-      final wouldAutoPage = !ReplyGrpc.showBlockedReplyBanner &&
+      final wouldAutoPage =
+          !ReplyGrpc.showBlockedReplyBanner &&
           response.replies.isEmpty &&
           !response.cursor.isEnd &&
           response.hasPaginationReply() &&
           response.paginationReply.nextOffset.isNotEmpty;
-      expect(wouldAutoPage, isTrue,
-          reason: 'Remove mode triggers auto-page when all replies filtered');
+      expect(
+        wouldAutoPage,
+        isTrue,
+        reason: 'Remove mode triggers auto-page when all replies filtered',
+      );
     });
 
     test('auto-page condition NOT met when cursor is end', () {
@@ -264,11 +273,11 @@ void main() {
 
       expect(response.replies, isEmpty);
 
-      final wouldAutoPage = !ReplyGrpc.showBlockedReplyBanner &&
+      final wouldAutoPage =
+          !ReplyGrpc.showBlockedReplyBanner &&
           response.replies.isEmpty &&
           !response.cursor.isEnd;
-      expect(wouldAutoPage, isFalse,
-          reason: 'isEnd = true prevents auto-page');
+      expect(wouldAutoPage, isFalse, reason: 'isEnd = true prevents auto-page');
     });
   });
 }

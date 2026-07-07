@@ -53,9 +53,10 @@ abstract final class BilibiliMultimodalSummaryAdapter {
 
     final VideoSummaryProviderFailure failure = providerResult.errorOrNull!;
     return switch (failure.type) {
-      VideoSummaryProviderErrorType.misconfigured => AiSummaryServiceMisconfigured(
-        failure.message,
-      ),
+      VideoSummaryProviderErrorType.misconfigured =>
+        AiSummaryServiceMisconfigured(
+          failure.message,
+        ),
       VideoSummaryProviderErrorType.unsupportedCapability =>
         AiSummaryServiceProviderError(
           failure.message.isEmpty ? '当前 Provider 不支持视频多模态输入' : failure.message,
