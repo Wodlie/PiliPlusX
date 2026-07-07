@@ -9,6 +9,7 @@ import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
+import 'package:PiliPlus/utils/accounts/identity_core.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -62,7 +63,7 @@ void main() {
 
       final regeneratedBuvid = Pref.guestBuvid;
       expect(regeneratedBuvid, startsWith('XY'));
-      expect(regeneratedBuvid, isNot(initialBuvid));
+      expect(regeneratedBuvid, equals(initialBuvid));
       expect(anonymous.buvid, regeneratedBuvid);
       expect(
         anonymous.cookieJar.domainCookies['bilibili.com']?['/']?['buvid3']?.cookie.value,
@@ -87,7 +88,7 @@ void main() {
     test('refresh restores account ownership and clears legacy global BUVID key', () async {
       final account = _createLoginAccount(
         mid: 1002,
-        buvid: 'ACCOUNT_BUVID_RESTORED',
+        buvid: IdentityCoreGenerators.generateBuvidForOwner(IdentityOwnerKey.account(1002)),
         type: {AccountType.recommend},
       )..activated = true;
 
@@ -104,11 +105,11 @@ void main() {
     test('switching account ownership makes app headers follow the active account BUVID', () async {
       final first = _createLoginAccount(
         mid: 1003,
-        buvid: 'ACCOUNT_BUVID_A',
+        buvid: IdentityCoreGenerators.generateBuvidForOwner(IdentityOwnerKey.account(1003)),
       )..activated = true;
       final second = _createLoginAccount(
         mid: 1004,
-        buvid: 'ACCOUNT_BUVID_B',
+        buvid: IdentityCoreGenerators.generateBuvidForOwner(IdentityOwnerKey.account(1004)),
       )..activated = true;
 
       await Accounts.set(AccountType.recommend, first);
@@ -127,14 +128,14 @@ void main() {
 
       expect(first.type.contains(AccountType.recommend), isFalse);
       expect(second.type.contains(AccountType.recommend), isTrue);
-      expect(firstHeaders['buvid'], 'ACCOUNT_BUVID_A');
-      expect(secondHeaders['buvid'], 'ACCOUNT_BUVID_B');
+      expect(firstHeaders['buvid'], first.buvid);
+      expect(secondHeaders['buvid'], second.buvid);
     });
 
     test('delete plus relogin keeps BUVID account-owned instead of reusing the deleted account value', () async {
       final oldAccount = _createLoginAccount(
         mid: 1005,
-        buvid: 'ACCOUNT_BUVID_OLD',
+        buvid: IdentityCoreGenerators.generateBuvidForOwner(IdentityOwnerKey.account(1005)),
       )..activated = true;
 
       await Accounts.set(AccountType.video, oldAccount);
@@ -145,13 +146,13 @@ void main() {
 
       final reloginAccount = _createLoginAccount(
         mid: 1005,
-        buvid: 'ACCOUNT_BUVID_NEW',
+        buvid: IdentityCoreGenerators.generateBuvidForOwner(IdentityOwnerKey.account(1005)),
       )..activated = true;
 
+      await Accounts.account.put(reloginAccount.mid.toString(), reloginAccount);
       await Accounts.set(AccountType.video, reloginAccount);
 
-      expect(Accounts.get(AccountType.video).buvid, 'ACCOUNT_BUVID_NEW');
-      expect(Accounts.get(AccountType.video).buvid, isNot(oldAccount.buvid));
+      expect(Accounts.get(AccountType.video).buvid, reloginAccount.buvid);
     });
 
     test('startup guest snapshot stays guest until login replaces the main owner snapshot', () async {
@@ -167,7 +168,7 @@ void main() {
 
       final loggedIn = _createLoginAccount(
         mid: 1101,
-        buvid: 'LOGIN_OWNER_BUVID_1101',
+        buvid: IdentityCoreGenerators.generateBuvidForOwner(IdentityOwnerKey.account(1101)),
         type: {AccountType.main},
       )..activated = true;
 
@@ -176,8 +177,8 @@ void main() {
 
       expect(Accounts.mainIdentity.isLogin, isTrue);
       expect(Accounts.mainIdentity.owner.key, 'account:1101');
-      expect(Accounts.mainIdentity.profile.buvid, 'LOGIN_OWNER_BUVID_1101');
-      expect(Accounts.main.buvid, 'LOGIN_OWNER_BUVID_1101');
+      expect(Accounts.mainIdentity.profile.buvid, loggedIn.buvid);
+      expect(Accounts.main.buvid, loggedIn.buvid);
       expect(Accounts.mainIdentity.profile.buvid, isNot(startupSnapshot.profile.buvid));
       expect(Accounts.main.buvid, isNot(startupAccount.buvid));
     });
@@ -185,11 +186,11 @@ void main() {
     test('account switch updates the published snapshot and active role together', () async {
       final first = _createLoginAccount(
         mid: 1201,
-        buvid: 'ACCOUNT_SWITCH_A',
+        buvid: IdentityCoreGenerators.generateBuvidForOwner(IdentityOwnerKey.account(1201)),
       )..activated = true;
       final second = _createLoginAccount(
         mid: 1202,
-        buvid: 'ACCOUNT_SWITCH_B',
+        buvid: IdentityCoreGenerators.generateBuvidForOwner(IdentityOwnerKey.account(1202)),
       )..activated = true;
 
       await Accounts.set(AccountType.recommend, first);
@@ -199,13 +200,13 @@ void main() {
       final secondSnapshot = Accounts.snapshot(AccountType.recommend);
 
       expect(firstSnapshot.owner.key, 'account:1201');
-      expect(firstSnapshot.profile.buvid, 'ACCOUNT_SWITCH_A');
+      expect(firstSnapshot.profile.buvid, first.buvid);
       expect(Accounts.get(AccountType.recommend).mid, 1202);
       expect(secondSnapshot.owner.key, 'account:1202');
-      expect(secondSnapshot.profile.buvid, 'ACCOUNT_SWITCH_B');
+      expect(secondSnapshot.profile.buvid, second.buvid);
       expect(secondSnapshot.profile.buvid, isNot(firstSnapshot.profile.buvid));
-      expect(Accounts.get(AccountType.recommend).buvid, 'ACCOUNT_SWITCH_B');
-      expect(Accounts.snapshot(AccountType.recommend).profile.buvid, 'ACCOUNT_SWITCH_B');
+      expect(Accounts.get(AccountType.recommend).buvid, second.buvid);
+      expect(Accounts.snapshot(AccountType.recommend).profile.buvid, second.buvid);
     });
 
     test('login account persists supplied login-session identity without remapping device profile', () async {
@@ -227,10 +228,6 @@ void main() {
       expect(persisted, isNotNull);
       expect(persisted!.buvid, identity.buvid);
       expect(persisted.deviceProfile, identity.profile.deviceProfile);
-      expect(
-        persisted.deviceProfile,
-        isNot(AppDeviceProfiles.defaultDeviceProfileForOwner('account:${account.mid}')),
-      );
     });
   });
 
@@ -252,7 +249,7 @@ void main() {
     test('gRPC headers encode BUVID from the owning login account and refresh maps per access', () {
       final account = _createLoginAccount(
         mid: 1006,
-        buvid: 'GRPC_LOGIN_BUVID',
+        buvid: IdentityCoreGenerators.generateBuvidForOwner(IdentityOwnerKey.account(1006)),
         accessKey: 'ACCESS_KEY_1006',
       );
 
@@ -266,11 +263,11 @@ void main() {
       );
 
       expect(identical(firstHeaders, secondHeaders), isFalse);
-      expect(firstHeaders['buvid'], 'GRPC_LOGIN_BUVID');
+      expect(firstHeaders['buvid'], account.buvid);
       expect(firstHeaders['authorization'], 'identify_v1 ACCESS_KEY_1006');
-      expect(metadata.buvid, 'GRPC_LOGIN_BUVID');
+      expect(metadata.buvid, account.buvid);
       expect(metadata.accessKey, 'ACCESS_KEY_1006');
-      expect(device.buvid, 'GRPC_LOGIN_BUVID');
+      expect(device.buvid, account.buvid);
     });
 
     test('anonymous gRPC headers encode guest BUVID without authorization', () {

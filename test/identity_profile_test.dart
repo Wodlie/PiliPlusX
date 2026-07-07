@@ -1,12 +1,33 @@
+import 'dart:io';
+
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/identity_core.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/login_utils.dart';
+import 'package:PiliPlus/utils/path_utils.dart';
+import 'package:PiliPlus/utils/storage.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late Directory tempDir;
+
+  setUpAll(() async {
+    tempDir = await Directory.systemTemp.createTemp('pili_identity_profile_test_');
+    debugSetAppSupportDirPath(tempDir.path);
+    await GStorage.init();
+  });
+
+  tearDownAll(() async {
+    await GStorage.close();
+    if (tempDir.existsSync()) {
+      await tempDir.delete(recursive: true);
+    }
+  });
+
   group('identity core generators', () {
     test('profile generator reuses valid stored profile for the same owner', () {
       final owner = IdentityOwnerKey.account(1001);

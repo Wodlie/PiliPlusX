@@ -70,7 +70,7 @@ void main() {
         providerModels,
         contains('视频输入必须是有效的 http/https URL'),
       );
-      expect(providerModels, contains("'type': 'input_video'"));
+      expect(providerModels, contains("'type': 'video_url'"));
     });
   });
 }

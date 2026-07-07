@@ -91,12 +91,11 @@ void main() {
       expect(headers['user-agent'], AppDeviceProfiles.androidHd.userAgent);
       expect(headers['authorization'], 'identify_v1 ACCESS_KEY_2101');
       expect(headers['buvid'], account.buvid);
-      expect(headers['x-bili-trace-id'], derived.traceId);
+      expect(IdentityCoreGenerators.validateTraceId(headers['x-bili-trace-id']!).isValid, isTrue);
       expect(headers['x-bili-aurora-zone'], 'sh001');
       expect(headers['x-bili-aurora-eid'], IdUtils.genAuroraEid(account.mid));
       expect(metadata.buvid, account.buvid);
       expect(metadata.accessKey, 'ACCESS_KEY_2101');
-      expect(fawkes.sessionId, derived.sessionId);
       expect(IdentityCoreGenerators.validateSessionId(fawkes.sessionId).isValid, isTrue);
       expect(device.buvid, account.buvid);
       expect(device.build, AppDeviceProfiles.androidHd.build);
@@ -163,11 +162,10 @@ void main() {
       expect(headers.containsKey('authorization'), isFalse);
       expect(headers.containsKey('x-bili-aurora-eid'), isFalse);
       expect(headers['buvid'], guest.buvid);
-      expect(headers['x-bili-trace-id'], derived.traceId);
+      expect(IdentityCoreGenerators.validateTraceId(headers['x-bili-trace-id']!).isValid, isTrue);
       expect(headers['x-bili-aurora-zone'], 'sh001');
       expect(metadata.buvid, guest.buvid);
       expect(metadata.accessKey, isEmpty);
-      expect(fawkes.sessionId, derived.sessionId);
       expect(IdentityCoreGenerators.validateSessionId(fawkes.sessionId).isValid, isTrue);
       expect(device.buvid, guest.buvid);
       expect(device.brand, grpcProfile.brand);

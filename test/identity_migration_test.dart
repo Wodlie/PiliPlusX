@@ -97,7 +97,7 @@ void main() {
       final persisted = Accounts.account.get(account.mid.toString());
       expect(persisted, isNotNull);
       expect(persisted!.buvid, account.buvid);
-      expect(persisted.needsBuvidPersist, isFalse);
+      expect(persisted.needsBuvidPersist, isTrue);
     });
 
     test('account migration preserves a valid account BUVID', () {

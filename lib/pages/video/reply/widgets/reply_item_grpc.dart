@@ -548,7 +548,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             style: TextStyle(color: theme.disabledColor, fontSize: 12),
           ),
         ),
-        _buildContent(context, theme),
+        _buildContent(context, theme.colorScheme),
       ],
     );
   }

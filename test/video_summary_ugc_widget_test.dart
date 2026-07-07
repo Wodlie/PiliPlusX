@@ -43,7 +43,12 @@ void main() {
 
       expect(find.text('这里是总结正文'), findsOneWidget);
       expect(find.text('章节一'), findsOneWidget);
-      expect(find.text('关键片段'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Text && (widget.textSpan?.toPlainText().contains('关键片段') == true),
+        ),
+        findsOneWidget,
+      );
       expect(find.byType(CustomScrollView), findsOneWidget);
       expect(AiConclusionPanel.hasContent(result), isTrue);
     });

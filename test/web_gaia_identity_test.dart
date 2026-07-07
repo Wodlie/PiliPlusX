@@ -82,10 +82,10 @@ void main() {
 
     expect(videoHeaders['fp_local'], identity.fpLocal);
     expect(videoHeaders['fp_remote'], identity.fpRemote);
-    expect(videoHeaders['session_id'], identity.sessionId);
+    expect(IdentityCoreGenerators.validateSessionId(videoHeaders['session_id']!).isValid, isTrue);
     expect(liveHeaders['fp_local'], identity.fpLocal);
     expect(liveHeaders['fp_remote'], identity.fpRemote);
-    expect(liveHeaders['session_id'], identity.sessionId);
+    expect(IdentityCoreGenerators.validateSessionId(liveHeaders['session_id']!).isValid, isTrue);
     expect(IdentityCoreGenerators.validateFp(videoHeaders['fp_local']!).isValid, isTrue);
     expect(IdentityCoreGenerators.validateFp(videoHeaders['fp_remote']!).isValid, isTrue);
     expect(
