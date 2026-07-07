@@ -139,6 +139,7 @@ class ReplyItemGrpc extends StatefulWidget {
 
 class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   bool _expanded = false;
+  bool _loadManualImages = false;
 
   @override
   Widget build(BuildContext context) {
@@ -519,18 +520,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         if (widget.replyItem.content.pictures.isNotEmpty) ...[
           Padding(
             padding: padding,
-            child: ImageGridView(
-              picArr: widget.replyItem.content.pictures
-                  .map(
-                    (item) => ImageModel(
-                      width: item.imgWidth,
-                      height: item.imgHeight,
-                      url: item.imgSrc,
-                    ),
-                  )
-                  .toList(),
-              onViewImage: widget.onViewImage,
-            ),
+            child: _buildCommentImages(context, colorScheme),
           ),
           const SizedBox(height: 4),
         ],
@@ -562,6 +552,54 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         ),
         _buildContent(context, theme.colorScheme),
       ],
+    );
+  }
+
+  Widget _buildCommentImages(BuildContext context, ColorScheme colorScheme) {
+    final manualLoad = Pref.manualLoadCommentImage;
+    if (!manualLoad || _loadManualImages) {
+      return ImageGridView(
+        picArr: widget.replyItem.content.pictures
+            .map(
+              (item) => ImageModel(
+                width: item.imgWidth,
+                height: item.imgHeight,
+                url: item.imgSrc,
+              ),
+            )
+            .toList(),
+        onViewImage: widget.onViewImage,
+      );
+    }
+    final count = widget.replyItem.content.pictures.length;
+    return GestureDetector(
+      onTap: () => setState(() => _loadManualImages = true),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        decoration: BoxDecoration(
+          color: colorScheme.onInverseSurface,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.photo_outlined,
+              size: 28,
+              color: colorScheme.outline,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '点击加载图片（共$count张）',
+              style: TextStyle(
+                fontSize: 13,
+                color: colorScheme.outline,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

@@ -705,6 +705,13 @@ List<SettingsModel> get extraSettings => [
     defaultVal: true,
   ),
   const SwitchModel(
+    title: '手动加载评论区图片',
+    subtitle: '开启后，评论图片不直接显示缩略图，需手动点击加载',
+    leading: Icon(Icons.photo_outlined),
+    setKey: SettingBoxKey.manualLoadCommentImage,
+    defaultVal: false,
+  ),
+  const SwitchModel(
     title: '启用AI总结',
     subtitle: '视频详情页开启AI总结',
     leading: Icon(Icons.engineering_outlined),
