@@ -4,6 +4,14 @@ import 'dart:convert' show ascii, base64;
 
 import 'package:PiliPlus/utils/accounts/identity_core/identity_generators.dart';
 
+extension on List {
+  void swap(int i, int j) {
+    final temp = this[i];
+    this[i] = this[j];
+    this[j] = temp;
+  }
+}
+
 abstract final class IdUtils {
   static const XOR_CODE = 23442827791579;
   static const MASK_CODE = 2251799813685247;
