@@ -60,7 +60,7 @@
 
 - 当前版本：`2.0.8+1`（以 `pubspec.yaml` 为准）
 - 当前主开发分支：`dev`；`main` 用于稳定版本/上游同步
-- Flutter：`3.44.1`（`.fvmrc` 与 `pubspec.yaml` 同步）；Dart SDK：`>=3.12.0`
+- Flutter：`3.44.4`（`.fvmrc` 与 `pubspec.yaml` 同步）；Dart SDK：`>=3.12.0`
 - CI 会构建 Android、iOS、macOS、Windows x64、Linux x64；Release 产物由 GitHub Actions 生成草稿预发布
 - 版本与发布元数据由 `lib/scripts/build.ps1` 生成，Flutter SDK 补丁由 `lib/scripts/patch.ps1` 按平台应用
 - 测试集中在账号/身份/BUVID、gRPC identity、AI 视频总结等模块：`flutter test`
@@ -288,7 +288,7 @@
 
 ## PiliPlusX字体修复说明
 
-- 字体问题最早由 Flutter 3.38 起对字体定义的变化暴露出来；当前主线已随 Flutter `3.44.1` 继续维护相关适配。ColorOS 及个别定制安卓的字体机制采用映射到系统 Roboto 的方案，可能导致 Flutter 找不到定义的字体从而显示为错误的衬线字体
+- 字体问题最早由 Flutter 3.38 起对字体定义的变化暴露出来；当前主线已随 Flutter `3.44.4` 继续维护相关适配。ColorOS 及个别定制安卓的字体机制采用映射到系统 Roboto 的方案，可能导致 Flutter 找不到定义的字体从而显示为错误的衬线字体
 - 主线版本 在关闭设置项“使用系统字体”后将字体指定为使用鸿蒙黑体，基本解决问题
 - 由于ColorOS在逐步推送修复完Flutter字体回退问题的OTA更新，oddo分支将不再维护，主线版本内嵌字体也将在后续版本改为支持用户导入字体
 
