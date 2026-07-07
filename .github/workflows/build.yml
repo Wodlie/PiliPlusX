@@ -110,7 +110,7 @@ jobs:
               run: flutter build apk --release --split-per-abi --dart-define-from-file=pili_release.json --pub
 
             - name: Flutter Build Dev Apk
-              if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+              if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')) }}
               run: |
                   flutter build apk --release --split-per-abi --android-project-arg dev=1 --pub
 
