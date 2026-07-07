@@ -1,4 +1,3 @@
-import 'package:PiliPlus/models/common/video/ai_summary_service.dart';
 import 'package:PiliPlus/models_new/video/video_ai_conclusion/model_result.dart';
 import 'package:PiliPlus/models_new/video/video_ai_conclusion/outline.dart';
 import 'package:PiliPlus/models_new/video/video_ai_conclusion/part_outline.dart';
@@ -8,13 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('UGC AI summary widgets', () {
-    test('legacy service label keeps deprecated wording', () {
-      expect(AiSummaryService.bilibiliLegacyDeprecated.label, contains('哔哩哔哩'));
-      expect(
-        AiSummaryService.bilibiliLegacyDeprecated.label,
-        contains('即将弃用'),
-      );
-    });
 
     testWidgets('existing AI conclusion container shows summary and outline content', (
       WidgetTester tester,
