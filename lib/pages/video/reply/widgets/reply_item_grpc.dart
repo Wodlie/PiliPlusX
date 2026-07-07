@@ -1388,7 +1388,6 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                   final mid = item.member.mid.toInt();
                   GlobalData().blackMids.add(mid);
                   Pref.setBlackMid(mid);
-                  ReplyGrpc.blockReply(item);
                   onDelete();
                   SmartDialog.showToast('已拉黑该用户');
                 } else {

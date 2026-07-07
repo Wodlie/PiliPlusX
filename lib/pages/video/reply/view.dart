@@ -107,17 +107,25 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                           ),
                           TextButton.icon(
                             style: Style.buttonStyle,
-                            onPressed: _videoReplyController.queryBySort,
+                            onPressed: _videoReplyController.canSort.value
+                                ? _videoReplyController.queryBySort
+                                : null,
                             icon: Icon(
                               Icons.sort,
                               size: 16,
-                              color: colorScheme.secondary,
+                              color: _videoReplyController.canSort.value
+                                  ? colorScheme.secondary
+                                  : colorScheme.outline,
                             ),
                             label: Text(
-                              sortType.label,
+                              _videoReplyController.canSort.value
+                                  ? sortType.label
+                                  : '排序不可用',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: colorScheme.secondary,
+                                color: _videoReplyController.canSort.value
+                                    ? colorScheme.secondary
+                                    : colorScheme.outline,
                               ),
                             ),
                           ),

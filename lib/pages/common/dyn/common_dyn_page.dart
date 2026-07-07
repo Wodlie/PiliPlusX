@@ -105,12 +105,18 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
             ),
             TextButton.icon(
               style: Style.buttonStyle,
-              onPressed: controller.queryBySort,
-              icon: Icon(Icons.sort, size: 16, color: secondary),
+              onPressed: controller.canSort.value
+                  ? controller.queryBySort
+                  : null,
+              icon: Icon(Icons.sort, size: 16,
+                color: controller.canSort.value ? secondary : theme.colorScheme.outline),
               label: Obx(
                 () => Text(
-                  controller.sortType.value.label,
-                  style: TextStyle(fontSize: 13, color: secondary),
+                  controller.canSort.value
+                      ? controller.sortType.value.label
+                      : '排序不可用',
+                  style: TextStyle(fontSize: 13,
+                    color: controller.canSort.value ? secondary : theme.colorScheme.outline),
                 ),
               ),
             ),

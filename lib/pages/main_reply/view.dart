@@ -195,12 +195,18 @@ class _MainReplyPageState extends State<MainReplyPage>
             ),
             TextButton.icon(
               style: Style.buttonStyle,
-              onPressed: _controller.queryBySort,
-              icon: Icon(Icons.sort, size: 16, color: secondary),
+              onPressed: _controller.canSort.value
+                  ? _controller.queryBySort
+                  : null,
+              icon: Icon(Icons.sort, size: 16,
+                color: _controller.canSort.value ? secondary : colorScheme.outline),
               label: Obx(
                 () => Text(
-                  _controller.sortType.value.label,
-                  style: TextStyle(fontSize: 13, color: secondary),
+                  _controller.canSort.value
+                      ? _controller.sortType.value.label
+                      : '排序不可用',
+                  style: TextStyle(fontSize: 13,
+                    color: _controller.canSort.value ? secondary : colorScheme.outline),
                 ),
               ),
             ),

@@ -277,12 +277,22 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
             ),
             TextButton.icon(
               style: Style.buttonStyle,
-              onPressed: _controller.queryBySort,
-              icon: Icon(Icons.sort, size: 16, color: colorScheme.secondary),
+              onPressed: _controller.canSort.value
+                  ? _controller.queryBySort
+                  : null,
+              icon: Icon(Icons.sort, size: 16,
+                color: _controller.canSort.value
+                    ? colorScheme.secondary
+                    : colorScheme.outline),
               label: Obx(
                 () => Text(
-                  _controller.sortType.value.text!,
-                  style: TextStyle(fontSize: 13, color: colorScheme.secondary),
+                  _controller.canSort.value
+                      ? _controller.sortType.value.text!
+                      : '排序不可用',
+                  style: TextStyle(fontSize: 13,
+                    color: _controller.canSort.value
+                        ? colorScheme.secondary
+                        : colorScheme.outline),
                 ),
               ),
             ),
