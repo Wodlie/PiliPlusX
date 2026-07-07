@@ -2610,10 +2610,6 @@ class EditableTextState extends State<EditableText>
       selection.baseOffset,
       selection.extentOffset,
     );
-    final TextEditingValue collapsedTextEditingValue = textEditingValue
-        .copyWith(selection: .collapsed(offset: lastSelectionIndex));
-    final newValue = collapsedTextEditingValue.replaced(selection, text);
-
     // bggRGjQaUbCoE _pasteText
     widget.controller.syncRichText(
       selection.isCollapsed
@@ -2621,18 +2617,22 @@ class EditableTextState extends State<EditableText>
               oldText: textEditingValue.text,
               textInserted: text,
               insertionOffset: selection.baseOffset,
-              selection: newValue.selection,
-              composing: newValue.composing,
+              selection: TextSelection.collapsed(offset: lastSelectionIndex),
+              composing: TextRange.empty,
             )
           : TextEditingDeltaReplacement(
               oldText: textEditingValue.text,
               replacementText: text,
               replacedRange: selection,
-              selection: newValue.selection,
-              composing: newValue.composing,
+              selection: TextSelection.collapsed(offset: lastSelectionIndex),
+              composing: TextRange.empty,
             ),
     );
-
+    final newValue = TextEditingValue(
+      text: widget.controller.plainText,
+      selection: widget.controller.newSelection,
+      composing: TextRange.empty,
+    );
     userUpdateTextEditingValue(newValue, cause);
     if (cause == SelectionChangedCause.toolbar) {
       // Schedule a call to bringIntoView() after renderEditable updates.
@@ -5554,39 +5554,33 @@ class EditableTextState extends State<EditableText>
 
   void _replaceText(ReplaceTextIntent intent) {
     final TextEditingValue oldValue = _value;
-    final TextEditingValue newValue;
-
     // bggRGjQaUbCoE _replaceText
-    if (intent.replacementText.isEmpty) {
-      widget.controller.syncRichText(
-        TextEditingDeltaDeletion(
-          oldText: oldValue.text,
-          deletedRange: intent.replacementRange,
-          selection: .collapsed(offset: intent.replacementRange.start),
-          composing: .empty,
-        ),
-      );
-      newValue = TextEditingValue(
-        text: widget.controller.plainText,
-        selection: widget.controller.newSelection,
-        composing: .empty,
-      );
-    } else {
-      newValue = intent.currentTextEditingValue.replaced(
-        intent.replacementRange,
-        intent.replacementText,
-      );
-      widget.controller.syncRichText(
-        TextEditingDeltaReplacement(
-          oldText: oldValue.text,
-          replacementText: intent.replacementText,
-          replacedRange: intent.replacementRange,
-          selection: newValue.selection,
-          composing: newValue.composing,
-        ),
-      );
-    }
+    widget.controller.syncRichText(
+      intent.replacementText.isEmpty
+          ? TextEditingDeltaDeletion(
+              oldText: oldValue.text,
+              deletedRange: intent.replacementRange,
+              selection: TextSelection.collapsed(
+                offset: intent.replacementRange.start,
+              ),
+              composing: TextRange.empty,
+            )
+          : TextEditingDeltaReplacement(
+              oldText: oldValue.text,
+              replacementText: intent.replacementText,
+              replacedRange: intent.replacementRange,
+              selection: TextSelection.collapsed(
+                offset: intent.replacementRange.start,
+              ),
+              composing: TextRange.empty,
+            ),
+    );
 
+    final newValue = TextEditingValue(
+      text: widget.controller.plainText,
+      selection: widget.controller.newSelection,
+      composing: TextRange.empty,
+    );
     userUpdateTextEditingValue(newValue, intent.cause);
 
     // If there's no change in text and selection (e.g. when selecting and

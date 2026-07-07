@@ -248,6 +248,35 @@ abstract final class ReplyHttp {
     }
   }
 
+  /// 申诉评论。url 为评论区源 URL（如 https://www.bilibili.com/video/BVxxx）。
+  /// type 固定为 1（评论申诉类型），不是评论区 type。
+  static Future<LoadingState<Map<String, dynamic>>> appealComment({
+    required String url,
+    required String reason,
+  }) async {
+    final res = await Request().post(
+      Api.replyAppealSubmit,
+      data: {
+        'url': url,
+        'type': '1',
+        'reason': reason,
+        'csrf': Accounts.reply.csrf,
+      },
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': Accounts.reply},
+      ),
+    );
+    final code = res.data['code'] as int;
+    if (code == 0) {
+      return Success({
+        'successToast': res.data['data']?['success_toast'] ?? '申诉提交成功',
+      });
+    } else {
+      return Error(res.data['message'] ?? '申诉失败', code: code);
+    }
+  }
+
   static Future<LoadingState<void>> replySubjectModify({
     required int oid,
     required int type,

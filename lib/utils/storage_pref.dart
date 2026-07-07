@@ -331,6 +331,11 @@ abstract final class Pref {
   static String get banWordForReply =>
       _setting.get(SettingBoxKey.banWordForReply, defaultValue: '');
 
+  static String get defaultAppealReason =>
+      _setting.get(SettingBoxKey.defaultAppealReason, defaultValue: '');
+  static set defaultAppealReason(String value) =>
+      _setting.put(SettingBoxKey.defaultAppealReason, value);
+
   static int get minLevelForReply =>
       _setting.get(SettingBoxKey.minLevelForReply, defaultValue: 0);
 
@@ -575,6 +580,9 @@ abstract final class Pref {
 
   static bool get antiGoodsReply =>
       _setting.get(SettingBoxKey.antiGoodsReply, defaultValue: false);
+
+  static bool get showBlockedReplyBanner =>
+      _setting.get(SettingBoxKey.showBlockedReplyBanner, defaultValue: true);
 
   static bool get expandDynLivePanel =>
       _setting.get(SettingBoxKey.expandDynLivePanel, defaultValue: false);

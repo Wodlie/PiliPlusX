@@ -122,6 +122,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.4"
+  auto_orientation:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: master
+      resolved-ref: "2370d5a52ded842fe6878b747b1822573304b645"
+      url: "https://github.com/bggRGjQaUbCoE/auto_orientation.git"
+    source: git
+    version: "2.3.1"
   battery_plus:
     dependency: "direct main"
     description:
@@ -225,8 +234,8 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: "697d4516df2fc3ba7417c7ce9aba079d34ba13e5"
-      url: "https://github.com/bggRGjQaUbCoE/canvas_danmaku.git"
+      resolved-ref: "8595bdf74408e342927659977470aa080ee62de8"
+      url: "https://github.com/cnctem/canvas_danmaku.git"
     source: git
     version: "0.2.6"
   catcher_2:
@@ -460,10 +469,10 @@ packages:
     dependency: transitive
     description:
       name: equatable
-      sha256: "3e0141505477fd8ad55d6eb4e7776d3fe8430be8e497ccb1521370c3f21a3e2b"
+      sha256: "3bce007a596ff8b3119c45d68aaef631272537c03d30e5d4534dd24bf4c5eaa2"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.8"
+    version: "2.1.0"
   expandable:
     dependency: "direct main"
     description:
@@ -993,7 +1002,7 @@ packages:
     description:
       path: "pkgs/jnigen"
       ref: HEAD
-      resolved-ref: "213cd7cf5fb2764cca5b35a40710a1e71e6d2cc9"
+      resolved-ref: "55520836d363aac7f1ebae47387d03a30302be7b"
       url: "https://github.com/dart-lang/native.git"
     source: git
     version: "0.17.0-wip"
@@ -1954,10 +1963,10 @@ packages:
     description:
       path: "packages/window_manager"
       ref: main
-      resolved-ref: "974ab0a71d37cfca9d9bd5b295d7bd1df80b790b"
+      resolved-ref: ac535d09a5850279e6591a9bdd285f9a3edeebf8
       url: "https://github.com/bggRGjQaUbCoE/window_manager.git"
     source: git
-    version: "0.5.1"
+    version: "0.5.2"
   xdg_directories:
     dependency: transitive
     description:
@@ -1984,4 +1993,4 @@ packages:
     version: "3.1.3"
 sdks:
   dart: ">=3.12.0 <4.0.0"
-  flutter: "3.44.4"
+  flutter: ">=3.44.3 <3.45.0"

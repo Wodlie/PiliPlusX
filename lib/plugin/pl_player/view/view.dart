@@ -1032,6 +1032,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     _gestureType = null;
     _initialFocalPoint = details.localFocalPoint;
   }
+
   void _onScaleUpdate(double scale) {
     showRestoreScaleBtn.value = scale != 1.0;
   }

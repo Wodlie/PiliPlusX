@@ -128,7 +128,7 @@ class _AtFilterPageState extends State<AtFilterPage> {
     showDialog<double>(
       context: context,
       builder: (context) => SliderDialog(
-        title: '去掉 @ 后正文长度阈值',
+        title: const Text('去掉 @ 后正文长度阈值'),
         min: 0,
         max: 100,
         divisions: 20,
@@ -151,7 +151,7 @@ class _AtFilterPageState extends State<AtFilterPage> {
     showDialog<double>(
       context: context,
       builder: (context) => SliderDialog(
-        title: '@ 数量阈值',
+        title: const Text('@ 数量阈值'),
         min: 1,
         max: 50,
         divisions: 49,
@@ -174,7 +174,7 @@ class _AtFilterPageState extends State<AtFilterPage> {
     showDialog<double>(
       context: context,
       builder: (context) => SliderDialog(
-        title: '点赞豁免阈值',
+        title: const Text('点赞豁免阈值'),
         min: 0,
         max: 5000,
         divisions: 100,

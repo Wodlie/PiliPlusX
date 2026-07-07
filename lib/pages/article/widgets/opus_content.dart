@@ -609,12 +609,17 @@ class OpusContent extends StatelessWidget {
                               }
                               return;
                             }
-                            final url = switch (type) {
-                              'LINK_CARD_TYPE_UGC' => card.ugc!.jumpUrl,
-                              'LINK_CARD_TYPE_COMMON' => card.common!.jumpUrl,
-                              'LINK_CARD_TYPE_LIVE' => card.live!.jumpUrl,
-                              'LINK_CARD_TYPE_OPUS' => card.opus!.jumpUrl,
-                              'LINK_CARD_TYPE_MUSIC' => card.music!.jumpUrl,
+                            String? url = switch (type) {
+                              'LINK_CARD_TYPE_UGC' =>
+                                element.linkCard?.card?.ugc?.jumpUrl ?? '',
+                              'LINK_CARD_TYPE_COMMON' =>
+                                element.linkCard?.card?.common?.jumpUrl ?? '',
+                              'LINK_CARD_TYPE_LIVE' =>
+                                element.linkCard?.card?.live?.jumpUrl ?? '',
+                              'LINK_CARD_TYPE_OPUS' =>
+                                element.linkCard?.card?.opus?.jumpUrl ?? '',
+                              'LINK_CARD_TYPE_MUSIC' =>
+                                element.linkCard?.card?.music?.jumpUrl ?? '',
                               _ => null,
                             };
                             if (url != null && url.isNotEmpty) {

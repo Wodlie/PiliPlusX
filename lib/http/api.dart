@@ -173,6 +173,9 @@ abstract final class Api {
   // 楼中楼
   static const String replyReplyList = '/x/v2/reply/reply';
 
+  // 评论申诉
+  static const String replyAppealSubmit = '/x/v2/reply/appeal/submit';
+
   // 评论点赞
   static const String likeReply = '/x/v2/reply/action';
 

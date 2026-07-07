@@ -267,10 +267,10 @@ abstract final class ImageUtils {
         skipIfExists: false,
       );
       SmartDialog.dismiss();
-      if (res.isSuccess) {
+      if (res?.isSuccess == true) {
         SmartDialog.showToast(' 已保存 ');
       } else {
-        SmartDialog.showToast('保存失败，${res.errorMessage}');
+        SmartDialog.showToast('保存失败，${res?.errorMessage}');
       }
     } else {
       SmartDialog.dismiss();
@@ -323,10 +323,10 @@ abstract final class ImageUtils {
       res = SaveResult(true, null);
     }
     if (needToast) {
-      if (res.isSuccess) {
+      if (res?.isSuccess == true) {
         SmartDialog.showToast(' 已保存 ');
       } else {
-        SmartDialog.showToast('保存失败，${res.errorMessage}');
+        SmartDialog.showToast('保存失败，${res?.errorMessage}');
       }
     }
   }

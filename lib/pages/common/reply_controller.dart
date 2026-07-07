@@ -87,6 +87,7 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
     cursorNext = null;
     subjectControl = null;
     paginationReply = null;
+    ReplyGrpc.clearBlockedReasons();
     return super.onRefresh();
   }
 
@@ -259,6 +260,7 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
   @override
   void onClose() {
     savedReplies.clear();
+    ReplyGrpc.clearBlockedReasons();
     super.onClose();
   }
 

@@ -208,6 +208,27 @@ void main() {
     expect(first.profile.deviceProfile.hasGenericPlaceholderFields, isFalse);
   });
 
+  test('login session identity keeps workflow device profile stable', () {
+    final identity = LoginHttp.createLoginSessionIdentity(
+      scope: 'test-login-session-stable',
+    );
+
+    final headers = LoginHttp.appHeaders(
+      buvid: identity.buvid,
+      appKey: 'android_hd',
+      userAgent: Constants.userAgent,
+      identity: identity,
+    );
+
+    expect(identity.ownerKey, 'workflow:test-login-session-stable');
+    expect(identity.profile.deviceProfile, AppDeviceProfiles.defaultDeviceProfileForOwner(identity.ownerKey));
+    expect(identity.loginPayloadFields, containsPair('local_id', identity.localId));
+    expect(identity.loginPayloadFields, containsPair('device_name', identity.deviceName));
+    expect(identity.appIdentityHeaders, containsPair('session_id', identity.sessionId));
+    expect(headers['buvid'], identity.buvid);
+    expect(headers['x-bili-trace-id'], identity.traceId);
+  });
+
   test('video and live app params read shared device profiles', () {
     const hdProfile = AppDeviceProfiles.androidHd;
     const appProfile = AppDeviceProfiles.androidApp;
