@@ -142,15 +142,13 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
 
+    // 折叠横幅：独立返回值，不需要 InkWell 包装
     if (ReplyGrpc.isClientBlocked(widget.replyItem) &&
-        Pref.showBlockedReplyBanner) {
-      if (_expanded) {
-        return _buildExpandedBlocked(context, theme);
-      } else {
-        return BlockedReplyBanner(
-          onExpand: () => setState(() => _expanded = true),
-        );
-      }
+        Pref.showBlockedReplyBanner &&
+        !_expanded) {
+      return BlockedReplyBanner(
+        onExpand: () => setState(() => _expanded = true),
+      );
     }
 
     void showMore() => showModalBottomSheet(
@@ -172,7 +170,11 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
 
     Widget child = Padding(
       padding: const .fromLTRB(12, 14, 8, 5),
-      child: _buildContent(context, theme),
+      child: (ReplyGrpc.isClientBlocked(widget.replyItem) &&
+              Pref.showBlockedReplyBanner &&
+              _expanded)
+          ? _buildExpandedBlocked(context, theme)
+          : _buildContent(context, theme),
     );
     if (widget.needDivider) {
       child = Column(
