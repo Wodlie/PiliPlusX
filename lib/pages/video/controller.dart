@@ -7,6 +7,7 @@ import 'package:PiliPlus/common/widgets/pair.dart';
 import 'package:PiliPlus/common/widgets/progress_bar/segment_progress_bar.dart';
 import 'package:PiliPlus/grpc/bilibili/app/listener/v1.pbenum.dart'
     show PlaylistSource;
+import 'package:PiliPlus/grpc/dm.dart';
 import 'package:PiliPlus/http/fav.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
@@ -19,7 +20,6 @@ import 'package:PiliPlus/models/common/sponsor_block/segment_model.dart';
 import 'package:PiliPlus/models/common/sponsor_block/segment_type.dart';
 import 'package:PiliPlus/models/common/video/audio_quality.dart';
 import 'package:PiliPlus/models/common/video/source_type.dart';
-import 'package:PiliPlus/models/common/video/subtitle_pref_type.dart';
 import 'package:PiliPlus/models/common/video/video_decode_type.dart';
 import 'package:PiliPlus/models/common/video/video_quality.dart';
 import 'package:PiliPlus/models/common/video/video_type.dart';
@@ -56,6 +56,7 @@ import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/connectivity_utils.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
+import 'package:PiliPlus/utils/extension/nested_scroll_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
@@ -66,7 +67,8 @@ import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:PiliPlus/utils/video_utils.dart';
 import 'package:collection/collection.dart';
-import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
+import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart'
+    show ExtendedNestedScrollViewState;
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -145,8 +147,7 @@ class VideoDetailController extends GetxController
   Box setting = GStorage.setting;
 
   // 预设的解码格式
-  late String cacheDecode = Pref.defaultDecode; // def avc
-  late String cacheSecondDecode = Pref.secondDecode; // def av1
+  late List<VideoDecodeFormatType> preferCodecs = Pref.preferCodecs;
 
   bool get showReply => isFileSource
       ? false
@@ -171,8 +172,7 @@ class VideoDetailController extends GetxController
   late final RxDouble scrollRatio = 0.0.obs;
 
   ScrollController? _scrollCtr;
-  ScrollController get scrollCtr =>
-      _scrollCtr ??= ScrollController()..addListener(scrollListener);
+  ScrollController get scrollCtr => _scrollCtr ??= ScrollController();
 
   late bool isExpanding = false;
   late bool isCollapsing = false;
@@ -190,9 +190,7 @@ class VideoDetailController extends GetxController
       )..addListener(_animListener));
 
   void refreshPage() {
-    if (scrollKey.currentState?.mounted ?? false) {
-      (scrollKey.currentState!.context as Element).markNeedsBuild();
-    }
+    scrollKey.currentState?.refresh();
   }
 
   void _animListener() {
@@ -220,14 +218,7 @@ class VideoDetailController extends GetxController
   }
 
   void animToTop() {
-    final outerController = scrollKey.currentState!.outerController;
-    if (outerController.hasClients) {
-      outerController.animateTo(
-        outerController.offset,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    }
+    scrollKey.currentState?.animToTop();
   }
 
   bool _needAnimOnDimensionChanged(bool isVertical) {
@@ -324,26 +315,6 @@ class VideoDetailController extends GetxController
         }
       }
     } catch (_) {}
-  }
-
-  void scrollListener() {
-    if (scrollCtr.hasClients) {
-      if (scrollCtr.offset == 0) {
-        scrollRatio.value = 0;
-      } else {
-        double offset = scrollCtr.offset - (videoHeight - minVideoHeight);
-        if (offset > 0) {
-          scrollRatio.value = clampDouble(
-            offset.toPrecision(2) /
-                (minVideoHeight - kToolbarHeight).toPrecision(2),
-            0.0,
-            1.0,
-          );
-        } else {
-          scrollRatio.value = 0;
-        }
-      }
-    }
   }
 
   final isLoginVideo = Accounts.get(AccountType.video).isLogin;
@@ -568,7 +539,7 @@ class VideoDetailController extends GetxController
   bool get preInitPlayer => plPlayerController.preInitPlayer;
   @override
   int get currPosInMilliseconds =>
-      defaultST?.inMilliseconds ?? plPlayerController.position.inMilliseconds;
+      defaultST?.inMilliseconds ?? plPlayerController.positionInMilliseconds;
   @override
   Future<void> seekTo(Duration duration, {required bool isSeek}) =>
       plPlayerController.seekTo(duration, isSeek: isSeek);
@@ -649,7 +620,7 @@ class VideoDetailController extends GetxController
           final child = SendDanmakuPanel(
             cid: cid.value,
             bvid: bvid,
-            progress: plPlayerController.position.inMilliseconds,
+            progress: plPlayerController.positionInMilliseconds,
             initialValue: savedDanmaku,
             onSave: (danmaku) => savedDanmaku = danmaku,
             onSuccess: (danmakuModel) {
@@ -671,31 +642,38 @@ class VideoDetailController extends GetxController
     }
   }
 
-  VideoItem findVideoByQa(int qa) {
+  VideoItem findVideoByQa(int qa, {bool setCodecs = false}) {
     /// 根据currentVideoQa和currentDecodeFormats 重新设置videoUrl
     final videoList = data.dash!.video!.where((i) => i.id == qa).toList();
 
-    final currentDecodeFormats = this.currentDecodeFormats.codes;
-    final defaultDecodeFormats = VideoDecodeFormatType.fromString(
-      cacheDecode,
-    ).codes;
-    final secondDecodeFormats = VideoDecodeFormatType.fromString(
-      cacheSecondDecode,
-    ).codes;
-
-    VideoItem? video;
-    for (final i in videoList) {
-      final codec = i.codecs!;
-      if (currentDecodeFormats.any(codec.startsWith)) {
-        video = i;
-        break;
-      } else if (defaultDecodeFormats.any(codec.startsWith)) {
-        video = i;
-      } else if (video == null && secondDecodeFormats.any(codec.startsWith)) {
-        video = i;
+    final currentCodes = currentDecodeFormats.codes;
+    VideoItem? bestVideo;
+    int bestIndex = preferCodecs.length;
+    for (final video in videoList) {
+      final c = video.codecs!;
+      if (currentCodes.any(c.startsWith)) {
+        return video;
+      }
+      for (int i = 0; i < bestIndex; i++) {
+        if (preferCodecs[i].codes.any(c.startsWith)) {
+          bestIndex = i;
+          bestVideo = video;
+          break;
+        }
       }
     }
-    return video ?? videoList.first;
+
+    if (setCodecs) {
+      if (bestIndex < preferCodecs.length) {
+        currentDecodeFormats = preferCodecs[bestIndex];
+      } else {
+        currentDecodeFormats = VideoDecodeFormatType.fromString(
+          videoList.first.codecs!,
+        );
+      }
+    }
+
+    return bestVideo ?? videoList.first;
   }
 
   /// 更新画质、音质
@@ -703,16 +681,12 @@ class VideoDetailController extends GetxController
     final currentVideoQa = this.currentVideoQa.value;
     if (currentVideoQa == null) return;
     _autoPlay.value = true;
-    playedTime = plPlayerController.position;
+    playedTime = plPlayerController.videoPlayerController?.state.position;
     plPlayerController
       ..isBuffering.value = false
-      ..buffered.value = Duration.zero;
+      ..buffered.value = 0;
 
-    final video = findVideoByQa(currentVideoQa.code);
-    if (firstVideo.codecs != video.codecs) {
-      currentDecodeFormats = VideoDecodeFormatType.fromString(video.codecs!);
-    }
-    firstVideo = video;
+    firstVideo = findVideoByQa(currentVideoQa.code, setCodecs: true);
     videoUrl = VideoUtils.getCdnUrl(firstVideo.playUrls);
 
     /// 根据currentAudioQa 重新设置audioUrl
@@ -819,6 +793,7 @@ class VideoDetailController extends GetxController
   Volume? volume;
 
   // 视频链接
+  /// TODO: merge [DownloadHttp.getVideoUrl].
   Future<void> queryVideoUrl({
     bool fromReset = false,
     bool autoFullScreenFlag = false,
@@ -899,7 +874,7 @@ class VideoDetailController extends GetxController
           quality: videoQuality,
         );
         _setVideoHeight();
-        currentDecodeFormats = VideoDecodeFormatType.fromString('avc1');
+        currentDecodeFormats = VideoDecodeFormatType.AVC;
         currentVideoQa.value = videoQuality;
         await _initPlayerIfNeeded(autoFullScreenFlag);
         isQuerying = false;
@@ -931,41 +906,24 @@ class VideoDetailController extends GetxController
       }
       currentVideoQa.value = VideoQuality.fromCode(targetVideoQa);
 
+      /// 优先顺序 设置中指定解码格式 -> 当前可选的首个解码格式
+      final supportFormats = data.supportFormats!;
+
+      // 根据画质选编码格式
+      currentDecodeFormats = VideoUtils.selectCodec(
+        supportFormats
+            .firstWhere(
+              (e) => e.quality == targetVideoQa,
+              orElse: () => supportFormats.first,
+            )
+            .codecs!,
+        preferCodecs,
+      );
+
       /// 取出符合当前画质的videoList
-      final List<VideoItem> videosList = videoList
+      final videosList = videoList
           .where((e) => e.quality.code == targetVideoQa)
           .toList();
-
-      /// 优先顺序 设置中指定解码格式 -> 当前可选的首个解码格式
-      final List<FormatItem> supportFormats = data.supportFormats!;
-      // 根据画质选编码格式
-      final List<String> supportDecodeFormats = supportFormats
-          .firstWhere(
-            (e) => e.quality == targetVideoQa,
-            orElse: () => supportFormats.first,
-          )
-          .codecs!;
-      // 默认从设置中取AV1
-      currentDecodeFormats = VideoDecodeFormatType.fromString(cacheDecode);
-      VideoDecodeFormatType secondDecodeFormats =
-          VideoDecodeFormatType.fromString(cacheSecondDecode);
-      // 当前视频没有对应格式返回第一个
-      int flag = 0;
-      for (final e in supportDecodeFormats) {
-        if (currentDecodeFormats.codes.any(e.startsWith)) {
-          flag = 1;
-          break;
-        } else if (secondDecodeFormats.codes.any(e.startsWith)) {
-          flag = 2;
-        }
-      }
-      if (flag == 2) {
-        currentDecodeFormats = secondDecodeFormats;
-      } else if (flag == 0) {
-        currentDecodeFormats = VideoDecodeFormatType.fromString(
-          supportDecodeFormats.first,
-        );
-      }
 
       /// 取出符合当前解码格式的videoItem
       firstVideo = videosList.firstWhere(
@@ -1019,7 +977,7 @@ class VideoDetailController extends GetxController
         PostSegmentModel(
           segment: Pair(
             first: 0,
-            second: plPlayerController.position.inMilliseconds / 1000,
+            second: plPlayerController.positionInMilliseconds / 1000,
           ),
           category: SegmentType.sponsor,
           actionType: ActionType.skip,
@@ -1052,16 +1010,14 @@ class VideoDetailController extends GetxController
 
   RxList<Subtitle> subtitles = RxList<Subtitle>();
   final Map<int, ({bool isData, String id})> vttSubtitles = {};
-  late final RxInt vttSubtitlesIndex = (-1).obs;
-  late final RxBool showVP = true.obs;
-  late final RxList<ViewPointSegment> viewPointList = <ViewPointSegment>[].obs;
+  late final vttSubtitlesIndex = (-1).obs;
+  late final showVP = true.obs;
+  late final viewPointList = <ViewPointSegment>[].obs;
 
   // 设定字幕轨道
   Future<void> setSubtitle(int index) async {
     if (index <= 0) {
-      await plPlayerController.videoPlayerController?.setSubtitleTrack(
-        SubtitleTrack.no(),
-      );
+      await plPlayerController.videoPlayerController?.setSubtitleTrack(.no());
       vttSubtitlesIndex.value = index;
       return;
     }
@@ -1274,9 +1230,9 @@ class VideoDetailController extends GetxController
     );
     if (res case Success(:final response)) {
       // interactive video
+      late final introCtr = Get.find<UgcIntroController>(tag: heroTag);
       if (isUgc && graphVersion == null) {
         try {
-          final introCtr = Get.find<UgcIntroController>(tag: heroTag);
           if (introCtr.videoDetail.value.rights?.isSteinGate == 1) {
             graphVersion = response.interaction?.graphVersion;
             // 保存服务器返回的历史观看节点，用于判断是否需要恢复进度
@@ -1296,22 +1252,18 @@ class VideoDetailController extends GetxController
 
       if (isUgc && continuePlayingPart) {
         continuePlayingPart = false;
-        try {
-          UgcIntroController ugcIntroController = Get.find<UgcIntroController>(
-            tag: heroTag,
-          );
-          if ((ugcIntroController.videoDetail.value.pages?.length ?? 0) > 1 &&
-              response.lastPlayCid != null &&
-              response.lastPlayCid != 0) {
-            if (response.lastPlayCid != cid.value) {
-              int index = ugcIntroController.videoDetail.value.pages!
-                  .indexWhere((item) => item.cid == response.lastPlayCid);
+        final lastCid = response.lastPlayCid;
+        if (lastCid != null && lastCid != 0 && lastCid != cid.value) {
+          try {
+            final pages = introCtr.videoDetail.value.pages;
+            if (pages != null && pages.length > 1) {
+              final index = pages.indexWhere((item) => item.cid == lastCid);
               if (index != -1) {
                 onAddItem(index);
               }
             }
-          }
-        } catch (_) {}
+          } catch (_) {}
+        }
       }
 
       if (plPlayerController.showViewPoints &&
@@ -1330,25 +1282,51 @@ class VideoDetailController extends GetxController
         } catch (_) {}
       }
 
-      if (response.subtitle?.subtitles?.isNotEmpty == true) {
-        subtitles.value = response.subtitle!.subtitles!;
-
-        final idx = switch (Pref.subtitlePreferenceV2) {
-          SubtitlePrefType.off => 0,
-          SubtitlePrefType.on => 1,
-          SubtitlePrefType.withoutAi =>
-            subtitles.first.lan.startsWith('ai') ? 0 : 1,
-          SubtitlePrefType.auto =>
-            !subtitles.first.lan.startsWith('ai') ||
-                    (PlatformUtils.isMobile &&
-                        (await FlutterVolumeController.getVolume() ?? 0.0) <=
-                            0.0)
-                ? 1
-                : 0,
-        };
-        await setSubtitle(idx);
+      if (response.subtitle?.subtitles case final sub? when (sub.isNotEmpty)) {
+        _setSubtitle(sub);
+      } else if (!Accounts.main.isLogin) {
+        final res = await DmGrpc.dmView(aid, cid.value);
+        if (res case Success(:final response)) {
+          if (response.hasSubtitle() &&
+              response.subtitle.subtitles.isNotEmpty) {
+            _setSubtitle(
+              response.subtitle.subtitles
+                  .map(
+                    (i) => Subtitle(
+                      lan: i.lan,
+                      lanDoc: i.lanDoc,
+                      subtitleUrl: i.subtitleUrl.replaceFirst(
+                        RegExp('^https?:'),
+                        '',
+                      ),
+                      isAi: i.type == .AI,
+                    ),
+                  )
+                  .toList()
+                ..sort(),
+            );
+          }
+        } else {
+          res.toast();
+        }
       }
     }
+  }
+
+  Future<void> _setSubtitle(List<Subtitle> sub) async {
+    subtitles.value = sub;
+    final idx = switch (Pref.subtitlePreferenceV2) {
+      .off => 0,
+      .on => 1,
+      .withoutAi => sub.first.lan.startsWith('ai') ? 0 : 1,
+      .auto =>
+        !sub.first.lan.startsWith('ai') ||
+                (PlatformUtils.isMobile &&
+                    (await FlutterVolumeController.getVolume() ?? 0.0) <= 0.0)
+            ? 1
+            : 0,
+    };
+    await setSubtitle(idx);
   }
 
   void updateMediaListHistory(int aid) {
@@ -1395,9 +1373,7 @@ class VideoDetailController extends GetxController
     introScrollCtr?.dispose();
     introScrollCtr = null;
     tabCtr.dispose();
-    _scrollCtr
-      ?..removeListener(scrollListener)
-      ..dispose();
+    _scrollCtr?.dispose();
     animController
       ?..removeListener(_animListener)
       ..dispose();
@@ -1415,10 +1391,6 @@ class VideoDetailController extends GetxController
     defaultST = null;
     videoUrl = null;
     audioUrl = null;
-
-    if (scrollRatio.value != 0) {
-      scrollRatio.refresh();
-    }
 
     // danmaku
     savedDanmaku = null;

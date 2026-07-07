@@ -209,6 +209,7 @@ class LiveRoomController extends GetxController {
       startLiveTimer();
       isPortrait.value = response.isPortrait ?? false;
       stream = playurl.stream;
+      _initStreamIndex();
       await initLiveUrl(
         streamIndex: streamIndex,
         formatIndex: formatIndex,
@@ -226,6 +227,33 @@ class LiveRoomController extends GetxController {
   int formatIndex = 0;
   int codecIndex = 0;
   int liveUrlIndex = 0;
+
+  void _initStreamIndex() {
+    final pref = Pref.liveStream;
+    if (pref != null) {
+      try {
+        final String protocolName = pref[0];
+        final String formatName = pref[1];
+        final String codecName = pref[2];
+        for (var (i, s) in stream.indexed) {
+          if (s.protocolName == protocolName) {
+            streamIndex = i;
+            for (var (j, f) in s.format.indexed) {
+              if (f.formatName == formatName) {
+                formatIndex = j;
+                for (var (k, c) in f.codec.indexed) {
+                  if (c.codecName == codecName) {
+                    codecIndex = k;
+                    return;
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+  }
 
   Future<void>? initLiveUrl({
     int streamIndex = 0,
@@ -458,7 +486,7 @@ class LiveRoomController extends GetxController {
 
   void addDm(dynamic msg, [DanmakuContentItem<DanmakuExtra>? item]) {
     if (plPlayerController.showDanmaku) {
-      if (item != null) {
+      if (item != null && plPlayerController.enableShowLiveDanmaku.value) {
         danmakuController?.addDanmaku(item);
       }
       if (autoScroll && !disableAutoScroll.value) {

@@ -680,9 +680,7 @@ class _UgcIntroPanelState extends State<UgcIntroPanel> {
                               videoDetailCtr.data.timeLength ??
                               videoDetailCtr
                                   .plPlayerController
-                                  .duration
-                                  .value
-                                  .inMilliseconds;
+                                  .durationInMilliseconds;
                           if (duration > 0) {
                             final ytbId = youtubeRegExp
                                 .firstMatch(matchStr)
