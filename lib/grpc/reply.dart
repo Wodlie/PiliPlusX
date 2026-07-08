@@ -84,8 +84,7 @@ abstract final class ReplyGrpc {
       return false;
     }
 
-    final content = reply.content;
-    final int structuredAtCount = content.atNameToMid.length;
+    final int structuredAtCount = _getUserAtCount(reply);
     if (structuredAtCount == 0) {
       return false;
     }
@@ -142,6 +141,24 @@ abstract final class ReplyGrpc {
       return message;
     }
     return message.replaceFirst(_replyPrefixRegExp, '');
+  }
+
+  /// Returns the count of user-initiated @ mentions, excluding the system-
+  /// generated reply target from the "回复 @user:" prefix for replies.
+  static int _getUserAtCount(ReplyInfo reply) {
+    final Map<String, Int64> atMap = reply.content.atNameToMid;
+    if (atMap.isEmpty) {
+      return 0;
+    }
+    // For replies, exclude the system @ from "回复 @user:" prefix
+    if (reply.root.toInt() != 0) {
+      final String stripped = _stripReplyPrefix(
+        reply.content.message,
+        reply,
+      );
+      return atMap.keys.where((name) => stripped.contains('@$name')).length;
+    }
+    return atMap.length;
   }
 
   static ReplyNormalizedBody normalizeReplyBody(ReplyInfo reply) {
@@ -239,7 +256,7 @@ abstract final class ReplyGrpc {
 
     // Strategy 4: @ filter
     if (enableAtFilter) {
-      final int structuredAtCount = reply.content.atNameToMid.length;
+      final int structuredAtCount = _getUserAtCount(reply);
       if (structuredAtCount > 0) {
         final bool hasLikeExemptRule = enableAtFilterLikeExempt;
         final int likeExemptThreshold = atFilterLikeExemptThreshold;

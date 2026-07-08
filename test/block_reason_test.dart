@@ -246,8 +246,8 @@ void main() {
 
         // Reply with "回复 @user:" prefix and substantive content after
         final reply = _makeReply(
-          message: '回复 @syocn :可是这个奥托真的纯良[笑哭][笑哭]',
-          atMap: {'syocn': 100},
+          message: '回复 @123456 :可是这个真的纯良[笑哭][笑哭]',
+          atMap: {'123456': 100},
           root: 12345, // non-zero = reply
         );
 
@@ -274,6 +274,25 @@ void main() {
         final reason = ReplyGrpc.checkBlockReason(reply);
         expect(reason, isNotNull);
         expect(reason, contains('@数量过多'));
+      },
+    );
+
+    test(
+      'does not filter reply with only system @ and body content with emote',
+      () async {
+        await GStorage.setting.put(SettingBoxKey.enableAtFilter, true);
+        await GStorage.setting.put(SettingBoxKey.enableAtFilterBodyLength, true);
+        await GStorage.setting.put(SettingBoxKey.atFilterBodyLengthThreshold, 10);
+
+        // Reply like "回复 @123456 :好冷[吃瓜]" – only the system @
+        final reply = _makeReply(
+          message: '回复 @123456 :好冷[吃瓜]',
+          atMap: {'123456': 100},
+          root: 12345,
+        );
+
+        // Should NOT be filtered – "回复 @" is system, no user-initiated @
+        expect(ReplyGrpc.checkBlockReason(reply), isNull);
       },
     );
 
