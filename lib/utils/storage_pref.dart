@@ -985,6 +985,9 @@ abstract final class Pref {
   static bool get enableCommentTranslate =>
       _setting.get(SettingBoxKey.enableCommentTranslate, defaultValue: true);
 
+  static bool get manualLoadCommentImage =>
+      _setting.get(SettingBoxKey.manualLoadCommentImage, defaultValue: false);
+
   static bool get enableOnlineTotal =>
       _setting.get(SettingBoxKey.enableOnlineTotal, defaultValue: false);
 
