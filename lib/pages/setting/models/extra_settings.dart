@@ -9,7 +9,6 @@ import 'package:PiliPlus/common/widgets/gesture/horizontal_drag_gesture_recogniz
 import 'package:PiliPlus/common/widgets/image_grid/image_grid_view.dart'
     show ImageGridView, ImageModel;
 import 'package:PiliPlus/common/widgets/pendant_avatar.dart';
-import 'package:PiliPlus/grpc/reply.dart';
 import 'package:PiliPlus/http/fav.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/audio_normalization.dart';
@@ -20,7 +19,7 @@ import 'package:PiliPlus/models/common/sponsor_block/skip_type.dart';
 import 'package:PiliPlus/models/common/super_resolution_type.dart';
 import 'package:PiliPlus/models/common/video/ai_summary_service.dart';
 import 'package:PiliPlus/models/dynamics/result.dart'
-    show DynamicsDataModel, ItemModulesModel;
+    show ItemModulesModel;
 import 'package:PiliPlus/pages/common/slide/common_slide_page.dart';
 import 'package:PiliPlus/pages/home/controller.dart';
 import 'package:PiliPlus/pages/main/controller.dart';
@@ -229,42 +228,7 @@ List<SettingsModel> get extraSettings => [
     setKey: SettingBoxKey.continuePlayingPart,
     defaultVal: true,
   ),
-  getBanWordModel(
-    title: '评论关键词过滤',
-    key: SettingBoxKey.banWordForReply,
-    onChanged: (value) {
-      ReplyGrpc.replyRegExp = value;
-      ReplyGrpc.enableFilter = value.pattern.isNotEmpty;
-    },
-  ),
-  NormalModel(
-    title: '评论用户等级过滤',
-    leading: const Icon(Icons.person_off_outlined),
-    getSubtitle: () => ReplyGrpc.minLevelForReply == 0
-        ? '不过滤'
-        : '屏蔽低于 lv${ReplyGrpc.minLevelForReply} 的评论',
-    onTap: _showReplyMinLevelDialog,
-  ),
-  SplitModel(
-    normalModel: const NormalModel.split(
-      title: '@评论过滤',
-      subtitle: '低质量 @ 评论过滤，点击配置',
-      leading: Icon(Icons.alternate_email),
-    ),
-    switchModel: SwitchModel.split(
-      defaultVal: false,
-      setKey: SettingBoxKey.enableAtFilter,
-      onTap: (context) => Get.toNamed('/atFilterSetting'),
-    ),
-  ),
-  getBanWordModel(
-    title: '动态关键词过滤',
-    key: SettingBoxKey.banWordForDyn,
-    onChanged: (value) {
-      DynamicsDataModel.banWordForDyn = value;
-      DynamicsDataModel.enableFilter = value.pattern.isNotEmpty;
-    },
-  ),
+
   const SwitchModel(
     title: '使用外部浏览器打开链接',
     leading: Icon(Icons.open_in_browser),
@@ -478,28 +442,7 @@ List<SettingsModel> get extraSettings => [
     setKey: SettingBoxKey.enableCreateDynAntifraud,
     defaultVal: false,
   ),
-  SwitchModel(
-    title: '屏蔽带货动态',
-    leading: const Icon(CustomIcons.shopping_bag_not_interested),
-    setKey: SettingBoxKey.antiGoodsDyn,
-    defaultVal: false,
-    onChanged: (value) => DynamicsDataModel.antiGoodsDyn = value,
-  ),
-  SwitchModel(
-    title: '屏蔽带货评论',
-    leading: const Icon(CustomIcons.shopping_bag_not_interested),
-    setKey: SettingBoxKey.antiGoodsReply,
-    defaultVal: false,
-    onChanged: (value) => ReplyGrpc.antiGoodsReply = value,
-  ),
-  SwitchModel(
-    title: '显示被屏蔽评论提示',
-    subtitle: '被屏蔽的评论显示为提示横幅而非直接移除',
-    leading: const Icon(Icons.block_outlined),
-    setKey: SettingBoxKey.showBlockedReplyBanner,
-    defaultVal: true,
-    onChanged: (value) => ReplyGrpc.showBlockedReplyBanner = value,
-  ),
+
   SwitchModel(
     title: '侧滑关闭二级页面',
     leading: const Icon(CustomIcons.touch_app_rotate_270),
@@ -689,14 +632,7 @@ List<SettingsModel> get extraSettings => [
     onTap: _showFavDialog,
     defaultVal: false,
   ),
-  SwitchModel(
-    title: '评论区搜索关键词',
-    subtitle: '展示评论区搜索关键词',
-    leading: const Icon(Icons.search_outlined),
-    setKey: SettingBoxKey.enableWordRe,
-    defaultVal: false,
-    onChanged: (value) => ReplyItemGrpc.enableWordRe = value,
-  ),
+
   const SwitchModel(
     title: '评论区AI翻译',
     subtitle: '在评论区显示翻译按钮',
@@ -1708,24 +1644,4 @@ void _showCacheDialog(BuildContext context, VoidCallback setState) {
   );
 }
 
-Future<void> _showReplyMinLevelDialog(
-  BuildContext context,
-  VoidCallback setState,
-) async {
-  final result = await showDialog<int>(
-    context: context,
-    builder: (context) => SelectDialog<int>(
-      title: '评论用户等级过滤',
-      value: ReplyGrpc.minLevelForReply,
-      values: List.generate(
-        7, // lv0..lv6
-        (i) => (i, i == 0 ? 'lv0（不过滤）' : 'lv$i'),
-      ),
-    ),
-  );
-  if (result != null) {
-    ReplyGrpc.minLevelForReply = result;
-    await GStorage.setting.put(SettingBoxKey.minLevelForReply, result);
-    setState();
-  }
-}
+

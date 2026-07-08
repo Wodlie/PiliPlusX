@@ -73,6 +73,11 @@ class _SettingPageState extends State<SettingPage> {
       icon: Icon(Icons.extension_outlined),
     ),
     _SettingsModel(
+      type: SettingType.blockFilterSetting,
+      subtitle: '评论关键词、动态关键词、推荐关键词、@评论过滤、屏蔽带货等',
+      icon: Icon(Icons.block_outlined),
+    ),
+    _SettingsModel(
       type: SettingType.webdavSetting,
       icon: Icon(MdiIcons.databaseCogOutline),
     ),
@@ -119,7 +124,8 @@ class _SettingPageState extends State<SettingPage> {
                       .videoSetting ||
                       .playSetting ||
                       .styleSetting ||
-                      .extraSetting => CommonSetting(
+                      .extraSetting ||
+                      .blockFilterSetting => CommonSetting(
                         settingType: _type,
                         showAppBar: false,
                       ),
@@ -150,7 +156,8 @@ class _SettingPageState extends State<SettingPage> {
           .videoSetting ||
           .playSetting ||
           .styleSetting ||
-          .extraSetting => CommonSetting(settingType: type),
+          .extraSetting ||
+          .blockFilterSetting => CommonSetting(settingType: type),
           .webdavSetting => const WebDavSettingPage(),
           .about => const AboutPage(),
         },

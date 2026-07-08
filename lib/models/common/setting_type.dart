@@ -1,3 +1,4 @@
+import 'package:PiliPlus/pages/setting/models/block_filter_settings.dart';
 import 'package:PiliPlus/pages/setting/models/extra_settings.dart';
 import 'package:PiliPlus/pages/setting/models/model.dart';
 import 'package:PiliPlus/pages/setting/models/play_settings.dart';
@@ -13,6 +14,7 @@ enum SettingType {
   playSetting('播放器设置'),
   styleSetting('外观设置'),
   extraSetting('其它设置'),
+  blockFilterSetting('屏蔽设置'),
   webdavSetting('WebDAV 设置'),
   about('关于'),
   ;
@@ -27,6 +29,7 @@ enum SettingType {
     .playSetting => playSettings,
     .styleSetting => styleSettings,
     .extraSetting => extraSettings,
+    .blockFilterSetting => blockFilterSettings,
     _ => throw UnimplementedError(),
   };
 }
