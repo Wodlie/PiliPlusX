@@ -264,7 +264,6 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
   @override
   void onClose() {
     savedReplies.clear();
-    ReplyGrpc.clearBlockedReasons();
     super.onClose();
   }
 
