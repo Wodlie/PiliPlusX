@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-07-07
-**Commit:** `832e73ba2`
+**Generated:** 2026-07-08
+**Commit:** `011c1844a`
 **Branch:** `dev`
 
 ## OVERVIEW
@@ -13,6 +13,7 @@ PiliPlusX is a Flutter-based third-party BiliBili client for Android, iOS, Windo
 ```
 lib/
 ├── pages/            # 114 feature pages; largest handwritten surface
+│   └── common/       # shared base controllers, reply/publish/search infrastructure
 ├── common/           # shared widgets, style constants, patched Flutter SDK widgets
 ├── http/             # Dio-based API layer + interceptors
 ├── utils/            # storage, accounts, platform helpers, extensions
@@ -47,7 +48,7 @@ lib/
 | Change player behavior | `lib/plugin/pl_player/` | Custom `media_kit` fork; see child AGENTS |
 | Change account/cookies | `lib/utils/accounts/` | Multi-account, BUVID, request identity |
 | Change build/release | `lib/scripts/` + `.github/workflows/` | `build.ps1` mutes pubspec; `patch.ps1` patches Flutter SDK |
-| Shared page behavior | `lib/pages/common/` | Base controllers, publish/search/multi-select helpers |
+| Shared page behavior & base controllers | `lib/pages/common/` | Controller inheritance, reply/publish/search/multi-select/slide; see child AGENTS |
 
 ## ARCHITECTURE
 
@@ -105,6 +106,7 @@ Base: `package:flutter_lints/flutter.yaml`. Key enforced rules:
 ## CHILD GUIDES
 
 - `lib/pages/AGENTS.md`
+- `lib/pages/common/AGENTS.md`
 - `lib/pages/video/AGENTS.md`
 - `lib/pages/setting/AGENTS.md`
 - `lib/common/widgets/AGENTS.md`
