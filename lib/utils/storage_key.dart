@@ -273,7 +273,20 @@ abstract final class SettingBoxKey {
       reduceLuxColor = 'reduceLuxColor',
       liveCdnUrl = 'liveCdnUrl',
       saveReply = 'saveReply',
-      manualLoadCommentImage = 'manualLoadCommentImage'; 
+      manualLoadCommentImage = 'manualLoadCommentImage',
+      enableCustomApiHost = 'enableCustomApiHost',
+      customBaseUrl = 'customBaseUrl',
+      customApiBaseUrl = 'customApiBaseUrl',
+      customTUrl = 'customTUrl',
+      customAppBaseUrl = 'customAppBaseUrl',
+      customLiveBaseUrl = 'customLiveBaseUrl',
+      customPassBaseUrl = 'customPassBaseUrl',
+      customMessageBaseUrl = 'customMessageBaseUrl',
+      customSpaceBaseUrl = 'customSpaceBaseUrl',
+      customAccountBaseUrl = 'customAccountBaseUrl',
+      customMallBaseUrl = 'customMallBaseUrl',
+      customDynamicShareBaseUrl = 'customDynamicShareBaseUrl',
+      customSearchBaseUrl = 'customSearchBaseUrl';
 }
 
 abstract final class LocalCacheKey {

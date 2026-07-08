@@ -674,6 +674,45 @@ abstract final class Pref {
   static String get apiHKUrl =>
       _setting.get(SettingBoxKey.apiHKUrl, defaultValue: '');
 
+  static bool get enableCustomApiHost =>
+      _setting.get(SettingBoxKey.enableCustomApiHost, defaultValue: false);
+
+  static String get customBaseUrl =>
+      _setting.get(SettingBoxKey.customBaseUrl, defaultValue: '');
+
+  static String get customApiBaseUrl =>
+      _setting.get(SettingBoxKey.customApiBaseUrl, defaultValue: '');
+
+  static String get customTUrl =>
+      _setting.get(SettingBoxKey.customTUrl, defaultValue: '');
+
+  static String get customAppBaseUrl =>
+      _setting.get(SettingBoxKey.customAppBaseUrl, defaultValue: '');
+
+  static String get customLiveBaseUrl =>
+      _setting.get(SettingBoxKey.customLiveBaseUrl, defaultValue: '');
+
+  static String get customPassBaseUrl =>
+      _setting.get(SettingBoxKey.customPassBaseUrl, defaultValue: '');
+
+  static String get customMessageBaseUrl =>
+      _setting.get(SettingBoxKey.customMessageBaseUrl, defaultValue: '');
+
+  static String get customSpaceBaseUrl =>
+      _setting.get(SettingBoxKey.customSpaceBaseUrl, defaultValue: '');
+
+  static String get customAccountBaseUrl =>
+      _setting.get(SettingBoxKey.customAccountBaseUrl, defaultValue: '');
+
+  static String get customMallBaseUrl =>
+      _setting.get(SettingBoxKey.customMallBaseUrl, defaultValue: '');
+
+  static String get customDynamicShareBaseUrl =>
+      _setting.get(SettingBoxKey.customDynamicShareBaseUrl, defaultValue: '');
+
+  static String get customSearchBaseUrl =>
+      _setting.get(SettingBoxKey.customSearchBaseUrl, defaultValue: '');
+
   static bool get optTabletNav =>
       _setting.get(SettingBoxKey.optTabletNav, defaultValue: true);
 
