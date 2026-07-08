@@ -19,9 +19,14 @@ class _ApiHostPageState extends State<ApiHostPage> {
   void initState() {
     super.initState();
     _controllers = apiHostEntries
-        .map((e) => TextEditingController(
-              text: GStorage.setting.get(e.settingKey, defaultValue: '') as String? ?? '',
-            ))
+        .map(
+          (e) => TextEditingController(
+            text:
+                GStorage.setting.get(e.settingKey, defaultValue: '')
+                    as String? ??
+                '',
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -77,7 +82,9 @@ class _ApiHostPageState extends State<ApiHostPage> {
                   _controllers[i].text = value;
                   if (value.isNotEmpty) {
                     if (!value.startsWith('http')) {
-                      SmartDialog.showToast('${entry.label}：需以 http 或 https 开头');
+                      SmartDialog.showToast(
+                        '${entry.label}：需以 http 或 https 开头',
+                      );
                       return;
                     }
                     if (value.endsWith('/')) {

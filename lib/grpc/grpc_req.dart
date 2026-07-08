@@ -59,7 +59,8 @@ abstract final class GrpcReq {
     T Function(Uint8List) grpcParser, {
     bool isolate = false,
   }) async {
-    final baseUrl = (Pref.enableCustomApiHost && Pref.customAppBaseUrl.isNotEmpty)
+    final baseUrl =
+        (Pref.enableCustomApiHost && Pref.customAppBaseUrl.isNotEmpty)
         ? Pref.customAppBaseUrl
         : HttpString.appBaseUrl;
     final response = await Request().post<Uint8List>(

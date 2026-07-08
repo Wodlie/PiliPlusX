@@ -74,11 +74,13 @@ class CustomHostInterceptor extends Interceptor {
 
       if (hostMap.containsKey(origin)) {
         final customUri = Uri.parse(hostMap[origin]!);
-        options.path = uri.replace(
-          scheme: customUri.scheme,
-          host: customUri.host,
-          port: customUri.port,
-        ).toString();
+        options.path = uri
+            .replace(
+              scheme: customUri.scheme,
+              host: customUri.host,
+              port: customUri.port,
+            )
+            .toString();
       }
     } else {
       // 5. Handle relative paths: check options.baseUrl

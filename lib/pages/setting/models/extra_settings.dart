@@ -9,6 +9,7 @@ import 'package:PiliPlus/common/widgets/gesture/horizontal_drag_gesture_recogniz
 import 'package:PiliPlus/common/widgets/image_grid/image_grid_view.dart'
     show ImageGridView, ImageModel;
 import 'package:PiliPlus/common/widgets/pendant_avatar.dart';
+import 'package:PiliPlus/http/api_hosts.dart';
 import 'package:PiliPlus/http/fav.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/audio_normalization.dart';
@@ -18,11 +19,11 @@ import 'package:PiliPlus/models/common/reply/reply_sort_type.dart';
 import 'package:PiliPlus/models/common/sponsor_block/skip_type.dart';
 import 'package:PiliPlus/models/common/super_resolution_type.dart';
 import 'package:PiliPlus/models/common/video/ai_summary_service.dart';
-import 'package:PiliPlus/models/dynamics/result.dart'
-    show ItemModulesModel;
+import 'package:PiliPlus/models/dynamics/result.dart' show ItemModulesModel;
 import 'package:PiliPlus/pages/common/slide/common_slide_page.dart';
 import 'package:PiliPlus/pages/home/controller.dart';
 import 'package:PiliPlus/pages/main/controller.dart';
+import 'package:PiliPlus/pages/setting/api_host_page.dart';
 import 'package:PiliPlus/pages/setting/models/model.dart';
 import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
 import 'package:PiliPlus/pages/setting/widgets/slider_dialog.dart';
@@ -902,6 +903,25 @@ List<SettingsModel> get extraSettings => [
       );
     },
   ),
+  const SwitchModel(
+    title: '自定义 API 主机',
+    leading: Icon(Icons.dns_outlined),
+    setKey: SettingBoxKey.enableCustomApiHost,
+    defaultVal: false,
+  ),
+  NormalModel(
+    title: '配置自定义主机',
+    leading: const Icon(Icons.settings_ethernet),
+    getSubtitle: () {
+      final configured = apiHostEntries
+          .where(
+            (e) => GStorage.setting.get(e.settingKey, defaultValue: '') != '',
+          )
+          .length;
+      return '已配置 $configured 个/共 ${apiHostEntries.length} 个子域';
+    },
+    onTap: (context, setState) => Get.to(() => const ApiHostPage()),
+  ),
 ];
 
 Future<void> audioNormalization(
@@ -1643,5 +1663,3 @@ void _showCacheDialog(BuildContext context, VoidCallback setState) {
     ),
   );
 }
-
-
