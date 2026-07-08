@@ -5,6 +5,7 @@ import 'package:PiliPlus/grpc/bilibili/rpc.pb.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:archive/archive.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, compute;
@@ -58,8 +59,11 @@ abstract final class GrpcReq {
     T Function(Uint8List) grpcParser, {
     bool isolate = false,
   }) async {
+    final baseUrl = (Pref.enableCustomApiHost && Pref.customAppBaseUrl.isNotEmpty)
+        ? Pref.customAppBaseUrl
+        : HttpString.appBaseUrl;
     final response = await Request().post<Uint8List>(
-      HttpString.appBaseUrl + url,
+      baseUrl + url,
       data: compressProtobuf(request.writeToBuffer()),
       options: options,
     );
