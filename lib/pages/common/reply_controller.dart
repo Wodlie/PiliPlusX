@@ -72,7 +72,7 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
     count.value = data.subjectControl.count.toInt();
     if (isRefresh) {
       subjectControl = data.subjectControl;
-      canSort.value = data.subjectControl.switcherType != Int64.ZERO;
+      canSort.value = data.subjectControl.switcherType == Int64(1);
       upMid ??= data.subjectControl.upMid;
       if (hasUpTop = data.hasUpTop()) {
         data.replies.insert(0, data.upTop);
