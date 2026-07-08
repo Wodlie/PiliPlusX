@@ -633,6 +633,14 @@ List<SettingsModel> get extraSettings => [
     onTap: _showFavDialog,
     defaultVal: false,
   ),
+  SwitchModel(
+    title: '评论区搜索关键词',
+    subtitle: '展示评论区搜索关键词',
+    leading: const Icon(Icons.search_outlined),
+    setKey: SettingBoxKey.enableWordRe,
+    defaultVal: false,
+    onChanged: (value) => ReplyItemGrpc.enableWordRe = value,
+  ),
 
   const SwitchModel(
     title: '评论区AI翻译',
