@@ -1313,13 +1313,15 @@ abstract final class Pref {
   static set imageBlockDisplayMode(bool value) =>
       _setting.put(SettingBoxKey.imageBlockDisplayMode, value);
 
-  static List<Map<String, dynamic>> get imageBlockHashList =>
-      List<Map<String, dynamic>>.from(
-        _setting.get(
-          SettingBoxKey.imageBlockHashList,
-          defaultValue: <Map<String, dynamic>>[],
-        ),
-      );
+  static List<Map<String, dynamic>> get imageBlockHashList {
+    final raw = _setting.get(
+      SettingBoxKey.imageBlockHashList,
+      defaultValue: <dynamic>[],
+    );
+    return (raw as List<dynamic>)
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
   static set imageBlockHashList(List<Map<String, dynamic>> value) =>
       _setting.put(SettingBoxKey.imageBlockHashList, value);
 }
