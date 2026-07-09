@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dart_imagehash/dart_imagehash.dart' show ImageHash, ImageHasher;
 import 'package:image/image.dart' as img;
+import 'package:flutter/foundation.dart';
 import 'package:PiliPlus/utils/blocked_image_storage.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -117,9 +118,13 @@ abstract final class ImageBlockService {
   /// Key is normalized URL (stripped of @format and ?query params).
   static final Map<String, bool> _resultCache = {};
 
+  /// Pre-parsed block list cache (avoids repeated Hive reads + fromHex calls).
+  static List<ImageHash>? _blockListCache;
+
   /// Strip BiliBili image format (@...) and standard query params (?...).
   /// URLs like ".../abc.jpg@100w_100h.webp" and ".../abc.jpg" map to same key.
-  static String _normalizeUrl(String url) {
+  @visibleForTesting
+  static String normalizeUrl(String url) {
     final atIndex = url.indexOf('@');
     final qIndex = url.indexOf('?');
     int end;
@@ -132,6 +137,48 @@ abstract final class ImageBlockService {
       end = atIndex < qIndex ? atIndex : qIndex;
     }
     return url.substring(0, end);
+  }
+
+  /// Get the parsed block list from cache or Pref.
+  /// Reads Pref.imageBlockHashList on first call, caches as List<ImageHash>.
+  @visibleForTesting
+  static List<ImageHash> getParsedBlockList() {
+    if (_blockListCache != null) return _blockListCache!;
+    final rawList = Pref.imageBlockHashList;
+    _blockListCache = rawList.map((entry) {
+      return ImageHash.fromHex(entry['pHash'] as String);
+    }).toList();
+    return _blockListCache!;
+  }
+
+  /// Transform a BiliBili CDN URL into a small thumbnail URL for pHash computation.
+  /// Appends/replaces `@100w_1q.webp` format suffix on BiliBili hosts.
+  /// Non-BiliBili URLs are returned unchanged.
+  @visibleForTesting
+  static String thumbnailUrlForHash(String url) {
+    final uri = Uri.parse(url);
+    final host = uri.host;
+    if (!host.endsWith('.hdslb.com') && !host.endsWith('.biliimg.com')) {
+      return url;
+    }
+
+    // Strip existing @... suffix, preserving query string position.
+    final atIndex = url.indexOf('@');
+    final qIndex = url.indexOf('?');
+    int end;
+    if (atIndex == -1 && qIndex == -1) {
+      end = url.length;
+    } else if (atIndex == -1) {
+      end = qIndex;
+    } else if (qIndex == -1) {
+      end = atIndex;
+    } else {
+      end = atIndex < qIndex ? atIndex : qIndex;
+    }
+
+    final base = url.substring(0, end);
+    final query = qIndex != -1 ? url.substring(qIndex) : '';
+    return '$base@100w_1q.webp$query';
   }
 
   /// Compute pHash variants via persistent Isolate worker.
@@ -155,21 +202,26 @@ abstract final class ImageBlockService {
   }
 
   /// Check if image is blocked by comparing variant hashes against block list.
+  /// [blockList] parameter is retained for backward compatibility;
+  /// the internal implementation reads from the pre-parsed cache via
+  /// [getParsedBlockList] to avoid repeated Hive reads and ImageHash.fromHex calls.
   static bool isBlocked(
     List<String> imageVariantHashes,
     List<Map<String, dynamic>> blockList,
     int threshold,
   ) {
     if (!Pref.enableImageBlock) return false;
-    if (blockList.isEmpty) return false;
     if (imageVariantHashes.isEmpty) return false;
+
+    final parsedList = getParsedBlockList();
+    if (parsedList.isEmpty) return false;
 
     int minDistance = 64;
 
-    for (final variantHash in imageVariantHashes) {
-      for (final entry in blockList) {
-        final blockedHash = entry['pHash'] as String;
-        final distance = hammingDistance(variantHash, blockedHash);
+    for (final variantHashHex in imageVariantHashes) {
+      final variantHash = ImageHash.fromHex(variantHashHex);
+      for (final blockedHash in parsedList) {
+        final distance = variantHash - blockedHash;
         if (distance < minDistance) {
           minDistance = distance;
           if (minDistance <= threshold) return true;
@@ -184,7 +236,7 @@ abstract final class ImageBlockService {
   /// Returns true if the image URL should be blocked.
   static Future<bool> evaluateBlock(String imageUrl) async {
     if (!Pref.enableImageBlock) return false;
-    final key = _normalizeUrl(imageUrl);
+    final key = normalizeUrl(imageUrl);
 
     if (_resultCache.containsKey(key)) return _resultCache[key]!;
 
@@ -243,7 +295,7 @@ abstract final class ImageBlockService {
 
       await BlockedImageStorage.saveImage(primaryHash, bytes);
 
-      final key = _normalizeUrl(imageUrl);
+      final key = normalizeUrl(imageUrl);
       _hashCache[key] = hashes;
       _resultCache.remove(key);
 
@@ -259,17 +311,19 @@ abstract final class ImageBlockService {
 
   /// Get cached pHash variants for a URL.
   static List<String>? getCachedHashes(String url) =>
-      _hashCache[_normalizeUrl(url)];
+      _hashCache[normalizeUrl(url)];
 
-  /// Invalidate result cache. Call when block list/threshold/settings change.
+  /// Invalidate result cache and block list cache.
+  /// Call when block list/threshold/settings change.
   static void invalidateResultCache() {
     _resultCache.clear();
+    _blockListCache = null;
   }
 
   /// Invalidate result cache for specific URLs.
   static void invalidateResultCacheForUrls(Iterable<String> urls) {
     for (final url in urls) {
-      _resultCache.remove(_normalizeUrl(url));
+      _resultCache.remove(normalizeUrl(url));
     }
   }
 
