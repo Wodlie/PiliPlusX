@@ -683,45 +683,51 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
           final tempUnblocked = _tempUnblockedSrcs.contains(imgSrc);
 
           if (isBlocked && !tempUnblocked) {
-            return GestureDetector(
-              onLongPress: () => _showUnblockMenu(context, imgSrc),
-              child: Container(
-                width: width,
-                height: height,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.7),
-                  borderRadius: Style.mdRadius,
-                ),
-                child: const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.image_not_supported_outlined,
-                        color: Colors.white70,
-                        size: 32,
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        '图片已屏蔽',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                      Text(
-                        '长按查看',
-                        style: TextStyle(color: Colors.white54, fontSize: 10),
-                      ),
-                    ],
+            return LayoutId(
+              id: index,
+              child: GestureDetector(
+                onLongPress: () => _showUnblockMenu(context, imgSrc),
+                child: Container(
+                  width: width,
+                  height: height,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: Style.mdRadius,
+                  ),
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.image_not_supported_outlined,
+                          color: Colors.white70,
+                          size: 32,
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          '图片已屏蔽',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        Text(
+                          '长按查看',
+                          style: TextStyle(color: Colors.white54, fontSize: 10),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             );
           }
 
-          return NetworkImgLayer(
-            src: item.url,
-            width: width,
-            height: height,
-            borderRadius: Style.mdRadius,
+          return LayoutId(
+            id: index,
+            child: NetworkImgLayer(
+              src: item.url,
+              width: width,
+              height: height,
+              borderRadius: Style.mdRadius,
+            ),
           );
         });
       },
