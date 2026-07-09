@@ -1,8 +1,8 @@
+import 'dart:async';
 import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:dart_imagehash/dart_imagehash.dart' show ImageHash, ImageHasher;
-import 'package:flutter/foundation.dart' show compute;
 import 'package:image/image.dart' as img;
 import 'package:PiliPlus/utils/blocked_image_storage.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
