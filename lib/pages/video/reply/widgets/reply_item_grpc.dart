@@ -3,10 +3,7 @@ import 'dart:math';
 import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/style.dart';
-import 'package:PiliPlus/common/widgets/image_grid/image_grid_builder.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
-import 'package:PiliPlus/models/common/image_preview_type.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 import 'package:PiliPlus/utils/image_block_service.dart';
 import 'package:PiliPlus/common/widgets/dialog/report.dart';
 import 'package:PiliPlus/common/widgets/extra_hit_test_widget.dart';
@@ -55,7 +52,11 @@ import 'package:get/get.dart';
 import 'package:protobuf/protobuf.dart';
 
 class BlockedReplyBanner extends StatelessWidget {
-  const BlockedReplyBanner({super.key, required this.onExpand, required this.replyItem});
+  const BlockedReplyBanner({
+    super.key,
+    required this.onExpand,
+    required this.replyItem,
+  });
 
   final VoidCallback onExpand;
   final ReplyInfo replyItem;
@@ -151,14 +152,6 @@ class ReplyItemGrpc extends StatefulWidget {
 class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   bool _expanded = false;
   bool _loadManualImages = false;
-  final Map<String, bool> _imageBlockStatus = {};
-  final Set<String> _tempUnblockedSrcs = {};
-
-  Future<void> _evaluateImageBlock(String imgSrc) async {
-    final blocked = await ImageBlockService.evaluateBlock(imgSrc);
-    _imageBlockStatus[imgSrc] = blocked;
-    if (mounted) setState(() {});
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -576,9 +569,6 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   }
 
   Widget _buildCommentImages(BuildContext context, ColorScheme colorScheme) {
-    if (Pref.enableImageBlock && widget.replyItem.content.pictures.isNotEmpty) {
-      return _buildBlockedImageArea(context, colorScheme);
-    }
     final manualLoad = Pref.manualLoadCommentImage;
     if (!manualLoad || _loadManualImages) {
       return ImageGridView(
@@ -622,144 +612,6 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildBlockedImageArea(BuildContext context, ColorScheme colorScheme) {
-    final picArr = widget.replyItem.content.pictures
-        .map(
-          (pic) => ImageModel(
-            width: pic.imgWidth,
-            height: pic.imgHeight,
-            url: pic.imgSrc,
-          ),
-        )
-        .toList();
-
-    return VisibilityDetector(
-      key: UniqueKey(),
-      onVisibilityChanged: (info) {
-        if (info.visibleFraction > 0) {
-          for (final pic in widget.replyItem.content.pictures) {
-            if (!_imageBlockStatus.containsKey(pic.imgSrc)) {
-              _evaluateImageBlock(pic.imgSrc);
-            }
-          }
-        }
-      },
-      child: ImageGridBuilder(
-        picArr: picArr,
-        onTap: (index) {
-          final imgSrc = picArr[index].url;
-          final isBlocked = _imageBlockStatus[imgSrc] == true;
-          if (isBlocked && !_tempUnblockedSrcs.contains(imgSrc)) return;
-
-          widget.onViewImage?.call();
-          final imgList = picArr
-              .map(
-                (item) => SourceModel(
-                  sourceType: SourceType.networkImage,
-                  url: item.url,
-                ),
-              )
-              .toList();
-          PageUtils.imageView(
-            initialPage: index,
-            imgList: imgList,
-            tag: hashCode.toString(),
-          );
-        },
-        onSecondaryTapUp: null,
-        onLongPressStart: null,
-        builder: (context, info) {
-          final width = info.size.width;
-          final height = info.size.height;
-
-          return List.generate(picArr.length, (index) {
-            final item = picArr[index];
-            final imgSrc = item.url;
-            final isBlocked = _imageBlockStatus[imgSrc] == true;
-            final tempUnblocked = _tempUnblockedSrcs.contains(imgSrc);
-
-            if (isBlocked && !tempUnblocked) {
-              return LayoutId(
-                id: index,
-                child: GestureDetector(
-                  onLongPress: () => _showUnblockMenu(context, imgSrc),
-                  child: Container(
-                    width: width,
-                    height: height,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.7),
-                      borderRadius: Style.mdRadius,
-                    ),
-                    child: const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.image_not_supported_outlined,
-                            color: Colors.white70,
-                            size: 32,
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            '图片已屏蔽',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            '长按查看',
-                            style: TextStyle(
-                              color: Colors.white54,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            return LayoutId(
-              id: index,
-              child: NetworkImgLayer(
-                src: item.url,
-                width: width,
-                height: height,
-                borderRadius: Style.mdRadius,
-              ),
-            );
-          });
-        },
-      ),
-    );
-  }
-
-  void _showUnblockMenu(BuildContext context, String imgSrc) {
-    showModalBottomSheet(
-      context: context,
-      useSafeArea: true,
-      constraints: BoxConstraints(
-        maxWidth: min(640, context.mediaQueryShortestSide),
-      ),
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            onTap: () {
-              Get.back();
-              setState(() => _tempUnblockedSrcs.add(imgSrc));
-            },
-            leading: const Icon(Icons.visibility, color: Colors.red, size: 19),
-            title: const Text('确定查看图片', style: TextStyle(color: Colors.red)),
-          ),
-        ],
       ),
     );
   }
