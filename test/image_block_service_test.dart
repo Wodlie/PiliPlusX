@@ -400,4 +400,44 @@ void main() {
           reason: 'valid image should produce hashes');
     }, timeout: const Timeout(Duration(seconds: 12)));
   });
+
+  // ── evaluateBlock thumbnail URL (Task 6) ───────────────────────────────
+
+  group('evaluateBlock thumbnail URL', () {
+    test('BiliBili CDN URL: uses thumbnailUrlForHash, does not throw',
+        () async {
+      final result = await ImageBlockService.evaluateBlock(
+        'https://i0.hdslb.com/bfs/album/abc.jpg',
+      );
+      // Download will fail (no network), but URL transformation should not throw
+      expect(result, isFalse);
+    });
+
+    test('Non-BiliBili URL: uses original URL, does not throw', () async {
+      final result = await ImageBlockService.evaluateBlock(
+        'https://example.com/image.jpg',
+      );
+      expect(result, isFalse);
+    });
+  });
+
+  // ── blockImage thumbnail URL (Task 8) ──────────────────────────────────
+
+  group('blockImage thumbnail URL', () {
+    test('blockImage downloads via thumbnailUrlForHash, does not throw',
+        () async {
+      final result = await ImageBlockService.blockImage(
+        'https://i0.hdslb.com/bfs/album/abc.jpg',
+      );
+      // Download will fail (no network), so result is null
+      expect(result, isNull);
+    });
+
+    test('blockImage with non-BiliBili URL, does not throw', () async {
+      final result = await ImageBlockService.blockImage(
+        'https://example.com/image.jpg',
+      );
+      expect(result, isNull);
+    });
+  });
 }

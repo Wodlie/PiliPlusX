@@ -113,4 +113,41 @@ void main() {
       expect(hashes, hasLength(1));
     });
   });
+
+  // ── resize before rotate (Task 7) ──────────────────────────────────────
+
+  group('resize before rotate', () {
+    test('same variant count and valid hex strings after resize', () {
+      final bytes = File('test/fixtures/image_full.png').readAsBytesSync();
+
+      // With flip+rotate: 5 variants
+      final hashes5 = computeImageHashes(<Object?>[bytes, true, true]);
+      expect(hashes5, hasLength(5));
+      for (final hash in hashes5) {
+        expect(hash, isA<String>());
+        expect(hash.length, greaterThan(0));
+      }
+
+      // Without flip, without rotate: 1 variant
+      final hashes1 = computeImageHashes(<Object?>[bytes, false, false]);
+      expect(hashes1, hasLength(1));
+    });
+
+    test('resize-before-rotate pHash matches full-res pHash (≤ 5)', () {
+      final bytes =
+          File('test/fixtures/image2_full.png').readAsBytesSync();
+
+      // computeImageHashes now resizes to 128px before hashing
+      final resizedHashes =
+          computeImageHashes(<Object?>[bytes, false, false]);
+
+      // Compute full-res pHash directly (original approach)
+      final fullImg = img.decodeImage(bytes)!;
+      final fullHash = ImageHasher.perceptualHash(fullImg).toHex();
+
+      final distance =
+          ImageBlockService.hammingDistance(resizedHashes.first, fullHash);
+      expect(distance, lessThanOrEqualTo(5));
+    });
+  });
 }

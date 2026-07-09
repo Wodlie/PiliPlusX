@@ -24,11 +24,14 @@ List<String> computeImageHashes(List<Object?> params) {
   final decoded = img.decodeImage(bytes);
   if (decoded == null) return [];
 
-  final List<String> hashes = [ImageHasher.perceptualHash(decoded).toHex()];
+  // Resize to small for pHash computation (reduces flip/rotate overhead).
+  final small = img.copyResize(decoded, width: 128);
+
+  final List<String> hashes = [ImageHasher.perceptualHash(small).toHex()];
 
   if (flipEnabled) {
     final flipped = img.copyFlip(
-      decoded,
+      small,
       direction: img.FlipDirection.horizontal,
     );
     hashes.add(ImageHasher.perceptualHash(flipped).toHex());
@@ -36,7 +39,7 @@ List<String> computeImageHashes(List<Object?> params) {
 
   if (rotateEnabled) {
     for (final angle in [90, 180, 270]) {
-      final rotated = img.copyRotate(decoded, angle: angle);
+      final rotated = img.copyRotate(small, angle: angle);
       hashes.add(ImageHasher.perceptualHash(rotated).toHex());
     }
   }
@@ -360,7 +363,9 @@ abstract final class ImageBlockService {
   /// Download and compute hashes for a URL not yet in cache.
   static Future<bool> _evaluateFresh(String key, String imageUrl) async {
     try {
-      final file = await CacheManager.manager.getSingleFile(imageUrl);
+      final file = await CacheManager.manager.getSingleFile(
+        thumbnailUrlForHash(imageUrl),
+      );
       final bytes = await file.readAsBytes();
       final hashes = await _worker.computeHashes(
         bytes,
@@ -390,7 +395,9 @@ abstract final class ImageBlockService {
     bool rotateEnabled = true,
   }) async {
     try {
-      final file = await CacheManager.manager.getSingleFile(imageUrl);
+      final file = await CacheManager.manager.getSingleFile(
+        thumbnailUrlForHash(imageUrl),
+      );
       final bytes = await file.readAsBytes();
 
       final hashes = await _worker.computeHashes(
