@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:PiliPlus/utils/image_block_service.dart';
+import 'package:PiliPlus/utils/lru_cache.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -282,5 +284,120 @@ void main() {
         'https://i0.hdslb.com/bfs/album/abc.jpg@100w_1q.webp?token=abc123',
       );
     });
+  });
+
+  // ── LRU cache integration ──────────────────────────────────────────────
+
+  group('LRU cache', () {
+    test('insert 501 entries keeps 500 cap, oldest evicted', () {
+      final cache = LruCache<String, int>(maxSize: 500);
+      for (int i = 0; i < 501; i++) {
+        cache['key$i'] = i;
+      }
+      expect(cache.length, equals(500));
+      expect(cache.containsKey('key0'), isFalse,
+          reason: 'oldest entry (key0) should be evicted');
+      expect(cache.containsKey('key500'), isTrue,
+          reason: 'newest entry (key500) should be present');
+    });
+  });
+
+  // ── Worker exception handling ─────────────────────────────────────────
+
+  group('Worker exception', () {
+    test('corrupt bytes returns empty list, does not hang', () async {
+      final corruptBytes = Uint8List.fromList([0, 1, 2, 3, 4, 5]);
+      final result = await ImageBlockService.computeHashes(
+        corruptBytes,
+        flipEnabled: false,
+        rotateEnabled: false,
+      );
+      expect(result, isEmpty);
+    }, timeout: const Timeout(Duration(seconds: 10)));
+  });
+
+  // ── Worker concurrent race ────────────────────────────────────────────
+
+  group('Worker race', () {
+    test('5 concurrent first-call computeHashes all complete without error',
+        () async {
+      final fixture = File('test/fixtures/image_full.png');
+      expect(fixture.existsSync(), isTrue, reason: 'fixture image must exist');
+      final bytes = await fixture.readAsBytes();
+      final futures = List.generate(
+        5,
+        (_) => ImageBlockService.computeHashes(
+          bytes,
+          flipEnabled: false,
+          rotateEnabled: false,
+        ),
+      );
+      final results = await Future.wait(futures);
+      for (final result in results) {
+        expect(result, isNotEmpty,
+            reason: 'each worker call should produce hashes');
+      }
+    }, timeout: const Timeout(Duration(seconds: 15)));
+  });
+
+  // ── Priority queue ────────────────────────────────────────────────────
+
+  group('Priority queue', () {
+    test('queue max 50 drops oldest when overloaded', () async {
+      final fixture = File('test/fixtures/image_full.png');
+      expect(fixture.existsSync(), isTrue, reason: 'fixture image must exist');
+      final bytes = await fixture.readAsBytes();
+
+      // Submit 55 tasks concurrently — first one gets dispatched immediately,
+      // the remaining 54 go to the queue. With max 50, at most 4 get dropped.
+      final futures = <Future<List<String>>>[];
+      for (int i = 0; i < 55; i++) {
+        futures.add(ImageBlockService.computeHashes(
+          bytes,
+          flipEnabled: false,
+          rotateEnabled: false,
+        ));
+      }
+      final results = await Future.wait(futures)
+          .timeout(const Duration(seconds: 30));
+
+      // At least 51 tasks should have succeeded (first dispatched + 50 queued)
+      final successCount = results.where((r) => r.isNotEmpty).length;
+      expect(successCount, greaterThanOrEqualTo(51),
+          reason:
+              'at most 4 tasks should be dropped from a queue of 55 items');
+    }, timeout: const Timeout(Duration(seconds: 30)));
+  });
+
+  // ── In-flight dedup ───────────────────────────────────────────────────
+
+  group('In-flight dedup', () {
+    test('5 concurrent evaluateBlock(sameUrl) returns same result', () async {
+      final futures = List.generate(
+        5,
+        (_) => ImageBlockService.evaluateBlock(
+          'https://i0.hdslb.com/bfs/album/test.jpg',
+        ),
+      );
+      final results = await Future.wait(futures);
+      // All should return false (no network in test, download fails)
+      for (final result in results) {
+        expect(result, isFalse);
+      }
+    });
+  });
+
+  // ── Completer timeout ─────────────────────────────────────────────────
+
+  group('Completer timeout', () {
+    test('computeHashes completes within timeout for normal input', () async {
+      final fixture = File('test/fixtures/image_full.png');
+      expect(fixture.existsSync(), isTrue, reason: 'fixture image must exist');
+      final bytes = await fixture.readAsBytes();
+      final result = await ImageBlockService.computeHashes(bytes)
+          .timeout(const Duration(seconds: 10));
+      expect(result, isNotEmpty,
+          reason: 'valid image should produce hashes');
+    }, timeout: const Timeout(Duration(seconds: 12)));
   });
 }

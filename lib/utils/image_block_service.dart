@@ -7,6 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:flutter/foundation.dart';
 import 'package:PiliPlus/utils/blocked_image_storage.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
+import 'package:PiliPlus/utils/lru_cache.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 
 /// Compute pHash variants for an image (used as Isolate entry point).
@@ -50,14 +51,30 @@ class _ImageHashWorker {
   factory _ImageHashWorker() => _instance;
   _ImageHashWorker._();
 
-  final Completer<void> _ready = Completer<void>();
-  late final SendPort _sendPort;
+  Completer<void> _ready = Completer<void>();
+  SendPort? _sendPort;
   final ReceivePort _receivePort = ReceivePort();
   int _nextId = 0;
   final Map<int, Completer<List<String>>> _pending = {};
+  Completer<void>? _startingCompleter;
+
+  /// Generation counter for priority queue ordering.
+  int _generation = 0;
+
+  /// Task queue for newest-first dispatch.
+  final List<_Task> _taskQueue = [];
+
+  /// Whether the isolate is currently processing a task.
+  bool _workerBusy = false;
 
   Future<void> _start() async {
-    await Isolate.spawn(_entryPoint, _receivePort.sendPort);
+    try {
+      await Isolate.spawn(_entryPoint, _receivePort.sendPort);
+    } catch (e) {
+      _ready.completeError(e);
+      _startingCompleter?.complete();
+      return;
+    }
     _receivePort.listen((dynamic message) {
       if (message is SendPort) {
         _sendPort = message;
@@ -66,8 +83,27 @@ class _ImageHashWorker {
       }
       final response = message as List<Object?>;
       final id = response[0] as int;
+      if (response[1] == null) {
+        // Error response from worker
+        _pending.remove(id)?.complete(<String>[]);
+        _workerBusy = false;
+        _dispatchNext();
+        return;
+      }
       final hashes = (response[1] as List<dynamic>).cast<String>();
       _pending.remove(id)?.complete(hashes);
+      _workerBusy = false;
+      _dispatchNext();
+    }, onDone: () {
+      // Isolate died — reset for auto-restart
+      _ready = Completer<void>();
+      _startingCompleter = null;
+      for (final entry in _pending.entries) {
+        entry.value.complete(<String>[]);
+      }
+      _pending.clear();
+      _taskQueue.clear();
+      _workerBusy = false;
     });
   }
 
@@ -75,13 +111,22 @@ class _ImageHashWorker {
     final workerReceivePort = ReceivePort();
     mainSendPort.send(workerReceivePort.sendPort);
     workerReceivePort.listen((dynamic message) {
-      final request = message as List<Object?>;
-      final id = request[0] as int;
-      final bytes = request[1] as Uint8List;
-      final flip = request[2] as bool;
-      final rotate = request[3] as bool;
-      final hashes = computeImageHashes([bytes, flip, rotate]);
-      mainSendPort.send([id, hashes]);
+      try {
+        final request = message as List<Object?>;
+        final id = request[0] as int;
+        final bytes = request[1] as Uint8List;
+        final flip = request[2] as bool;
+        final rotate = request[3] as bool;
+        final hashes = computeImageHashes([bytes, flip, rotate]);
+        mainSendPort.send([id, hashes]);
+      } catch (e) {
+        try {
+          final id = (message as List<Object?>)[0] as int;
+          mainSendPort.send([id, null, e.toString()]);
+        } catch (_) {
+          // Can't extract id from malformed message
+        }
+      }
     });
   }
 
@@ -91,15 +136,59 @@ class _ImageHashWorker {
     bool rotateEnabled = true,
   }) async {
     if (!_ready.isCompleted) {
-      await _start();
+      if (_startingCompleter == null) {
+        _startingCompleter = Completer<void>();
+        await _start();
+        if (!_startingCompleter!.isCompleted) {
+          _startingCompleter!.complete();
+        }
+      } else {
+        await _startingCompleter!.future;
+      }
       await _ready.future;
+    }
+    if (_sendPort == null) {
+      return <String>[];
     }
     final id = _nextId++;
     final completer = Completer<List<String>>();
     _pending[id] = completer;
-    _sendPort.send([id, bytes, flipEnabled, rotateEnabled]);
-    return completer.future;
+    _taskQueue.add(_Task(id, bytes, flipEnabled, rotateEnabled, _generation++));
+    _dispatchNext();
+    return completer.future.timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        _pending.remove(id);
+        _workerBusy = false;
+        _dispatchNext();
+        return <String>[];
+      },
+    );
   }
+
+  /// Dispatch the newest task from the queue, dropping oldest if over 50.
+  void _dispatchNext() {
+    while (_taskQueue.length > 50) {
+      _taskQueue.sort((a, b) => a.generation.compareTo(b.generation));
+      final oldest = _taskQueue.removeAt(0);
+      _pending.remove(oldest.id)?.complete(<String>[]);
+    }
+    if (_workerBusy || _taskQueue.isEmpty) return;
+    _taskQueue.sort((a, b) => b.generation.compareTo(a.generation));
+    final task = _taskQueue.removeAt(0);
+    _workerBusy = true;
+    _sendPort!.send([task.id, task.bytes, task.flipEnabled, task.rotateEnabled]);
+  }
+}
+
+/// A queued task for the image hash worker.
+class _Task {
+  final int id;
+  final Uint8List bytes;
+  final bool flipEnabled;
+  final bool rotateEnabled;
+  final int generation;
+  _Task(this.id, this.bytes, this.flipEnabled, this.rotateEnabled, this.generation);
 }
 
 /// Image blocking service.
@@ -112,11 +201,14 @@ abstract final class ImageBlockService {
 
   /// URL→hashes cache (avoids re-fetching/re-computing)
   /// Key is normalized URL (stripped of @format and ?query params).
-  static final Map<String, List<String>> _hashCache = {};
+  static final LruCache<String, List<String>> _hashCache = LruCache(maxSize: 500);
 
   /// URL→blocked result cache (avoids re-evaluating isBlocked)
   /// Key is normalized URL (stripped of @format and ?query params).
-  static final Map<String, bool> _resultCache = {};
+  static final LruCache<String, bool> _resultCache = LruCache(maxSize: 500);
+
+  /// In-flight evaluations dedup map (avoids re-downloading same URL).
+  static final Map<String, Future<bool>> _inFlightEvaluations = {};
 
   /// Pre-parsed block list cache (avoids repeated Hive reads + fromHex calls).
   static List<ImageHash>? _blockListCache;
@@ -234,6 +326,7 @@ abstract final class ImageBlockService {
 
   /// Full evaluation: result cache → hash cache → download + worker → isBlocked.
   /// Returns true if the image URL should be blocked.
+  /// Deduplicates concurrent evaluations of the same URL via [_inFlightEvaluations].
   static Future<bool> evaluateBlock(String imageUrl) async {
     if (!Pref.enableImageBlock) return false;
     final key = normalizeUrl(imageUrl);
@@ -251,6 +344,21 @@ abstract final class ImageBlockService {
       return blocked;
     }
 
+    // In-flight dedup: if same URL is already being evaluated, await it.
+    final inFlight = _inFlightEvaluations[key];
+    if (inFlight != null) return inFlight;
+
+    final future = _evaluateFresh(key, imageUrl);
+    _inFlightEvaluations[key] = future;
+    try {
+      return await future;
+    } finally {
+      _inFlightEvaluations.remove(key);
+    }
+  }
+
+  /// Download and compute hashes for a URL not yet in cache.
+  static Future<bool> _evaluateFresh(String key, String imageUrl) async {
     try {
       final file = await CacheManager.manager.getSingleFile(imageUrl);
       final bytes = await file.readAsBytes();
