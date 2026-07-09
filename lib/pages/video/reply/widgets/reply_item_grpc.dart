@@ -3,7 +3,11 @@ import 'dart:math';
 import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/style.dart';
+import 'package:PiliPlus/common/widgets/image_grid/image_grid_builder.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
+import 'package:PiliPlus/models/common/image_preview_type.dart';
+import 'package:PiliPlus/utils/cache_manager.dart';
+import 'package:PiliPlus/utils/image_block_service.dart';
 import 'package:PiliPlus/common/widgets/dialog/report.dart';
 import 'package:PiliPlus/common/widgets/extra_hit_test_widget.dart';
 import 'package:PiliPlus/common/widgets/flutter/text/text.dart' as custom_text;
@@ -41,7 +45,8 @@ import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/url_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
-import 'package:cached_network_image_ce/cached_network_image.dart';
+import 'package:cached_network_image_ce/cached_network_image.dart'
+    hide CacheManager;
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
@@ -140,6 +145,26 @@ class ReplyItemGrpc extends StatefulWidget {
 class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   bool _expanded = false;
   bool _loadManualImages = false;
+  final Map<String, bool> _imageBlockStatus = {};
+  final Set<String> _tempUnblockedSrcs = {};
+
+  Future<void> _evaluateImageBlock(String imgSrc) async {
+    try {
+      final file = await CacheManager.manager.getSingleFile(imgSrc);
+      final bytes = await file.readAsBytes();
+      final hashes = await ImageBlockService.computeHashes(bytes);
+      final blocked = ImageBlockService.isBlocked(
+        hashes,
+        Pref.imageBlockHashList,
+        Pref.imageBlockThreshold,
+      );
+      _imageBlockStatus[imgSrc] = blocked;
+      if (mounted) setState(() {});
+    } catch (_) {
+      _imageBlockStatus[imgSrc] = false;
+      if (mounted) setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -556,6 +581,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   }
 
   Widget _buildCommentImages(BuildContext context, ColorScheme colorScheme) {
+    if (Pref.enableImageBlock && widget.replyItem.content.pictures.isNotEmpty) {
+      return _buildBlockedImageArea(context, colorScheme);
+    }
     final manualLoad = Pref.manualLoadCommentImage;
     if (!manualLoad || _loadManualImages) {
       return ImageGridView(
@@ -599,6 +627,126 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildBlockedImageArea(BuildContext context, ColorScheme colorScheme) {
+    final picArr = widget.replyItem.content.pictures
+        .map(
+          (pic) => ImageModel(
+            width: pic.imgWidth,
+            height: pic.imgHeight,
+            url: pic.imgSrc,
+          ),
+        )
+        .toList();
+
+    for (final pic in widget.replyItem.content.pictures) {
+      if (!_imageBlockStatus.containsKey(pic.imgSrc)) {
+        _evaluateImageBlock(pic.imgSrc);
+      }
+    }
+
+    return ImageGridBuilder(
+      picArr: picArr,
+      onTap: (index) {
+        final imgSrc = picArr[index].url;
+        final isBlocked = _imageBlockStatus[imgSrc] == true;
+        if (isBlocked && !_tempUnblockedSrcs.contains(imgSrc)) return;
+
+        widget.onViewImage?.call();
+        final imgList = picArr
+            .map(
+              (item) => SourceModel(
+                sourceType: SourceType.networkImage,
+                url: item.url,
+              ),
+            )
+            .toList();
+        PageUtils.imageView(
+          initialPage: index,
+          imgList: imgList,
+          tag: hashCode.toString(),
+        );
+      },
+      onSecondaryTapUp: null,
+      onLongPressStart: null,
+      builder: (context, info) {
+        final width = info.size.width;
+        final height = info.size.height;
+
+        return List.generate(picArr.length, (index) {
+          final item = picArr[index];
+          final imgSrc = item.url;
+          final isBlocked = _imageBlockStatus[imgSrc] == true;
+          final tempUnblocked = _tempUnblockedSrcs.contains(imgSrc);
+
+          if (isBlocked && !tempUnblocked) {
+            return GestureDetector(
+              onLongPress: () => _showUnblockMenu(context, imgSrc),
+              child: Container(
+                width: width,
+                height: height,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: Style.mdRadius,
+                ),
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.image_not_supported_outlined,
+                        color: Colors.white70,
+                        size: 32,
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '图片已屏蔽',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                      Text(
+                        '长按查看',
+                        style: TextStyle(color: Colors.white54, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+
+          return NetworkImgLayer(
+            src: item.url,
+            width: width,
+            height: height,
+            borderRadius: Style.mdRadius,
+          );
+        });
+      },
+    );
+  }
+
+  void _showUnblockMenu(BuildContext context, String imgSrc) {
+    showModalBottomSheet(
+      context: context,
+      useSafeArea: true,
+      constraints: BoxConstraints(
+        maxWidth: min(640, context.mediaQueryShortestSide),
+      ),
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            onTap: () {
+              Get.back();
+              setState(() => _tempUnblockedSrcs.add(imgSrc));
+            },
+            leading: const Icon(Icons.visibility, color: Colors.red, size: 19),
+            title: const Text('确定查看图片', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }
@@ -895,7 +1043,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     bool hasNote = false;
 
     final urlKeys = content.urls.keys;
-    // 鏋勫缓姝ｅ垯琛ㄨ揪寮?
+    // 构建正则表达式
     final List<String> specialTokens = [
       ...content.emotes.keys,
       ...content.topics.keys.map((e) => '#$e#'),
@@ -996,7 +1144,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         late final name = matchStr.substring(1);
         late final topic = matchStr.substring(1, matchStr.length - 1);
         if (content.emotes.containsKey(matchStr)) {
-          // 澶勭悊琛ㄦ儏
+          // 处理表情
           final emote = content.emotes[matchStr]!;
           final size = emote.size.toInt() * 20.0;
           spanChildren.add(
@@ -1015,7 +1163,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
           );
         } else if (matchStr.startsWith("@") &&
             content.atNameToMid.containsKey(name)) {
-          // 澶勭悊@鐢ㄦ埛
+          // 处理@用户
           spanChildren.add(
             TextSpan(
               text: matchStr,
@@ -1055,7 +1203,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               recognizer: isValid
                   ? (NoDeadlineTapGestureRecognizer()
                       ..onTap = () {
-                        // 璺宠浆鍒版寚瀹氫綅缃?
+                        // 跳转到指定位置
                         try {
                           SmartDialog.showToast('跳转至：$matchStr');
                           Get.find<VideoDetailController>(
@@ -1077,7 +1225,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
           final url = content.urls[matchStr];
           if (url != null && !matchedUrls.contains(matchStr)) {
             addUrl(matchStr, url, addPlainText: true);
-            // 鍙樉绀轰竴娆?
+            // 只显示一次
             matchedUrls.add(matchStr);
           } else if (matchStr.length > 1 && content.topics[topic] != null) {
             spanChildren.add(
@@ -1330,6 +1478,27 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     }
                     return res;
                   },
+                  ban: ownerMid != Int64.ZERO,
+                  showImageBlock: item.content.pictures.isNotEmpty,
+                  imageUrls: item.content.pictures
+                      .map((p) => p.imgSrc)
+                      .toList(),
+                  onBlockImages: (urls) async {
+                    for (final url in urls) {
+                      final entry = await ImageBlockService.blockImage(
+                        url,
+                        flipEnabled: Pref.imageBlockFlipEnabled,
+                        rotateEnabled: Pref.imageBlockRotateEnabled,
+                      );
+                      if (entry != null) {
+                        final list = Pref.imageBlockHashList;
+                        if (!list.any((e) => e['pHash'] == entry['pHash'])) {
+                          list.add(entry);
+                          Pref.imageBlockHashList = list;
+                        }
+                      }
+                    }
+                  },
                 );
               },
               minLeadingWidth: 0,
@@ -1440,6 +1609,35 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             leading: const Icon(Icons.copy_outlined, size: 19),
             title: Text('自由复制', style: style),
           ),
+          if (item.content.pictures.isNotEmpty)
+            ListTile(
+              onTap: () async {
+                Get.back();
+                for (final picture in item.content.pictures) {
+                  final entry = await ImageBlockService.blockImage(
+                    picture.imgSrc,
+                    flipEnabled: Pref.imageBlockFlipEnabled,
+                    rotateEnabled: Pref.imageBlockRotateEnabled,
+                  );
+                  if (entry != null) {
+                    final list = Pref.imageBlockHashList;
+                    if (!list.any((e) => e['pHash'] == entry['pHash'])) {
+                      list.add(entry);
+                      Pref.imageBlockHashList = list;
+                    }
+                  }
+                }
+                if (mounted) setState(() {});
+                SmartDialog.showToast('已屏蔽图片');
+              },
+              minLeadingWidth: 0,
+              leading: Icon(
+                Icons.image_not_supported_outlined,
+                color: errorColor,
+                size: 19,
+              ),
+              title: Text('屏蔽图片', style: style.copyWith(color: errorColor)),
+            ),
           ListTile(
             onTap: () {
               Get.back();

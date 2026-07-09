@@ -287,6 +287,13 @@ abstract final class SettingBoxKey {
       customMallBaseUrl = 'customMallBaseUrl',
       customDynamicShareBaseUrl = 'customDynamicShareBaseUrl',
       customSearchBaseUrl = 'customSearchBaseUrl';
+
+  static const String enableImageBlock = 'enableImageBlock',
+      imageBlockThreshold = 'imageBlockThreshold',
+      imageBlockFlipEnabled = 'imageBlockFlipEnabled',
+      imageBlockRotateEnabled = 'imageBlockRotateEnabled',
+      imageBlockDisplayMode = 'imageBlockDisplayMode',
+      imageBlockHashList = 'imageBlockHashList';
 }
 
 abstract final class LocalCacheKey {

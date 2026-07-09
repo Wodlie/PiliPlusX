@@ -77,6 +77,18 @@ List<SettingsModel> get blockFilterSettings => [
     defaultVal: true,
     onChanged: (value) => ReplyGrpc.showBlockedReplyBanner = value,
   ),
+  SplitModel(
+    normalModel: const NormalModel.split(
+      title: '屏蔽图片',
+      subtitle: '屏蔽评论中的图片，点击配置',
+      leading: Icon(Icons.image_not_supported_outlined),
+    ),
+    switchModel: SwitchModel.split(
+      defaultVal: false,
+      setKey: SettingBoxKey.enableImageBlock,
+      onTap: (context) => Get.toNamed('/imageBlockSetting'),
+    ),
+  ),
 
   // 动态过滤组
   getBanWordModel(

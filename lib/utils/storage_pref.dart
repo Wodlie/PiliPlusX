@@ -1285,4 +1285,41 @@ abstract final class Pref {
       _setting.get(SettingBoxKey.maxVolume, defaultValue: 2.0);
 
   static List? get liveStream => _setting.get(SettingBoxKey.liveStream);
+
+  // ===== 图片屏蔽 (Image Block) =====
+
+  static bool get enableImageBlock =>
+      _setting.get(SettingBoxKey.enableImageBlock, defaultValue: false);
+  static set enableImageBlock(bool value) =>
+      _setting.put(SettingBoxKey.enableImageBlock, value);
+
+  static int get imageBlockThreshold =>
+      _setting.get(SettingBoxKey.imageBlockThreshold, defaultValue: 10);
+  static set imageBlockThreshold(int value) =>
+      _setting.put(SettingBoxKey.imageBlockThreshold, value);
+
+  static bool get imageBlockFlipEnabled =>
+      _setting.get(SettingBoxKey.imageBlockFlipEnabled, defaultValue: true);
+  static set imageBlockFlipEnabled(bool value) =>
+      _setting.put(SettingBoxKey.imageBlockFlipEnabled, value);
+
+  static bool get imageBlockRotateEnabled =>
+      _setting.get(SettingBoxKey.imageBlockRotateEnabled, defaultValue: true);
+  static set imageBlockRotateEnabled(bool value) =>
+      _setting.put(SettingBoxKey.imageBlockRotateEnabled, value);
+
+  static bool get imageBlockDisplayMode =>
+      _setting.get(SettingBoxKey.imageBlockDisplayMode, defaultValue: false);
+  static set imageBlockDisplayMode(bool value) =>
+      _setting.put(SettingBoxKey.imageBlockDisplayMode, value);
+
+  static List<Map<String, dynamic>> get imageBlockHashList =>
+      List<Map<String, dynamic>>.from(
+        _setting.get(
+          SettingBoxKey.imageBlockHashList,
+          defaultValue: <Map<String, dynamic>>[],
+        ),
+      );
+  static set imageBlockHashList(List<Map<String, dynamic>> value) =>
+      _setting.put(SettingBoxKey.imageBlockHashList, value);
 }

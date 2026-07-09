@@ -1,5 +1,6 @@
 import 'dart:io' show Directory, File;
 
+import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
@@ -68,6 +69,14 @@ abstract final class CacheManager {
   static Future<void> clearLibraryCache() async {
     try {
       await manager.emptyCache();
+      try {
+        final blockedDir = Directory(
+          path.join(appSupportDirPath, 'blocked_images'),
+        );
+        if (blockedDir.existsSync()) {
+          await blockedDir.delete(recursive: true);
+        }
+      } catch (_) {}
       if (PlatformUtils.isDesktop) return;
 
       final tempDirectory = await getTemporaryDirectory();

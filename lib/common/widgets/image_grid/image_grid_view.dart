@@ -26,10 +26,12 @@ import 'package:PiliPlus/models/common/image_preview_type.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
+import 'package:PiliPlus/utils/image_block_service.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:get/get_core/src/get_main.dart';
@@ -184,6 +186,24 @@ class ImageGridView extends StatelessWidget {
               style: const TextStyle(fontSize: 14),
             ),
           ),
+        PopupMenuItem(
+          height: 42,
+          onTap: () async {
+            final entry = await ImageBlockService.blockImage(item.url);
+            if (entry != null) {
+              final list = Pref.imageBlockHashList;
+              if (!list.any((e) => e['pHash'] == entry['pHash'])) {
+                list.add(entry);
+                Pref.imageBlockHashList = list;
+              }
+              SmartDialog.showToast('已屏蔽图片');
+            }
+          },
+          child: const Text(
+            '屏蔽图片',
+            style: TextStyle(color: Colors.red, fontSize: 14),
+          ),
+        ),
       ],
     );
   }

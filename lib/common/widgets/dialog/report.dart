@@ -12,10 +12,14 @@ Future<void> autoWrapReportDialog(
   Future<LoadingState> Function(int reasonType, String? reasonDesc, bool banUid)
   onSuccess, {
   bool ban = true,
+  bool showImageBlock = false,
+  List<String>? imageUrls,
+  Future<void> Function(List<String> imageUrls)? onBlockImages,
 }) {
   int? reasonType;
   String? reasonDesc;
   bool banUid = false;
+  bool blockImages = true;
   late final key = GlobalKey<FormFieldState<String>>();
   return showDialog(
     context: context,
@@ -91,6 +95,15 @@ Future<void> autoWrapReportDialog(
                 onChanged: (value) => banUid = value,
               ),
             ),
+          if (showImageBlock)
+            Padding(
+              padding: const EdgeInsets.only(left: 14, top: 4),
+              child: CheckBoxText(
+                text: '同时屏蔽图片',
+                selected: true,
+                onChanged: (value) => blockImages = value,
+              ),
+            ),
         ],
       ),
       actions: [
@@ -116,6 +129,12 @@ Future<void> autoWrapReportDialog(
                 SmartDialog.showToast('举报成功');
               } else {
                 res.toast();
+              }
+              if (showImageBlock &&
+                  blockImages &&
+                  onBlockImages != null &&
+                  imageUrls != null) {
+                await onBlockImages(imageUrls);
               }
             } catch (e, s) {
               SmartDialog.dismiss();
