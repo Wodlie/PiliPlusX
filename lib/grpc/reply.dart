@@ -318,6 +318,17 @@ abstract final class ReplyGrpc {
   static String? getBlockReason(ReplyInfo reply) =>
       _blockedReasons[reply.id.toInt()];
 
+  /// 返回被屏蔽的简洁原因（拆分出 '：' 之前的部分），用于折叠态横幅显示。
+  /// 例如: '关键词过滤：命中 xxx' → '关键词过滤'
+  /// 若无法获取原因，返回 '被屏蔽'。
+  static String getBriefBlockReason(ReplyInfo reply) {
+    final detailed = _blockedReasons[reply.id.toInt()];
+    if (detailed == null) return '被屏蔽';
+    final colonIndex = detailed.indexOf('：');
+    if (colonIndex == -1) return detailed;
+    return detailed.substring(0, colonIndex);
+  }
+
   static void clearBlockedReasons() => _blockedReasons.clear();
 
   /// Mark a reply as locally blocked (e.g. after user blocks the commenter).

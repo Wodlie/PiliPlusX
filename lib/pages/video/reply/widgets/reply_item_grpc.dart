@@ -55,24 +55,30 @@ import 'package:get/get.dart';
 import 'package:protobuf/protobuf.dart';
 
 class BlockedReplyBanner extends StatelessWidget {
-  const BlockedReplyBanner({super.key, required this.onExpand});
+  const BlockedReplyBanner({super.key, required this.onExpand, required this.replyItem});
 
   final VoidCallback onExpand;
+  final ReplyInfo replyItem;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final Color disabledColor = theme.disabledColor;
     final Color primaryWithOpacity = theme.colorScheme.primary.withOpacity(0.6);
+    final briefReason = ReplyGrpc.getBriefBlockReason(replyItem);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
       child: Row(
         children: [
           Icon(Icons.block_outlined, size: 16, color: disabledColor),
           const SizedBox(width: 6),
-          Text(
-            '此评论已被屏蔽。',
-            style: TextStyle(fontSize: 13, color: disabledColor),
+          Expanded(
+            child: Text(
+              '此评论已被屏蔽（$briefReason）。',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, color: disabledColor),
+            ),
           ),
           GestureDetector(
             onTap: onExpand,
@@ -164,6 +170,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         !_expanded) {
       return BlockedReplyBanner(
         onExpand: () => setState(() => _expanded = true),
+        replyItem: widget.replyItem,
       );
     }
 
