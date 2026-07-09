@@ -362,23 +362,38 @@ abstract final class ImageBlockService {
 
   /// Download and compute hashes for a URL not yet in cache.
   static Future<bool> _evaluateFresh(String key, String imageUrl) async {
+    final sw = Stopwatch()..start();
+    final thumbUrl = thumbnailUrlForHash(imageUrl);
+    if (kDebugMode) debugPrint('[pHash] thumbnailUrl: ${sw.elapsedMilliseconds}ms | key=$key');
+
     try {
-      final file = await CacheManager.manager.getSingleFile(
-        thumbnailUrlForHash(imageUrl),
-      );
+      sw.reset();
+      final file = await CacheManager.manager.getSingleFile(thumbUrl);
+      if (kDebugMode) debugPrint('[pHash] download: ${sw.elapsedMilliseconds}ms | key=$key');
+
+      sw.reset();
       final bytes = await file.readAsBytes();
+      if (kDebugMode) debugPrint('[pHash] readFile: ${sw.elapsedMilliseconds}ms | size=${bytes.length} | key=$key');
+
+      sw.reset();
       final hashes = await _worker.computeHashes(
         bytes,
         flipEnabled: Pref.imageBlockFlipEnabled,
         rotateEnabled: Pref.imageBlockRotateEnabled,
       );
+      if (kDebugMode) debugPrint('[pHash] computeHashes: ${sw.elapsedMilliseconds}ms | variants=${hashes.length} | key=$key');
+
       if (hashes.isEmpty) return false;
       _hashCache[key] = hashes;
+
+      sw.reset();
       final blocked = isBlocked(
         hashes,
         Pref.imageBlockHashList,
         Pref.imageBlockThreshold,
       );
+      if (kDebugMode) debugPrint('[pHash] isBlocked: ${sw.elapsedMilliseconds}ms | blocked=$blocked | key=$key');
+
       _resultCache[key] = blocked;
       return blocked;
     } catch (_) {
