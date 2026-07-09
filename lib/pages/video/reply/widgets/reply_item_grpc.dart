@@ -7,6 +7,7 @@ import 'package:PiliPlus/common/widgets/image_grid/image_grid_builder.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
 import 'package:PiliPlus/models/common/image_preview_type.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import 'package:PiliPlus/utils/image_block_service.dart';
 import 'package:PiliPlus/common/widgets/dialog/report.dart';
 import 'package:PiliPlus/common/widgets/extra_hit_test_widget.dart';
@@ -149,21 +150,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   final Set<String> _tempUnblockedSrcs = {};
 
   Future<void> _evaluateImageBlock(String imgSrc) async {
-    try {
-      final file = await CacheManager.manager.getSingleFile(imgSrc);
-      final bytes = await file.readAsBytes();
-      final hashes = await ImageBlockService.computeHashes(bytes);
-      final blocked = ImageBlockService.isBlocked(
-        hashes,
-        Pref.imageBlockHashList,
-        Pref.imageBlockThreshold,
-      );
-      _imageBlockStatus[imgSrc] = blocked;
-      if (mounted) setState(() {});
-    } catch (_) {
-      _imageBlockStatus[imgSrc] = false;
-      if (mounted) setState(() {});
-    }
+    final blocked = await ImageBlockService.evaluateBlock(imgSrc);
+    _imageBlockStatus[imgSrc] = blocked;
+    if (mounted) setState(() {});
   }
 
   @override
@@ -642,95 +631,107 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         )
         .toList();
 
-    for (final pic in widget.replyItem.content.pictures) {
-      if (!_imageBlockStatus.containsKey(pic.imgSrc)) {
-        _evaluateImageBlock(pic.imgSrc);
-      }
-    }
-
-    return ImageGridBuilder(
-      picArr: picArr,
-      onTap: (index) {
-        final imgSrc = picArr[index].url;
-        final isBlocked = _imageBlockStatus[imgSrc] == true;
-        if (isBlocked && !_tempUnblockedSrcs.contains(imgSrc)) return;
-
-        widget.onViewImage?.call();
-        final imgList = picArr
-            .map(
-              (item) => SourceModel(
-                sourceType: SourceType.networkImage,
-                url: item.url,
-              ),
-            )
-            .toList();
-        PageUtils.imageView(
-          initialPage: index,
-          imgList: imgList,
-          tag: hashCode.toString(),
-        );
+    return VisibilityDetector(
+      key: UniqueKey(),
+      onVisibilityChanged: (info) {
+        if (info.visibleFraction > 0) {
+          for (final pic in widget.replyItem.content.pictures) {
+            if (!_imageBlockStatus.containsKey(pic.imgSrc)) {
+              _evaluateImageBlock(pic.imgSrc);
+            }
+          }
+        }
       },
-      onSecondaryTapUp: null,
-      onLongPressStart: null,
-      builder: (context, info) {
-        final width = info.size.width;
-        final height = info.size.height;
-
-        return List.generate(picArr.length, (index) {
-          final item = picArr[index];
-          final imgSrc = item.url;
+      child: ImageGridBuilder(
+        picArr: picArr,
+        onTap: (index) {
+          final imgSrc = picArr[index].url;
           final isBlocked = _imageBlockStatus[imgSrc] == true;
-          final tempUnblocked = _tempUnblockedSrcs.contains(imgSrc);
+          if (isBlocked && !_tempUnblockedSrcs.contains(imgSrc)) return;
 
-          if (isBlocked && !tempUnblocked) {
-            return LayoutId(
-              id: index,
-              child: GestureDetector(
-                onLongPress: () => _showUnblockMenu(context, imgSrc),
-                child: Container(
-                  width: width,
-                  height: height,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: Style.mdRadius,
-                  ),
-                  child: const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.image_not_supported_outlined,
-                          color: Colors.white70,
-                          size: 32,
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '图片已屏蔽',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                        Text(
-                          '长按查看',
-                          style: TextStyle(color: Colors.white54, fontSize: 10),
-                        ),
-                      ],
+          widget.onViewImage?.call();
+          final imgList = picArr
+              .map(
+                (item) => SourceModel(
+                  sourceType: SourceType.networkImage,
+                  url: item.url,
+                ),
+              )
+              .toList();
+          PageUtils.imageView(
+            initialPage: index,
+            imgList: imgList,
+            tag: hashCode.toString(),
+          );
+        },
+        onSecondaryTapUp: null,
+        onLongPressStart: null,
+        builder: (context, info) {
+          final width = info.size.width;
+          final height = info.size.height;
+
+          return List.generate(picArr.length, (index) {
+            final item = picArr[index];
+            final imgSrc = item.url;
+            final isBlocked = _imageBlockStatus[imgSrc] == true;
+            final tempUnblocked = _tempUnblockedSrcs.contains(imgSrc);
+
+            if (isBlocked && !tempUnblocked) {
+              return LayoutId(
+                id: index,
+                child: GestureDetector(
+                  onLongPress: () => _showUnblockMenu(context, imgSrc),
+                  child: Container(
+                    width: width,
+                    height: height,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.7),
+                      borderRadius: Style.mdRadius,
+                    ),
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.image_not_supported_outlined,
+                            color: Colors.white70,
+                            size: 32,
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            '图片已屏蔽',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            '长按查看',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
+              );
+            }
+
+            return LayoutId(
+              id: index,
+              child: NetworkImgLayer(
+                src: item.url,
+                width: width,
+                height: height,
+                borderRadius: Style.mdRadius,
               ),
             );
-          }
-
-          return LayoutId(
-            id: index,
-            child: NetworkImgLayer(
-              src: item.url,
-              width: width,
-              height: height,
-              borderRadius: Style.mdRadius,
-            ),
-          );
-        });
-      },
+          });
+        },
+      ),
     );
   }
 
@@ -1501,6 +1502,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                         if (!list.any((e) => e['pHash'] == entry['pHash'])) {
                           list.add(entry);
                           Pref.imageBlockHashList = list;
+                          ImageBlockService.invalidateResultCache();
                         }
                       }
                     }
@@ -1630,6 +1632,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     if (!list.any((e) => e['pHash'] == entry['pHash'])) {
                       list.add(entry);
                       Pref.imageBlockHashList = list;
+                      ImageBlockService.invalidateResultCache();
                     }
                   }
                 }

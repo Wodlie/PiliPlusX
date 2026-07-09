@@ -195,6 +195,7 @@ class ImageGridView extends StatelessWidget {
               if (!list.any((e) => e['pHash'] == entry['pHash'])) {
                 list.add(entry);
                 Pref.imageBlockHashList = list;
+                ImageBlockService.invalidateResultCache();
               }
               SmartDialog.showToast('已屏蔽图片');
             }

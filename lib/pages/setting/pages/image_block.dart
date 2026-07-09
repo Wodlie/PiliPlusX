@@ -8,6 +8,7 @@ import 'package:PiliPlus/pages/setting/widgets/switch_item.dart';
 import 'package:PiliPlus/utils/blocked_image_storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:PiliPlus/utils/image_block_service.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -96,6 +97,7 @@ class _ImageBlockSettingPageState extends State<ImageBlockSettingPage> {
       }
     }
     Pref.imageBlockHashList = remaining;
+    ImageBlockService.invalidateResultCache();
     _refreshList();
     _exitSelectMode();
     SmartDialog.showToast('已删除$count条');
@@ -114,6 +116,7 @@ class _ImageBlockSettingPageState extends State<ImageBlockSettingPage> {
     await BlockedImageStorage.delete(pHash);
     _hashList.removeAt(index);
     Pref.imageBlockHashList = _hashList;
+    ImageBlockService.invalidateResultCache();
     _refreshList();
     SmartDialog.showToast('已删除');
   }
@@ -133,6 +136,7 @@ class _ImageBlockSettingPageState extends State<ImageBlockSettingPage> {
     ).then((res) {
       if (res != null) {
         Pref.imageBlockThreshold = res.toInt();
+        ImageBlockService.invalidateResultCache();
         setState();
       }
     });
@@ -200,6 +204,7 @@ class _ImageBlockSettingPageState extends State<ImageBlockSettingPage> {
 
     if (imported > 0) {
       Pref.imageBlockHashList = _hashList;
+      ImageBlockService.invalidateResultCache();
       _refreshList();
     }
     SmartDialog.showToast('导入了$imported条，忽略了$ignored条无效记录');
@@ -227,6 +232,7 @@ class _ImageBlockSettingPageState extends State<ImageBlockSettingPage> {
 
     await BlockedImageStorage.deleteAll();
     Pref.imageBlockHashList = [];
+    ImageBlockService.invalidateResultCache();
     _refreshList();
     SmartDialog.showToast('已清空全部');
   }
@@ -485,7 +491,10 @@ class _ImageBlockSettingPageState extends State<ImageBlockSettingPage> {
               subtitle: '将图片水平翻转后计算pHash，加强屏蔽效果',
               setKey: SettingBoxKey.imageBlockFlipEnabled,
               defaultVal: true,
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) {
+                ImageBlockService.invalidateResultCache();
+                setState(() {});
+              },
             ),
             const Divider(height: 1),
             SetSwitchItem(
@@ -493,7 +502,10 @@ class _ImageBlockSettingPageState extends State<ImageBlockSettingPage> {
               subtitle: '将图片旋转后计算pHash，加强屏蔽效果',
               setKey: SettingBoxKey.imageBlockRotateEnabled,
               defaultVal: true,
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) {
+                ImageBlockService.invalidateResultCache();
+                setState(() {});
+              },
             ),
             const Divider(height: 1),
 

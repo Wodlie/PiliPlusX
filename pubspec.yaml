@@ -172,6 +172,7 @@ dependencies:
   url_launcher: ^6.3.1
   uuid: ^4.5.1
   vector_math: ^2.2.0
+  visibility_detector: ^0.4.0
   wakelock_plus: ^1.2.8
   waterfall_flow: ^3.1.0
   web_socket_channel: ^3.0.3
