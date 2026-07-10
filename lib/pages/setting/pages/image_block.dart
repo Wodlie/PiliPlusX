@@ -126,9 +126,9 @@ class _ImageBlockSettingPageState extends State<ImageBlockSettingPage> {
       context: context,
       builder: (context) => SliderDialog(
         title: const Text('图片屏蔽阈值'),
-        min: 0,
-        max: 64,
-        divisions: 64,
+        min: 5,
+        max: 25,
+        divisions: 20,
         precise: 0,
         value: Pref.imageBlockThreshold.toDouble(),
         suffix: '',
