@@ -539,9 +539,45 @@ abstract final class ImageBlockService {
     final remaining = <Map<String, dynamic>>[];
     int removed = 0;
 
+    // Gather cached pHash variants for all input URLs (for fuzzy matching).
+    final cachedVariants = <String>{};
+    for (final url in urls) {
+      final hashes = getCachedHashes(url);
+      if (hashes != null) {
+        cachedVariants.addAll(hashes);
+      }
+    }
+
     for (final entry in entries) {
+      bool matched = false;
       final entryUrl = entry['url'] as String?;
+
+      // Fast path: URL match.
       if (entryUrl != null && normalized.contains(normalizeUrl(entryUrl))) {
+        matched = true;
+      }
+
+      // Fall back to pHash Hamming distance matching when URL doesn't match
+      // and cached hashes are available.
+      if (!matched && cachedVariants.isNotEmpty) {
+        final entryHashHex = entry['pHash'] as String?;
+        if (entryHashHex != null) {
+          try {
+            final entryHash = ImageHash.fromHex(entryHashHex);
+            for (final variantHex in cachedVariants) {
+              final variant = ImageHash.fromHex(variantHex);
+              if (entryHash - variant <= Pref.imageBlockThreshold) {
+                matched = true;
+                break;
+              }
+            }
+          } catch (_) {
+            // Invalid pHash hex string — skip.
+          }
+        }
+      }
+
+      if (matched) {
         try {
           await BlockedImageStorage.delete(entry['pHash'] as String);
         } catch (_) {}
