@@ -575,4 +575,157 @@ void main() {
       expect(result2, isTrue);
     });
   });
+
+  // ── unblockImages ──────────────────────────────────────────────────────
+
+  group('unblockImages', () {
+    test('removes entries by normalized URL match', () async {
+      Pref.imageBlockHashList = [
+        {
+          'pHash': 'aaaaaaaaaaaaaaaa',
+          'url': 'https://i0.hdslb.com/bfs/album/1.jpg@100w_100h.webp',
+          'ts': 1000,
+        },
+        {
+          'pHash': 'bbbbbbbbbbbbbbbb',
+          'url': 'https://i0.hdslb.com/bfs/album/2.jpg',
+          'ts': 1001,
+        },
+      ];
+
+      // URL has different @format suffix - should still match via normalizeUrl
+      final count = await ImageBlockService.unblockImages([
+        'https://i0.hdslb.com/bfs/album/1.jpg@200w_200h.webp',
+      ]);
+
+      expect(count, equals(1));
+      expect(Pref.imageBlockHashList, hasLength(1));
+      expect(
+        Pref.imageBlockHashList.first['pHash'],
+        equals('bbbbbbbbbbbbbbbb'),
+        reason: 'non-matching entry should remain',
+      );
+    });
+
+    test('returns 0 when no entries match the given URLs', () async {
+      Pref.imageBlockHashList = [
+        {
+          'pHash': 'aaaaaaaaaaaaaaaa',
+          'url': 'https://i0.hdslb.com/bfs/album/1.jpg',
+          'ts': 1000,
+        },
+      ];
+
+      final count = await ImageBlockService.unblockImages([
+        'https://example.com/unrelated.jpg',
+      ]);
+
+      expect(count, equals(0));
+      expect(Pref.imageBlockHashList, hasLength(1));
+    });
+
+    test('handles empty input gracefully', () async {
+      Pref.imageBlockHashList = [
+        {
+          'pHash': 'aaaaaaaaaaaaaaaa',
+          'url': 'https://i0.hdslb.com/bfs/album/1.jpg',
+          'ts': 1000,
+        },
+      ];
+
+      final count = await ImageBlockService.unblockImages([]);
+
+      expect(count, equals(0));
+      expect(Pref.imageBlockHashList, hasLength(1));
+    });
+
+    test('removes multiple entries when given multiple matching URLs', () async {
+      Pref.imageBlockHashList = [
+        {
+          'pHash': 'aaaaaaaaaaaaaaaa',
+          'url': 'https://i0.hdslb.com/bfs/album/1.jpg',
+          'ts': 1000,
+        },
+        {
+          'pHash': 'bbbbbbbbbbbbbbbb',
+          'url': 'https://i0.hdslb.com/bfs/album/2.jpg',
+          'ts': 1001,
+        },
+        {
+          'pHash': 'cccccccccccccccc',
+          'url': 'https://i0.hdslb.com/bfs/album/3.jpg',
+          'ts': 1002,
+        },
+      ];
+
+      final count = await ImageBlockService.unblockImages([
+        'https://i0.hdslb.com/bfs/album/1.jpg',
+        'https://i0.hdslb.com/bfs/album/3.jpg',
+      ]);
+
+      expect(count, equals(2));
+      expect(Pref.imageBlockHashList, hasLength(1));
+      expect(
+        Pref.imageBlockHashList.first['pHash'],
+        equals('bbbbbbbbbbbbbbbb'),
+      );
+    });
+
+    test('invalidates cache so getParsedBlockList reflects removal', () async {
+      Pref.imageBlockHashList = [
+        {
+          'pHash': 'aaaaaaaaaaaaaaaa',
+          'url': 'https://i0.hdslb.com/bfs/album/1.jpg',
+          'ts': 1000,
+        },
+      ];
+
+      // Pre-parse to populate cache
+      ImageBlockService.getParsedBlockList();
+      expect(ImageBlockService.getParsedBlockList(), hasLength(1));
+
+      // Unblock
+      await ImageBlockService.unblockImages([
+        'https://i0.hdslb.com/bfs/album/1.jpg',
+      ]);
+
+      // After unblock, cache should be invalidated and list should be empty
+      expect(ImageBlockService.getParsedBlockList(), hasLength(0));
+    });
+
+    test('does nothing when block list is already empty', () async {
+      Pref.imageBlockHashList = <Map<String, dynamic>>[];
+
+      final count = await ImageBlockService.unblockImages([
+        'https://i0.hdslb.com/bfs/album/1.jpg',
+      ]);
+
+      expect(count, equals(0));
+      expect(Pref.imageBlockHashList, isEmpty);
+    });
+  });
+
+  // ── pHash import regex ─────────────────────────────────────────────────
+
+  group('pHash import regex', () {
+    test('16-char hex string passes import regex', () {
+      final regex = RegExp(r'^[0-9a-fA-F]{16,64}$');
+      expect(regex.hasMatch('aaaaaaaaaaaaaaaa'), isTrue);
+      expect(regex.hasMatch('abcdef0123456789'), isTrue);
+      expect(regex.hasMatch('ABCDEF0123456789'), isTrue);
+    });
+
+    test('15-char hex string is rejected by import regex', () {
+      final regex = RegExp(r'^[0-9a-fA-F]{16,64}$');
+      expect(regex.hasMatch('aaaaaaaaaaaaaaa'), isFalse); // 15 chars
+      expect(regex.hasMatch(''), isFalse); // empty
+    });
+
+    test('32-char hex string is still accepted (regression for longer hashes)',
+        () {
+      final regex = RegExp(r'^[0-9a-fA-F]{16,64}$');
+      expect(regex.hasMatch('a' * 32), isTrue);
+      expect(regex.hasMatch('a' * 64), isTrue);
+    });
+  });
 }
