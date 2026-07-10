@@ -1505,9 +1505,108 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             ListTile(
               onTap: () async {
                 Get.back();
-                for (final picture in item.content.pictures) {
+                final pictures = item.content.pictures;
+                if (pictures.length <= 1) {
+                  // Single image: block directly.
                   final entry = await ImageBlockService.blockImage(
-                    picture.imgSrc,
+                    pictures.first.imgSrc,
+                    flipEnabled: Pref.imageBlockFlipEnabled,
+                    rotateEnabled: Pref.imageBlockRotateEnabled,
+                  );
+                  if (entry != null) {
+                    final list = Pref.imageBlockHashList;
+                    if (!list.any((e) => e['pHash'] == entry['pHash'])) {
+                      list.add(entry);
+                      Pref.imageBlockHashList = list;
+                      ImageBlockService.invalidateResultCache();
+                    }
+                  }
+                  if (mounted) setState(() => _blockImageVersion++);
+                  SmartDialog.showToast('已屏蔽图片');
+                  return;
+                }
+
+                // Multiple images: show selection dialog.
+                final selected = <int>{};
+                for (int i = 0; i < pictures.length; i++) {
+                  selected.add(i);
+                }
+
+                final result = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) {
+                    final colorScheme = ColorScheme.of(ctx);
+                    return StatefulBuilder(
+                      builder: (context, setDialogState) {
+                        return AlertDialog(
+                          title: const Text('选择要屏蔽的图片'),
+                          content: SizedBox(
+                            width: double.maxFinite,
+                            child: ListView(
+                              shrinkWrap: true,
+                              children: [
+                                CheckboxListTile(
+                                  value: selected.length == pictures.length,
+                                  tristate: false,
+                                  onChanged: (v) {
+                                    setDialogState(() {
+                                      if (v == true) {
+                                        for (int i = 0;
+                                            i < pictures.length;
+                                            i++) {
+                                          selected.add(i);
+                                        }
+                                      } else {
+                                        selected.clear();
+                                      }
+                                    });
+                                  },
+                                  title: const Text('全选'),
+                                ),
+                                const Divider(height: 1),
+                                for (int i = 0; i < pictures.length; i++)
+                                  CheckboxListTile(
+                                    value: selected.contains(i),
+                                    onChanged: (v) {
+                                      setDialogState(() {
+                                        if (v == true) {
+                                          selected.add(i);
+                                        } else {
+                                          selected.remove(i);
+                                        }
+                                      });
+                                    },
+                                    title: Text('图片 ${i + 1}'),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: Text(
+                                '取消',
+                                style: TextStyle(
+                                  color: colorScheme.outline,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('确定'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                );
+
+                if (result != true || selected.isEmpty) return;
+
+                for (final i in selected) {
+                  final entry = await ImageBlockService.blockImage(
+                    pictures[i].imgSrc,
                     flipEnabled: Pref.imageBlockFlipEnabled,
                     rotateEnabled: Pref.imageBlockRotateEnabled,
                   );
@@ -1521,7 +1620,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                   }
                 }
                 if (mounted) setState(() => _blockImageVersion++);
-                SmartDialog.showToast('已屏蔽图片');
+                SmartDialog.showToast(
+                  '已屏蔽${selected.length}张图片',
+                );
               },
               minLeadingWidth: 0,
               leading: Icon(
