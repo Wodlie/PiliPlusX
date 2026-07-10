@@ -1178,7 +1178,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     required bool isSubReply,
   }) {
     late String message = item.content.message;
-    final ownerMid = Int64(Accounts.main.mid);
+    final ownerMid = Int64(Accounts.reply.mid);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final errorColor = colorScheme.error;
@@ -1504,6 +1504,26 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                 size: 19,
               ),
               title: Text('屏蔽图片', style: style.copyWith(color: errorColor)),
+            ),
+          if (item.content.pictures.isNotEmpty)
+            ListTile(
+              onTap: () async {
+                Get.back();
+                final count = await ImageBlockService.unblockImages(
+                  item.content.pictures.map((p) => p.imgSrc).toList(),
+                );
+                if (mounted) setState(() {});
+                SmartDialog.showToast(
+                  count > 0 ? '已恢复$count张图片显示' : '未找到屏蔽的图片',
+                );
+              },
+              minLeadingWidth: 0,
+              leading: Icon(
+                Icons.image_outlined,
+                color: errorColor,
+                size: 19,
+              ),
+              title: Text('恢复图片显示', style: style.copyWith(color: errorColor)),
             ),
           ListTile(
             onTap: () {
