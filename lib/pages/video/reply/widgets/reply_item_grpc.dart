@@ -1495,6 +1495,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                   }
                 }
                 if (mounted) setState(() {});
+                onDelete();
                 SmartDialog.showToast('已屏蔽图片');
               },
               minLeadingWidth: 0,
@@ -1513,6 +1514,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                   item.content.pictures.map((p) => p.imgSrc).toList(),
                 );
                 if (mounted) setState(() {});
+                onDelete();
                 SmartDialog.showToast(
                   count > 0 ? '已恢复$count张图片显示' : '未找到屏蔽的图片',
                 );
