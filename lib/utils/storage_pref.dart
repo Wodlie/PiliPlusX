@@ -1299,12 +1299,12 @@ abstract final class Pref {
       _setting.put(SettingBoxKey.imageBlockThreshold, value);
 
   static bool get imageBlockFlipEnabled =>
-      _setting.get(SettingBoxKey.imageBlockFlipEnabled, defaultValue: true);
+      _setting.get(SettingBoxKey.imageBlockFlipEnabled, defaultValue: false);
   static set imageBlockFlipEnabled(bool value) =>
       _setting.put(SettingBoxKey.imageBlockFlipEnabled, value);
 
   static bool get imageBlockRotateEnabled =>
-      _setting.get(SettingBoxKey.imageBlockRotateEnabled, defaultValue: true);
+      _setting.get(SettingBoxKey.imageBlockRotateEnabled, defaultValue: false);
   static set imageBlockRotateEnabled(bool value) =>
       _setting.put(SettingBoxKey.imageBlockRotateEnabled, value);
 
@@ -1322,6 +1322,7 @@ abstract final class Pref {
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
   }
+
   static set imageBlockHashList(List<Map<String, dynamic>> value) =>
       _setting.put(SettingBoxKey.imageBlockHashList, value);
 }
