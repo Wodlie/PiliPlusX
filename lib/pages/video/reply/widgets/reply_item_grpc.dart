@@ -153,6 +153,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   bool _expanded = false;
   bool _loadManualImages = false;
   final Set<String> _tempUnblockImageUrls = {};
+  int _blockImageVersion = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -573,6 +574,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     final manualLoad = Pref.manualLoadCommentImage;
     if (!manualLoad || _loadManualImages) {
       return ImageGridView(
+        key: ValueKey('img_$_blockImageVersion'),
         picArr: widget.replyItem.content.pictures
             .map(
               (item) => ImageModel(
@@ -1518,8 +1520,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     }
                   }
                 }
-                if (mounted) setState(() {});
-                onDelete();
+                if (mounted) setState(() => _blockImageVersion++);
                 SmartDialog.showToast('已屏蔽图片');
               },
               minLeadingWidth: 0,
@@ -1538,8 +1539,8 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                   _tempUnblockImageUrls.addAll(
                     item.content.pictures.map((p) => p.imgSrc),
                   );
+                  _blockImageVersion++;
                 });
-                onDelete();
                 SmartDialog.showToast('已临时恢复图片显示');
               },
               minLeadingWidth: 0,
