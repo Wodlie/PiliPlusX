@@ -480,7 +480,6 @@ abstract final class ImageBlockService {
   ///
   /// This method does NOT trigger any network request or Isolate computation;
   /// it only reads the existing LRU caches ([_resultCache] and [_hashCache]).
-  @visibleForTesting
   static bool? getCachedBlockResult(String imageUrl) {
     if (!Pref.enableImageBlock) return false;
     if (imageUrl.isEmpty) return null;

@@ -337,6 +337,8 @@ class _ImageGridViewState extends State<ImageGridView> {
             final imgSrc = item.url;
 
             // ── Blocked: show placeholder component instead of image ──
+            // ── Pending: show neutral loading placeholder while async block check runs ──
+            // ── Normal: show preview image ──
             if (_enableBlock) {
               final isBlocked = _imageBlockStatus[imgSrc] == true;
               final tempUnblocked = _tempUnblockedSrcs.contains(imgSrc);
@@ -355,6 +357,33 @@ class _ImageGridViewState extends State<ImageGridView> {
                     ),
                   ),
                 );
+              }
+
+              // Not yet evaluated — try sync cache, otherwise show neutral placeholder
+              if (_imageBlockStatus[imgSrc] == null) {
+                final syncResult = ImageBlockService.getCachedBlockResult(imgSrc);
+                if (syncResult != null) {
+                  _imageBlockStatus[imgSrc] = syncResult;
+                  if (syncResult && !tempUnblocked) {
+                    return LayoutId(
+                      id: index,
+                      child: Semantics(
+                        label: '图片已屏蔽，第 ${index + 1} 张，共 ${widget.picArr.length} 张',
+                        button: true,
+                        child: BlockedImagePlaceholder(
+                          width: width,
+                          height: height,
+                          borderRadius: borderRadius,
+                          onLongPress: () => _showUnblockMenu(context, imgSrc),
+                        ),
+                      ),
+                    );
+                  }
+                  // syncResult == false → fall through to normal image rendering
+                } else {
+                  // Cache miss — show neutral loading placeholder until async eval completes
+                  return LayoutId(id: index, child: placeHolder);
+                }
               }
             }
 
@@ -398,7 +427,7 @@ class _ImageGridViewState extends State<ImageGridView> {
     // when the grid first becomes visible.
     if (_enableBlock) {
       grid = VisibilityDetector(
-        key: UniqueKey(),
+        key: ValueKey('image_grid_block_${widget.hashCode}'),
         onVisibilityChanged: (info) {
           if (info.visibleFraction > 0 && !_blockingInitialized) {
             _blockingInitialized = true;
