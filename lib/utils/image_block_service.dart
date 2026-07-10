@@ -529,6 +529,35 @@ abstract final class ImageBlockService {
     }
   }
 
+  /// Remove all blocked image entries matching the given URLs.
+  /// Uses normalized URL comparison (strips @format and ?query suffixes).
+  /// Returns the number of entries removed.
+  static Future<int> unblockImages(List<String> urls) async {
+    if (urls.isEmpty) return 0;
+    final normalized = urls.map(normalizeUrl).toSet();
+    final entries = Pref.imageBlockHashList;
+    final remaining = <Map<String, dynamic>>[];
+    int removed = 0;
+
+    for (final entry in entries) {
+      final entryUrl = entry['url'] as String?;
+      if (entryUrl != null && normalized.contains(normalizeUrl(entryUrl))) {
+        try {
+          await BlockedImageStorage.delete(entry['pHash'] as String);
+        } catch (_) {}
+        removed++;
+      } else {
+        remaining.add(entry);
+      }
+    }
+
+    if (removed > 0) {
+      Pref.imageBlockHashList = remaining;
+      invalidateResultCache();
+    }
+    return removed;
+  }
+
   /// Clear all in-memory caches.
   static void clearCache() {
     _hashCache.clear();

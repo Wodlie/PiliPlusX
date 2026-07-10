@@ -185,7 +185,7 @@ class _ImageBlockSettingPageState extends State<ImageBlockSettingPage> {
     final existingPhash = _hashList.map((e) => e['pHash'] as String).toSet();
 
     for (final line in lines) {
-      if (RegExp(r'^[0-9a-fA-F]{32,64}$').hasMatch(line)) {
+      if (RegExp(r'^[0-9a-fA-F]{16,64}$').hasMatch(line)) {
         if (!existingPhash.contains(line)) {
           existingPhash.add(line);
           _hashList.add({
