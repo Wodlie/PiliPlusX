@@ -72,11 +72,18 @@ class ImageGridView extends StatefulWidget {
     required this.picArr,
     this.onViewImage,
     this.fullScreen = false,
+    this.tempUnblockedUrls,
   });
 
   final List<ImageModel> picArr;
   final VoidCallback? onViewImage;
   final bool fullScreen;
+
+  /// URLs to temporarily show even if blocked (external control, e.g. from
+  /// the reply long-press menu). The grid merges this with its internal
+  /// [_tempUnblockedSrcs]. When the grid goes off-screen, the parent should
+  /// clear this set to restore blocking.
+  final Set<String>? tempUnblockedUrls;
 
   /// Exposed preferences (read/written externally via settings).
   static bool horizontalPreview = Pref.horizontalPreview;
@@ -90,6 +97,10 @@ class _ImageGridViewState extends State<ImageGridView> {
   /// Blocking state per image URL.
   final Map<String, bool> _imageBlockStatus = {};
   final Set<String> _tempUnblockedSrcs = {};
+
+  bool _isTempUnblocked(String url) =>
+      _tempUnblockedSrcs.contains(url) ||
+      (widget.tempUnblockedUrls?.contains(url) ?? false);
 
   /// Whether blocking UI is enabled. Inferred once from Pref at init.
   bool _enableBlock = false;
@@ -155,7 +166,7 @@ class _ImageGridViewState extends State<ImageGridView> {
     // If blocked and not temporarily unblocked → do nothing.
     if (_enableBlock) {
       final isBlocked = _imageBlockStatus[item.url] == true;
-      final tempUnblocked = _tempUnblockedSrcs.contains(item.url);
+      final tempUnblocked = _isTempUnblocked(item.url);
       if (isBlocked && !tempUnblocked) return;
     }
 
@@ -225,7 +236,7 @@ class _ImageGridViewState extends State<ImageGridView> {
     // If blocked and not temporarily unblocked → no context menu.
     if (_enableBlock) {
       final isBlocked = _imageBlockStatus[item.url] == true;
-      final tempUnblocked = _tempUnblockedSrcs.contains(item.url);
+      final tempUnblocked = _isTempUnblocked(item.url);
       if (isBlocked && !tempUnblocked) return;
     }
 
@@ -341,7 +352,7 @@ class _ImageGridViewState extends State<ImageGridView> {
             // ── Normal: show preview image ──
             if (_enableBlock) {
               final isBlocked = _imageBlockStatus[imgSrc] == true;
-              final tempUnblocked = _tempUnblockedSrcs.contains(imgSrc);
+              final tempUnblocked = _isTempUnblocked(imgSrc);
 
               if (isBlocked && !tempUnblocked) {
                 return LayoutId(
@@ -361,14 +372,17 @@ class _ImageGridViewState extends State<ImageGridView> {
 
               // Not yet evaluated — try sync cache, otherwise show neutral placeholder
               if (_imageBlockStatus[imgSrc] == null) {
-                final syncResult = ImageBlockService.getCachedBlockResult(imgSrc);
+                final syncResult = ImageBlockService.getCachedBlockResult(
+                  imgSrc,
+                );
                 if (syncResult != null) {
                   _imageBlockStatus[imgSrc] = syncResult;
                   if (syncResult && !tempUnblocked) {
                     return LayoutId(
                       id: index,
                       child: Semantics(
-                        label: '图片已屏蔽，第 ${index + 1} 张，共 ${widget.picArr.length} 张',
+                        label:
+                            '图片已屏蔽，第 ${index + 1} 张，共 ${widget.picArr.length} 张',
                         button: true,
                         child: BlockedImagePlaceholder(
                           width: width,

@@ -152,6 +152,7 @@ class ReplyItemGrpc extends StatefulWidget {
 class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   bool _expanded = false;
   bool _loadManualImages = false;
+  final Set<String> _tempUnblockImageUrls = {};
 
   @override
   Widget build(BuildContext context) {
@@ -582,6 +583,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             )
             .toList(),
         onViewImage: widget.onViewImage,
+        tempUnblockedUrls: _tempUnblockImageUrls,
       );
     }
     final count = widget.replyItem.content.pictures.length;
@@ -614,6 +616,12 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         ),
       ),
     );
+  }
+
+  @override
+  void deactivate() {
+    _tempUnblockImageUrls.clear();
+    super.deactivate();
   }
 
   Widget buttonAction(
@@ -1508,16 +1516,15 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             ),
           if (item.content.pictures.isNotEmpty)
             ListTile(
-              onTap: () async {
+              onTap: () {
                 Get.back();
-                final count = await ImageBlockService.unblockImages(
-                  item.content.pictures.map((p) => p.imgSrc).toList(),
-                );
-                if (mounted) setState(() {});
+                setState(() {
+                  _tempUnblockImageUrls.addAll(
+                    item.content.pictures.map((p) => p.imgSrc),
+                  );
+                });
                 onDelete();
-                SmartDialog.showToast(
-                  count > 0 ? '已恢复$count张图片显示' : '未找到屏蔽的图片',
-                );
+                SmartDialog.showToast('已临时恢复图片显示');
               },
               minLeadingWidth: 0,
               leading: Icon(
