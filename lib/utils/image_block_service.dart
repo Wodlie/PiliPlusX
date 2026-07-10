@@ -78,36 +78,39 @@ class _ImageHashWorker {
       _startingCompleter?.complete();
       return;
     }
-    _receivePort.listen((dynamic message) {
-      if (message is SendPort) {
-        _sendPort = message;
-        _ready.complete();
-        return;
-      }
-      final response = message as List<Object?>;
-      final id = response[0] as int;
-      if (response[1] == null) {
-        // Error response from worker
-        _pending.remove(id)?.complete(<String>[]);
+    _receivePort.listen(
+      (dynamic message) {
+        if (message is SendPort) {
+          _sendPort = message;
+          _ready.complete();
+          return;
+        }
+        final response = message as List<Object?>;
+        final id = response[0] as int;
+        if (response[1] == null) {
+          // Error response from worker
+          _pending.remove(id)?.complete(<String>[]);
+          _workerBusy = false;
+          _dispatchNext();
+          return;
+        }
+        final hashes = (response[1] as List<dynamic>).cast<String>();
+        _pending.remove(id)?.complete(hashes);
         _workerBusy = false;
         _dispatchNext();
-        return;
-      }
-      final hashes = (response[1] as List<dynamic>).cast<String>();
-      _pending.remove(id)?.complete(hashes);
-      _workerBusy = false;
-      _dispatchNext();
-    }, onDone: () {
-      // Isolate died — reset for auto-restart
-      _ready = Completer<void>();
-      _startingCompleter = null;
-      for (final entry in _pending.entries) {
-        entry.value.complete(<String>[]);
-      }
-      _pending.clear();
-      _taskQueue.clear();
-      _workerBusy = false;
-    });
+      },
+      onDone: () {
+        // Isolate died — reset for auto-restart
+        _ready = Completer<void>();
+        _startingCompleter = null;
+        for (final entry in _pending.entries) {
+          entry.value.complete(<String>[]);
+        }
+        _pending.clear();
+        _taskQueue.clear();
+        _workerBusy = false;
+      },
+    );
   }
 
   static void _entryPoint(SendPort mainSendPort) {
@@ -180,7 +183,12 @@ class _ImageHashWorker {
     _taskQueue.sort((a, b) => b.generation.compareTo(a.generation));
     final task = _taskQueue.removeAt(0);
     _workerBusy = true;
-    _sendPort!.send([task.id, task.bytes, task.flipEnabled, task.rotateEnabled]);
+    _sendPort!.send([
+      task.id,
+      task.bytes,
+      task.flipEnabled,
+      task.rotateEnabled,
+    ]);
   }
 }
 
@@ -191,7 +199,13 @@ class _Task {
   final bool flipEnabled;
   final bool rotateEnabled;
   final int generation;
-  _Task(this.id, this.bytes, this.flipEnabled, this.rotateEnabled, this.generation);
+  _Task(
+    this.id,
+    this.bytes,
+    this.flipEnabled,
+    this.rotateEnabled,
+    this.generation,
+  );
 }
 
 /// Image blocking service.
@@ -204,7 +218,9 @@ abstract final class ImageBlockService {
 
   /// URL→hashes cache (avoids re-fetching/re-computing)
   /// Key is normalized URL (stripped of @format and ?query params).
-  static final LruCache<String, List<String>> _hashCache = LruCache(maxSize: 500);
+  static final LruCache<String, List<String>> _hashCache = LruCache(
+    maxSize: 500,
+  );
 
   /// URL→blocked result cache (avoids re-evaluating isBlocked)
   /// Key is normalized URL (stripped of @format and ?query params).
@@ -364,16 +380,23 @@ abstract final class ImageBlockService {
   static Future<bool> _evaluateFresh(String key, String imageUrl) async {
     final sw = Stopwatch()..start();
     final thumbUrl = thumbnailUrlForHash(imageUrl);
-    if (kDebugMode) debugPrint('[pHash] thumbnailUrl: ${sw.elapsedMilliseconds}ms | key=$key');
+    if (kDebugMode)
+      debugPrint(
+        '[pHash] thumbnailUrl: ${sw.elapsedMilliseconds}ms | key=$key',
+      );
 
     try {
       sw.reset();
       final file = await CacheManager.manager.getSingleFile(thumbUrl);
-      if (kDebugMode) debugPrint('[pHash] download: ${sw.elapsedMilliseconds}ms | key=$key');
+      if (kDebugMode)
+        debugPrint('[pHash] download: ${sw.elapsedMilliseconds}ms | key=$key');
 
       sw.reset();
       final bytes = await file.readAsBytes();
-      if (kDebugMode) debugPrint('[pHash] readFile: ${sw.elapsedMilliseconds}ms | size=${bytes.length} | key=$key');
+      if (kDebugMode)
+        debugPrint(
+          '[pHash] readFile: ${sw.elapsedMilliseconds}ms | size=${bytes.length} | key=$key',
+        );
 
       sw.reset();
       final hashes = await _worker.computeHashes(
@@ -381,7 +404,10 @@ abstract final class ImageBlockService {
         flipEnabled: Pref.imageBlockFlipEnabled,
         rotateEnabled: Pref.imageBlockRotateEnabled,
       );
-      if (kDebugMode) debugPrint('[pHash] computeHashes: ${sw.elapsedMilliseconds}ms | variants=${hashes.length} | key=$key');
+      if (kDebugMode)
+        debugPrint(
+          '[pHash] computeHashes: ${sw.elapsedMilliseconds}ms | variants=${hashes.length} | key=$key',
+        );
 
       if (hashes.isEmpty) return false;
       _hashCache[key] = hashes;
@@ -392,7 +418,10 @@ abstract final class ImageBlockService {
         Pref.imageBlockHashList,
         Pref.imageBlockThreshold,
       );
-      if (kDebugMode) debugPrint('[pHash] isBlocked: ${sw.elapsedMilliseconds}ms | blocked=$blocked | key=$key');
+      if (kDebugMode)
+        debugPrint(
+          '[pHash] isBlocked: ${sw.elapsedMilliseconds}ms | blocked=$blocked | key=$key',
+        );
 
       _resultCache[key] = blocked;
       return blocked;
@@ -442,6 +471,50 @@ abstract final class ImageBlockService {
   /// Get cached pHash variants for a URL.
   static List<String>? getCachedHashes(String url) =>
       _hashCache[normalizeUrl(url)];
+
+  /// Synchronously check if [imageUrl] is blocked using in-memory caches only.
+  ///
+  /// Returns `true` if blocked, `false` if not blocked, or `null` if the URL
+  /// hasn't been evaluated yet (cache miss — caller should call [evaluateBlock]
+  /// asynchronously).
+  ///
+  /// This method does NOT trigger any network request or Isolate computation;
+  /// it only reads the existing LRU caches ([_resultCache] and [_hashCache]).
+  @visibleForTesting
+  static bool? getCachedBlockResult(String imageUrl) {
+    if (!Pref.enableImageBlock) return false;
+    if (imageUrl.isEmpty) return null;
+    final key = normalizeUrl(imageUrl);
+
+    // Check result cache first (fast path)
+    final cached = _resultCache[key];
+    if (cached != null) return cached;
+
+    // Check hash cache (can compute isBlocked synchronously)
+    final cachedHashes = _hashCache[key];
+    if (cachedHashes != null) {
+      final blocked = isBlocked(
+        cachedHashes,
+        Pref.imageBlockHashList,
+        Pref.imageBlockThreshold,
+      );
+      _resultCache[key] = blocked;
+      return blocked;
+    }
+
+    // Neither cache has this URL
+    return null;
+  }
+
+  /// Directly set a cached result for [imageUrl] (test helper only).
+  ///
+  /// This bypasses the full evaluation pipeline and is intended for use
+  /// in tests to simulate a pre-populated result cache.
+  @visibleForTesting
+  static void setCachedResult(String imageUrl, bool blocked) {
+    final key = normalizeUrl(imageUrl);
+    _resultCache[key] = blocked;
+  }
 
   /// Invalidate result cache and block list cache.
   /// Call when block list/threshold/settings change.

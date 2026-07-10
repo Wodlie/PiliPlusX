@@ -163,7 +163,11 @@ void main() {
 
       // Third call: should re-parse from Pref → 1 entry
       final parsed = ImageBlockService.getParsedBlockList();
-      expect(parsed, hasLength(1), reason: 'should re-parse after invalidation');
+      expect(
+        parsed,
+        hasLength(1),
+        reason: 'should re-parse after invalidation',
+      );
     });
 
     test('isBlocked uses pre-parsed block list from cache', () {
@@ -181,8 +185,11 @@ void main() {
         <Map<String, dynamic>>[], // param unused internally
         0,
       );
-      expect(blocked, isTrue,
-          reason: 'identical hash with threshold 0 should block');
+      expect(
+        blocked,
+        isTrue,
+        reason: 'identical hash with threshold 0 should block',
+      );
 
       // Different variant → not blocked
       final notBlocked = ImageBlockService.isBlocked(
@@ -190,8 +197,7 @@ void main() {
         <Map<String, dynamic>>[],
         0,
       );
-      expect(notBlocked, isFalse,
-          reason: 'different hash should not block');
+      expect(notBlocked, isFalse, reason: 'different hash should not block');
     });
 
     test('isBlocked returns false when block list is empty', () {
@@ -220,8 +226,7 @@ void main() {
         <Map<String, dynamic>>[],
         0,
       );
-      expect(result, isFalse,
-          reason: 'blocking disabled should not block');
+      expect(result, isFalse, reason: 'blocking disabled should not block');
     });
   });
 
@@ -276,16 +281,18 @@ void main() {
       );
     });
 
-    test('BiliBili CDN with format and query: replaces format, keeps query',
-        () {
-      final result = ImageBlockService.thumbnailUrlForHash(
-        'https://i0.hdslb.com/bfs/album/abc.jpg@200w_200h.webp?token=abc123',
-      );
-      expect(
-        result,
-        'https://i0.hdslb.com/bfs/album/abc.jpg@100w_1q.webp?token=abc123',
-      );
-    });
+    test(
+      'BiliBili CDN with format and query: replaces format, keeps query',
+      () {
+        final result = ImageBlockService.thumbnailUrlForHash(
+          'https://i0.hdslb.com/bfs/album/abc.jpg@200w_200h.webp?token=abc123',
+        );
+        expect(
+          result,
+          'https://i0.hdslb.com/bfs/album/abc.jpg@100w_1q.webp?token=abc123',
+        );
+      },
+    );
   });
 
   // ── LRU cache integration ──────────────────────────────────────────────
@@ -297,78 +304,111 @@ void main() {
         cache['key$i'] = i;
       }
       expect(cache.length, equals(500));
-      expect(cache.containsKey('key0'), isFalse,
-          reason: 'oldest entry (key0) should be evicted');
-      expect(cache.containsKey('key500'), isTrue,
-          reason: 'newest entry (key500) should be present');
+      expect(
+        cache.containsKey('key0'),
+        isFalse,
+        reason: 'oldest entry (key0) should be evicted',
+      );
+      expect(
+        cache.containsKey('key500'),
+        isTrue,
+        reason: 'newest entry (key500) should be present',
+      );
     });
   });
 
   // ── Worker exception handling ─────────────────────────────────────────
 
   group('Worker exception', () {
-    test('corrupt bytes returns empty list, does not hang', () async {
-      final corruptBytes = Uint8List.fromList([0, 1, 2, 3, 4, 5]);
-      final result = await ImageBlockService.computeHashes(
-        corruptBytes,
-        flipEnabled: false,
-        rotateEnabled: false,
-      );
-      expect(result, isEmpty);
-    }, timeout: const Timeout(Duration(seconds: 10)));
+    test(
+      'corrupt bytes returns empty list, does not hang',
+      () async {
+        final corruptBytes = Uint8List.fromList([0, 1, 2, 3, 4, 5]);
+        final result = await ImageBlockService.computeHashes(
+          corruptBytes,
+          flipEnabled: false,
+          rotateEnabled: false,
+        );
+        expect(result, isEmpty);
+      },
+      timeout: const Timeout(Duration(seconds: 10)),
+    );
   });
 
   // ── Worker concurrent race ────────────────────────────────────────────
 
   group('Worker race', () {
-    test('5 concurrent first-call computeHashes all complete without error',
-        () async {
-      final fixture = File('test/fixtures/image_full.png');
-      expect(fixture.existsSync(), isTrue, reason: 'fixture image must exist');
-      final bytes = await fixture.readAsBytes();
-      final futures = List.generate(
-        5,
-        (_) => ImageBlockService.computeHashes(
-          bytes,
-          flipEnabled: false,
-          rotateEnabled: false,
-        ),
-      );
-      final results = await Future.wait(futures);
-      for (final result in results) {
-        expect(result, isNotEmpty,
-            reason: 'each worker call should produce hashes');
-      }
-    }, timeout: const Timeout(Duration(seconds: 15)));
+    test(
+      '5 concurrent first-call computeHashes all complete without error',
+      () async {
+        final fixture = File('test/fixtures/image_full.png');
+        expect(
+          fixture.existsSync(),
+          isTrue,
+          reason: 'fixture image must exist',
+        );
+        final bytes = await fixture.readAsBytes();
+        final futures = List.generate(
+          5,
+          (_) => ImageBlockService.computeHashes(
+            bytes,
+            flipEnabled: false,
+            rotateEnabled: false,
+          ),
+        );
+        final results = await Future.wait(futures);
+        for (final result in results) {
+          expect(
+            result,
+            isNotEmpty,
+            reason: 'each worker call should produce hashes',
+          );
+        }
+      },
+      timeout: const Timeout(Duration(seconds: 15)),
+    );
   });
 
   // ── Priority queue ────────────────────────────────────────────────────
 
   group('Priority queue', () {
-    test('queue max 50 drops oldest when overloaded', () async {
-      final fixture = File('test/fixtures/image_full.png');
-      expect(fixture.existsSync(), isTrue, reason: 'fixture image must exist');
-      final bytes = await fixture.readAsBytes();
+    test(
+      'queue max 50 drops oldest when overloaded',
+      () async {
+        final fixture = File('test/fixtures/image_full.png');
+        expect(
+          fixture.existsSync(),
+          isTrue,
+          reason: 'fixture image must exist',
+        );
+        final bytes = await fixture.readAsBytes();
 
-      // Submit 55 tasks concurrently — first one gets dispatched immediately,
-      // the remaining 54 go to the queue. With max 50, at most 4 get dropped.
-      final futures = <Future<List<String>>>[];
-      for (int i = 0; i < 55; i++) {
-        futures.add(ImageBlockService.computeHashes(
-          bytes,
-          flipEnabled: false,
-          rotateEnabled: false,
-        ));
-      }
-      final results = await Future.wait(futures)
-          .timeout(const Duration(seconds: 30));
+        // Submit 55 tasks concurrently — first one gets dispatched immediately,
+        // the remaining 54 go to the queue. With max 50, at most 4 get dropped.
+        final futures = <Future<List<String>>>[];
+        for (int i = 0; i < 55; i++) {
+          futures.add(
+            ImageBlockService.computeHashes(
+              bytes,
+              flipEnabled: false,
+              rotateEnabled: false,
+            ),
+          );
+        }
+        final results = await Future.wait(
+          futures,
+        ).timeout(const Duration(seconds: 30));
 
-      // At least 51 tasks should have succeeded (first dispatched + 50 queued)
-      final successCount = results.where((r) => r.isNotEmpty).length;
-      expect(successCount, greaterThanOrEqualTo(51),
-          reason:
-              'at most 4 tasks should be dropped from a queue of 55 items');
-    }, timeout: const Timeout(Duration(seconds: 30)));
+        // At least 51 tasks should have succeeded (first dispatched + 50 queued)
+        final successCount = results.where((r) => r.isNotEmpty).length;
+        expect(
+          successCount,
+          greaterThanOrEqualTo(51),
+          reason: 'at most 4 tasks should be dropped from a queue of 55 items',
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
   });
 
   // ── In-flight dedup ───────────────────────────────────────────────────
@@ -392,22 +432,29 @@ void main() {
   // ── Completer timeout ─────────────────────────────────────────────────
 
   group('Completer timeout', () {
-    test('computeHashes completes within timeout for normal input', () async {
-      final fixture = File('test/fixtures/image_full.png');
-      expect(fixture.existsSync(), isTrue, reason: 'fixture image must exist');
-      final bytes = await fixture.readAsBytes();
-      final result = await ImageBlockService.computeHashes(bytes)
-          .timeout(const Duration(seconds: 10));
-      expect(result, isNotEmpty,
-          reason: 'valid image should produce hashes');
-    }, timeout: const Timeout(Duration(seconds: 12)));
+    test(
+      'computeHashes completes within timeout for normal input',
+      () async {
+        final fixture = File('test/fixtures/image_full.png');
+        expect(
+          fixture.existsSync(),
+          isTrue,
+          reason: 'fixture image must exist',
+        );
+        final bytes = await fixture.readAsBytes();
+        final result = await ImageBlockService.computeHashes(
+          bytes,
+        ).timeout(const Duration(seconds: 10));
+        expect(result, isNotEmpty, reason: 'valid image should produce hashes');
+      },
+      timeout: const Timeout(Duration(seconds: 12)),
+    );
   });
 
   // ── evaluateBlock thumbnail URL (Task 6) ───────────────────────────────
 
   group('evaluateBlock thumbnail URL', () {
-    test('BiliBili CDN URL: uses thumbnailUrlForHash, does not throw',
-        () async {
+    test('BiliBili CDN URL: uses thumbnailUrlForHash, does not throw', () async {
       final result = await ImageBlockService.evaluateBlock(
         'https://i0.hdslb.com/bfs/album/abc.jpg',
       );
@@ -426,14 +473,16 @@ void main() {
   // ── blockImage thumbnail URL (Task 8) ──────────────────────────────────
 
   group('blockImage thumbnail URL', () {
-    test('blockImage downloads via thumbnailUrlForHash, does not throw',
-        () async {
-      final result = await ImageBlockService.blockImage(
-        'https://i0.hdslb.com/bfs/album/abc.jpg',
-      );
-      // Download will fail (no network), so result is null
-      expect(result, isNull);
-    });
+    test(
+      'blockImage downloads via thumbnailUrlForHash, does not throw',
+      () async {
+        final result = await ImageBlockService.blockImage(
+          'https://i0.hdslb.com/bfs/album/abc.jpg',
+        );
+        // Download will fail (no network), so result is null
+        expect(result, isNull);
+      },
+    );
 
     test('blockImage with non-BiliBili URL, does not throw', () async {
       final result = await ImageBlockService.blockImage(
@@ -448,8 +497,9 @@ void main() {
   group('benchmark', () {
     test('thumbnail computeHashes is faster than full-res', () {
       final fullBytes = File('test/fixtures/image_full.png').readAsBytesSync();
-      final thumbBytes =
-          File('test/fixtures/image_thumb_100w_q10.jpg').readAsBytesSync();
+      final thumbBytes = File(
+        'test/fixtures/image_thumb_100w_q10.jpg',
+      ).readAsBytesSync();
 
       final swFull = Stopwatch()..start();
       computeImageHashes([fullBytes, true, true]);
@@ -461,11 +511,68 @@ void main() {
 
       // Thumbnail should be at least 2x faster (but allow 1.5x margin for CI)
       debugPrint(
-          '[pHash benchmark] full-res: ${fullTime}ms, thumbnail: ${thumbTime}ms');
+        '[pHash benchmark] full-res: ${fullTime}ms, thumbnail: ${thumbTime}ms',
+      );
       expect(thumbTime, lessThan(fullTime));
       // Assert at least 1.0x speedup (relaxed from 1.5x because computeImageHashes
       // internally resizes to 128px, making decode the only variable).
       expect(fullTime / math.max(thumbTime, 1), greaterThan(1.0));
+    });
+  });
+
+  group('getCachedBlockResult', () {
+    test('returns false when enableImageBlock is false', () {
+      Pref.enableImageBlock = false;
+      final result = ImageBlockService.getCachedBlockResult(
+        'https://i0.hdslb.com/bfs/album/test.jpg',
+      );
+      expect(result, isFalse);
+    });
+
+    test('returns null for empty URL string', () {
+      final result = ImageBlockService.getCachedBlockResult('');
+      expect(result, isNull);
+    });
+
+    test('returns null for URL never evaluated', () {
+      final result = ImageBlockService.getCachedBlockResult(
+        'https://i0.hdslb.com/bfs/album/unknown.jpg',
+      );
+      expect(result, isNull);
+    });
+
+    test('returns true for cached blocked URL (from _resultCache)', () {
+      const url = 'https://i0.hdslb.com/bfs/album/blocked.jpg';
+      ImageBlockService.setCachedResult(url, true);
+      final result = ImageBlockService.getCachedBlockResult(url);
+      expect(result, isTrue);
+    });
+
+    test('returns false for cached not-blocked URL (from _resultCache)', () {
+      const url = 'https://i0.hdslb.com/bfs/album/not_blocked.jpg';
+      ImageBlockService.setCachedResult(url, false);
+      final result = ImageBlockService.getCachedBlockResult(url);
+      expect(result, isFalse);
+    });
+
+    test('returns null from _resultCache after invalidation', () {
+      const url =
+          'https://i0.hdslb.com/bfs/album/hash_cached.jpg@100w_100h.webp';
+      ImageBlockService.setCachedResult(url, true);
+      ImageBlockService.invalidateResultCache();
+      final result = ImageBlockService.getCachedBlockResult(url);
+      expect(result, isNull);
+    });
+
+    test('normalizes URL same way as evaluateBlock', () {
+      const cleanUrl = 'https://i0.hdslb.com/bfs/album/test.jpg';
+      const formattedUrl =
+          'https://i0.hdslb.com/bfs/album/test.jpg@100w_100h.webp';
+      ImageBlockService.setCachedResult(cleanUrl, true);
+      final result1 = ImageBlockService.getCachedBlockResult(formattedUrl);
+      expect(result1, isTrue);
+      final result2 = ImageBlockService.getCachedBlockResult(cleanUrl);
+      expect(result2, isTrue);
     });
   });
 }
