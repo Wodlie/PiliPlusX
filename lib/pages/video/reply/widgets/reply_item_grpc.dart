@@ -1197,17 +1197,21 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     // Determine which pictures are blocked vs unblocked (from cache).
     bool hasBlockedImages = false;
     bool hasUnblockedImages = false;
-    for (final pic in item.content.pictures) {
-      final blocked = ImageBlockService.getCachedBlockResult(pic.imgSrc);
-      if (blocked == true) {
-        hasBlockedImages = true;
-      } else if (blocked == false) {
-        hasUnblockedImages = true;
-      } else {
-        // Cache miss — treat as unblocked (default visible).
-        hasUnblockedImages = true;
+    if (Pref.enableImageBlock) {
+      for (final pic in item.content.pictures) {
+        final blocked = ImageBlockService.getCachedBlockResult(pic.imgSrc);
+        if (blocked == true) {
+          hasBlockedImages = true;
+        } else if (blocked == false) {
+          hasUnblockedImages = true;
+        } else {
+          // Cache miss — treat as unblocked (default visible).
+          hasUnblockedImages = true;
+        }
+        if (hasBlockedImages && hasUnblockedImages) break;
       }
-      if (hasBlockedImages && hasUnblockedImages) break;
+    } else {
+      hasUnblockedImages = item.content.pictures.isNotEmpty;
     }
 
     return Padding(
@@ -1501,7 +1505,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             leading: const Icon(Icons.copy_outlined, size: 19),
             title: Text('自由复制', style: style),
           ),
-          if (hasUnblockedImages)
+          if (Pref.enableImageBlock && hasUnblockedImages)
             ListTile(
               onTap: () async {
                 Get.back();
@@ -1632,7 +1636,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               ),
               title: Text('屏蔽图片', style: style.copyWith(color: errorColor)),
             ),
-          if (hasBlockedImages)
+          if (Pref.enableImageBlock && hasBlockedImages)
             ListTile(
               onTap: () {
                 Get.back();
