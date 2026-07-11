@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:PiliPlus/pages/setting/widgets/normal_item.dart';
 import 'package:PiliPlus/pages/setting/widgets/switch_item.dart';
+import 'package:PiliPlus/utils/ai_model_storage.dart';
 import 'package:PiliPlus/utils/hf_model_downloader.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -19,12 +20,23 @@ class AiImageModerationPage extends StatefulWidget {
 class _AiImageModerationPageState extends State<AiImageModerationPage> {
   late final TextEditingController _urlController;
   bool _modelReady = false;
+  bool _checkingFiles = true;
 
   @override
   void initState() {
     super.initState();
     _urlController = TextEditingController(text: Pref.aiModelRepoUrl);
-    _modelReady = Pref.aiModelDownloaded;
+    _verifyModelFiles();
+  }
+
+  Future<void> _verifyModelFiles() async {
+    if (!mounted) return;
+    final ready = await AiModelStorage.hasModelFiles();
+    if (!mounted) return;
+    setState(() {
+      _modelReady = ready;
+      _checkingFiles = false;
+    });
   }
 
   @override
@@ -111,6 +123,7 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
       if (success) {
         setState(() {
           _modelReady = true;
+          Pref.aiModelDownloaded = true;
         });
         SmartDialog.showToast('模型下载完成');
       } else {

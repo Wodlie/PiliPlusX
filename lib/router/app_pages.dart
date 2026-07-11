@@ -53,6 +53,7 @@ import 'package:PiliPlus/pages/search/view.dart';
 import 'package:PiliPlus/pages/search_result/view.dart';
 import 'package:PiliPlus/pages/search_trending/view.dart';
 import 'package:PiliPlus/pages/setting/pages/ai_image_moderation.dart';
+import 'package:PiliPlus/pages/setting/pages/ai_prompt_config.dart';
 import 'package:PiliPlus/pages/setting/pages/at_filter.dart';
 import 'package:PiliPlus/pages/setting/pages/bar_set.dart';
 import 'package:PiliPlus/pages/setting/pages/image_block.dart';
@@ -167,6 +168,10 @@ class Routes {
     GetPage(
       name: '/aiImageModeration',
       page: () => const AiImageModerationPage(),
+    ),
+    GetPage(
+      name: '/aiPromptConfig',
+      page: () => const AiPromptConfigPage(),
     ),
     GetPage(name: '/upowerRank', page: () => const UpowerRankPage()),
     GetPage(name: '/spaceSetting', page: () => const SpaceSettingPage()),
