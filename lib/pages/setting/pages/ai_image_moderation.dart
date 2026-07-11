@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:PiliPlus/pages/setting/widgets/normal_item.dart';
 import 'package:PiliPlus/pages/setting/widgets/switch_item.dart';
+import 'package:PiliPlus/common/widgets/dialog/missing_model_dialog.dart';
 import 'package:PiliPlus/utils/ai_model_storage.dart';
 import 'package:PiliPlus/utils/hf_model_downloader.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -37,6 +38,10 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
       _modelReady = ready;
       _checkingFiles = false;
     });
+    // After model check, show dialog if AI is enabled but models missing.
+    if (mounted && Pref.enableAiImageModeration && !ready) {
+      MissingModelDialog.showMissingModelDialog(context);
+    }
   }
 
   @override
