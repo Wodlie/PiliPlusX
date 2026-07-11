@@ -4,6 +4,8 @@ import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
+import 'package:PiliPlus/utils/ai_image_moderation_service.dart';
+import 'package:PiliPlus/utils/ai_image_state.dart';
 import 'package:PiliPlus/utils/image_block_service.dart';
 import 'package:PiliPlus/common/widgets/dialog/report.dart';
 import 'package:PiliPlus/common/widgets/extra_hit_test_widget.dart';
@@ -1216,6 +1218,16 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
       hasUnblockedImages = item.content.pictures.isNotEmpty;
     }
 
+    // Also check AI moderation state for blocked/lowRes images.
+    bool hasAiBlockedOrLowRes = false;
+    for (final pic in item.content.pictures) {
+      final aiState = AiImageModerationService.getCachedResult(pic.imgSrc);
+      if (aiState == AiImageState.blocked || aiState == AiImageState.lowRes) {
+        hasAiBlockedOrLowRes = true;
+        break;
+      }
+    }
+
     return Padding(
       padding: .only(
         bottom: MediaQuery.viewPaddingOf(context).bottom + 20,
@@ -1638,7 +1650,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               ),
               title: Text('屏蔽图片', style: style.copyWith(color: errorColor)),
             ),
-          if (Pref.enableImageBlock && hasBlockedImages)
+          if (Pref.enableImageBlock && (hasBlockedImages || hasAiBlockedOrLowRes))
             ListTile(
               onTap: () {
                 Get.back();
@@ -1657,6 +1669,47 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                 size: 19,
               ),
               title: Text('恢复图片显示', style: style.copyWith(color: errorColor)),
+            ),
+          if (Pref.enableImageBlock && hasAiBlockedOrLowRes && !hasBlockedImages)
+            ListTile(
+              onTap: () async {
+                Get.back();
+                int count = 0;
+                for (final pic in item.content.pictures) {
+                  final aiState = AiImageModerationService.getCachedResult(
+                    pic.imgSrc,
+                  );
+                  if (aiState == AiImageState.blocked ||
+                      aiState == AiImageState.lowRes) {
+                    final entry = await ImageBlockService.blockImage(
+                      pic.imgSrc,
+                      flipEnabled: Pref.imageBlockFlipEnabled,
+                      rotateEnabled: Pref.imageBlockRotateEnabled,
+                    );
+                    if (entry != null) {
+                      final list = Pref.imageBlockHashList;
+                      if (!list.any((e) => e['pHash'] == entry['pHash'])) {
+                        list.add(entry);
+                        Pref.imageBlockHashList = list;
+                        ImageBlockService.invalidateResultCache();
+                      }
+                      count++;
+                    }
+                  }
+                }
+                if (mounted) setState(() => _blockImageVersion++);
+                SmartDialog.showToast('已屏蔽$count张图片');
+              },
+              minLeadingWidth: 0,
+              leading: Icon(
+                Icons.block,
+                color: errorColor,
+                size: 19,
+              ),
+              title: Text(
+                '屏蔽图片',
+                style: style.copyWith(color: errorColor),
+              ),
             ),
           ListTile(
             onTap: () {

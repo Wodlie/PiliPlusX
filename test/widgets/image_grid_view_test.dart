@@ -55,13 +55,15 @@ void main() {
       'renders without crash in non-blocking mode',
       (tester) async {
         Pref.enableImageBlock = false;
-        await tester.pumpWidget(_buildImageGridView([
-          ImageModel(
-            width: 100,
-            height: 100,
-            url: 'https://example.com/test.jpg',
-          ),
-        ]));
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(
+              width: 100,
+              height: 100,
+              url: 'https://example.com/test.jpg',
+            ),
+          ]),
+        );
         await tester.pump();
         expect(find.byType(ImageGridBuilder), findsOneWidget);
       },
@@ -72,9 +74,11 @@ void main() {
       (tester) async {
         const url = 'https://i0.hdslb.com/bfs/album/blocked.jpg';
         _prepopulateResultCache(url, true);
-        await tester.pumpWidget(_buildImageGridView([
-          ImageModel(width: 100, height: 100, url: url),
-        ]));
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(width: 100, height: 100, url: url),
+          ]),
+        );
         await tester.pump();
         expect(find.byType(BlockedImagePlaceholder), findsOneWidget);
         expect(find.byType(NetworkImgLayer), findsNothing);
@@ -90,9 +94,11 @@ void main() {
       (tester) async {
         const url = 'https://i0.hdslb.com/bfs/album/normal.jpg';
         _prepopulateResultCache(url, false);
-        await tester.pumpWidget(_buildImageGridView([
-          ImageModel(width: 100, height: 100, url: url),
-        ]));
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(width: 100, height: 100, url: url),
+          ]),
+        );
         await tester.pump();
         expect(find.byType(NetworkImgLayer), findsOneWidget);
         expect(find.byType(BlockedImagePlaceholder), findsNothing);
@@ -105,9 +111,11 @@ void main() {
       'cache miss shows neutral placeholder (no NetworkImgLayer, no BlockedImagePlaceholder)',
       (tester) async {
         const url = 'https://i0.hdslb.com/bfs/album/unknown.jpg';
-        await tester.pumpWidget(_buildImageGridView([
-          ImageModel(width: 100, height: 100, url: url),
-        ]));
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(width: 100, height: 100, url: url),
+          ]),
+        );
         await tester.pump();
         expect(find.byType(NetworkImgLayer), findsNothing);
         expect(find.byType(BlockedImagePlaceholder), findsNothing);
@@ -122,9 +130,11 @@ void main() {
       (tester) async {
         Pref.enableImageBlock = false;
         const url = 'https://i0.hdslb.com/bfs/album/test.jpg';
-        await tester.pumpWidget(_buildImageGridView([
-          ImageModel(width: 100, height: 100, url: url),
-        ]));
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(width: 100, height: 100, url: url),
+          ]),
+        );
         await tester.pump();
         expect(find.byType(NetworkImgLayer), findsOneWidget);
         expect(find.byType(BlockedImagePlaceholder), findsNothing);
@@ -146,21 +156,25 @@ void main() {
     testWidgets(
       'UniqueKey replaced: VisibilityDetector preserves identity across rebuild',
       (tester) async {
-        await tester.pumpWidget(_buildImageGridView([
-          ImageModel(
-            width: 100,
-            height: 100,
-            url: 'https://i0.hdslb.com/bfs/album/stable.jpg',
-          ),
-        ]));
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(
+              width: 100,
+              height: 100,
+              url: 'https://i0.hdslb.com/bfs/album/stable.jpg',
+            ),
+          ]),
+        );
         await tester.pump();
-        await tester.pumpWidget(_buildImageGridView([
-          ImageModel(
-            width: 100,
-            height: 100,
-            url: 'https://i0.hdslb.com/bfs/album/stable.jpg',
-          ),
-        ]));
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(
+              width: 100,
+              height: 100,
+              url: 'https://i0.hdslb.com/bfs/album/stable.jpg',
+            ),
+          ]),
+        );
         await tester.pump();
         expect(find.byType(ImageGridBuilder), findsOneWidget);
         await tester.pumpWidget(const SizedBox());

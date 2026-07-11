@@ -185,6 +185,30 @@ class _ImageGridViewState extends State<ImageGridView> {
             leading: const Icon(Icons.visibility, color: Colors.red, size: 19),
             title: const Text('确定查看图片', style: TextStyle(color: Colors.red)),
           ),
+          ListTile(
+            onTap: () async {
+              Get.back();
+              final entry = await ImageBlockService.blockImage(imgSrc);
+              if (entry != null) {
+                final list = Pref.imageBlockHashList;
+                if (!list.any((e) => e['pHash'] == entry['pHash'])) {
+                  list.add(entry);
+                  Pref.imageBlockHashList = list;
+                  ImageBlockService.invalidateResultCache();
+                }
+                if (mounted) {
+                  setState(() => _imageBlockStatus[imgSrc] = true);
+                }
+                SmartDialog.showToast('已屏蔽图片');
+              }
+            },
+            leading: const Icon(
+              Icons.block,
+              color: Colors.red,
+              size: 19,
+            ),
+            title: const Text('屏蔽图片', style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );
