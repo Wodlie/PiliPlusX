@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
 import 'package:PiliPlus/common/widgets/flutter/pop_scope.dart';
@@ -12,6 +13,7 @@ import 'package:PiliPlus/utils/image_block_service.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ImageBlockSettingPage extends StatefulWidget {
   const ImageBlockSettingPage({super.key});
@@ -220,6 +222,54 @@ class _ImageBlockSettingPageState extends State<ImageBlockSettingPage> {
       phashes,
       toastText: '已复制${_hashList.length}条pHash到剪贴板',
     );
+  }
+
+  Future<void> _importImagePhash() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+    );
+    if (image == null) return;
+
+    SmartDialog.showLoading(msg: '正在计算pHash...');
+    try {
+      final bytes = await image.readAsBytes();
+      final hashes = await ImageBlockService.computeHashes(
+        Uint8List.fromList(bytes),
+        flipEnabled: Pref.imageBlockFlipEnabled,
+        rotateEnabled: Pref.imageBlockRotateEnabled,
+      );
+
+      if (hashes.isEmpty) {
+        SmartDialog.dismiss();
+        SmartDialog.showToast('无法计算该图片的pHash');
+        return;
+      }
+
+      final primaryHash = hashes.first;
+      await BlockedImageStorage.saveImage(
+        primaryHash,
+        Uint8List.fromList(bytes),
+      );
+
+      final list = Pref.imageBlockHashList;
+      if (!list.any((e) => e['pHash'] == primaryHash)) {
+        list.add({
+          'pHash': primaryHash,
+          'url': '',
+          'ts': DateTime.now().millisecondsSinceEpoch,
+        });
+        Pref.imageBlockHashList = list;
+        ImageBlockService.invalidateResultCache();
+      }
+
+      SmartDialog.dismiss();
+      _refreshList();
+      SmartDialog.showToast('已导入图片pHash');
+    } catch (e) {
+      SmartDialog.dismiss();
+      SmartDialog.showToast('导入失败：$e');
+    }
   }
 
   Future<void> _clearAll() async {
@@ -458,6 +508,11 @@ class _ImageBlockSettingPageState extends State<ImageBlockSettingPage> {
                     icon: const Icon(Icons.file_upload_outlined),
                     tooltip: '导出pHash',
                     onPressed: _exportPhash,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.photo_library_outlined),
+                    tooltip: '导入图片计算pHash',
+                    onPressed: _importImagePhash,
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_sweep_outlined),
