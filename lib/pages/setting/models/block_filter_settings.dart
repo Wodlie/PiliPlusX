@@ -7,7 +7,9 @@ import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
 import 'package:PiliPlus/utils/recommend_filter.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 
 Future<void> _showReplyMinLevelDialog(
@@ -87,6 +89,24 @@ List<SettingsModel> get blockFilterSettings => [
       defaultVal: false,
       setKey: SettingBoxKey.enableImageBlock,
       onTap: (context) => Get.toNamed('/imageBlockSetting'),
+    ),
+  ),
+  SplitModel(
+    normalModel: const NormalModel.split(
+      title: 'AI图片识别',
+      subtitle: 'CLIP模型自动识别评论图片内容',
+      leading: Icon(Icons.psychology_outlined),
+    ),
+    switchModel: SwitchModel.split(
+      defaultVal: false,
+      setKey: SettingBoxKey.enableAiImageModeration,
+      onTap: (context) {
+        if (!Pref.enableImageBlock) {
+          SmartDialog.showToast('需先启用屏蔽图片');
+          return;
+        }
+        Get.toNamed('/aiImageModeration');
+      },
     ),
   ),
 
