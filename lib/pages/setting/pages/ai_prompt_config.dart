@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:PiliPlus/utils/ai_image_moderation_service.dart';
 import 'package:PiliPlus/utils/ai_inference_engine.dart';
 import 'package:PiliPlus/utils/ai_model_storage.dart';
 import 'package:PiliPlus/utils/clip_similarity.dart';
@@ -125,8 +126,7 @@ class _AiPromptConfigPageState extends State<AiPromptConfigPage> {
         Pref.aiPromptNormal = normal;
 
         // 8. Invalidate downstream caches.
-        // AiImageModerationService.invalidateCache() — not yet available.
-        // Will be wired after T9.
+        AiImageModerationService.invalidateCache();
       } finally {
         session.dispose();
       }

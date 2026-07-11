@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:collection';
 import 'dart:math' show sqrt;
 import 'dart:typed_data';
 
@@ -11,14 +13,31 @@ import 'package:PiliPlus/utils/image_block_service.dart';
 import 'package:PiliPlus/utils/lru_cache.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 
+/// A queued evaluation task for [AiImageModerationService].
+///
+/// Mirrors the [_ImageHashWorker._Task] pattern from [ImageBlockService].
+class _EvaluationTask {
+  final String key;
+  final String imageUrl;
+  final Completer<AiImageState> completer;
+
+  _EvaluationTask({
+    required this.key,
+    required this.imageUrl,
+    required this.completer,
+  });
+}
+
 /// AI-powered image moderation service using CLIP zero-shot classification.
 ///
 /// Mirrors the [ImageBlockService] pattern:
 /// - Static methods only (no GetxService, no reactive streams)
 /// - LRU cache for results ([_resultCache], max 500 entries)
 /// - In-flight dedup ([_inFlightEvaluations]) avoids re-downloading the same URL
+/// - Evaluation queue ([_evalQueue], max 50, newest-first) prevents resource
+///   exhaustion when rapidly scrolling through comments
 /// - Lazy-loaded singleton [InferenceSession]
-/// - Cache-first → in-flight dedup → fresh evaluation pipeline
+/// - Cache-first → in-flight dedup → evaluation queue → fresh evaluation
 /// - Fail-open: any exception returns [AiImageState.normal]
 /// - Fire-and-forget: UI calls [evaluateImage], gets result back, does setState
 abstract final class AiImageModerationService {
@@ -38,6 +57,17 @@ abstract final class AiImageModerationService {
 
   /// Tracks model format for auto-invalidation when model is replaced.
   static String? _lastFormat;
+
+  // ── Evaluation queue (max 50, newest-first) ─────────────────────────
+
+  /// Maximum number of queued evaluations before oldest are dropped.
+  static const int _maxEvalQueueSize = 50;
+
+  /// Ordered queue of pending evaluation tasks (newest at end).
+  static final Queue<_EvaluationTask> _evalQueue = Queue<_EvaluationTask>();
+
+  /// Whether the queue worker is currently processing a task.
+  static bool _evalQueueBusy = false;
 
   // ── Sync fast path ──────────────────────────────────────────────────
 
@@ -61,7 +91,8 @@ abstract final class AiImageModerationService {
   ///    available (fail-open).
   /// 3. Check LRU result cache → return cached value.
   /// 4. Check in-flight dedup map → await concurrent evaluation.
-  /// 5. Fire fresh evaluation and cache result.
+  /// 5. Queue the evaluation task (newest-first, max 50).
+  /// 6. Dispatch the next task from the queue.
   static Future<AiImageState> evaluateImage(String imageUrl) async {
     // 1. If AI disabled or pHash disabled → normal (zero overhead)
     if (!Pref.enableAiImageModeration || !Pref.enableImageBlock) {
@@ -84,11 +115,29 @@ abstract final class AiImageModerationService {
     final inFlight = _inFlightEvaluations[key];
     if (inFlight != null) return inFlight;
 
-    // 6. Create evaluation future
-    final future = _evaluateFresh(key, imageUrl);
-    _inFlightEvaluations[key] = future;
+    // 6. Create a queued evaluation task.
+    final completer = Completer<AiImageState>();
+    _inFlightEvaluations[key] = completer.future;
+
+    // 7. If queue is full, drop the oldest task (complete it as normal).
+    while (_evalQueue.length >= _maxEvalQueueSize) {
+      final oldest = _evalQueue.removeFirst();
+      _inFlightEvaluations.remove(oldest.key);
+      if (!oldest.completer.isCompleted) {
+        oldest.completer.complete(AiImageState.normal);
+      }
+    }
+
+    // 8. Add to queue and try to dispatch.
+    _evalQueue.add(_EvaluationTask(
+      key: key,
+      imageUrl: imageUrl,
+      completer: completer,
+    ));
+    _dispatchNextEval();
+
     try {
-      return await future;
+      return await completer.future;
     } finally {
       _inFlightEvaluations.remove(key);
     }
@@ -161,6 +210,43 @@ abstract final class AiImageModerationService {
       // Fail-open: any exception → show image normally
       debugPrint('AiImageModerationService error: $e');
       return AiImageState.normal;
+    }
+  }
+
+  // ── Evaluation queue dispatch ───────────────────────────────────────
+
+  /// Dispatch the newest task from the queue.
+  ///
+  /// Only one task processes at a time ([_evalQueueBusy]). When it finishes,
+  /// the next-newest task in the queue is dispatched (LIFO / newest-first).
+  static void _dispatchNextEval() {
+    if (_evalQueueBusy || _evalQueue.isEmpty) return;
+
+    // Newest-first: take from end of queue.
+    final task = _evalQueue.removeLast();
+    _evalQueueBusy = true;
+
+    _executeEval(task).then((_) {
+      _evalQueueBusy = false;
+      _dispatchNextEval();
+    });
+  }
+
+  /// Execute a single evaluation task.
+  ///
+  /// Delegates to [_evaluateFresh] and completes the task's completer with
+  /// the result. On any exception, completes with [AiImageState.normal].
+  static Future<void> _executeEval(_EvaluationTask task) async {
+    try {
+      final result = await _evaluateFresh(task.key, task.imageUrl);
+      if (!task.completer.isCompleted) {
+        task.completer.complete(result);
+      }
+    } catch (e) {
+      debugPrint('AiImageModerationService._executeEval error: $e');
+      if (!task.completer.isCompleted) {
+        task.completer.complete(AiImageState.normal);
+      }
     }
   }
 
@@ -237,6 +323,14 @@ abstract final class AiImageModerationService {
     _session = null;
     _resultCache.clear();
     _inFlightEvaluations.clear();
+    _evalQueueBusy = false;
+    // Complete all pending queue tasks with normal (fail-open).
+    while (_evalQueue.isNotEmpty) {
+      final task = _evalQueue.removeFirst();
+      if (!task.completer.isCompleted) {
+        task.completer.complete(AiImageState.normal);
+      }
+    }
     _generation++;
   }
 }

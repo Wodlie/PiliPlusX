@@ -1,4 +1,5 @@
 import 'dart:io' show File, Platform;
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:PiliPlus/utils/ai_model_storage.dart';
@@ -55,6 +56,10 @@ class OnnxSession implements InferenceSession {
   late final String _visionOutputName;
   late final String _textInputName;
   late final String _textOutputName;
+  // Model paths are needed by [Isolate.run] which creates temporary sessions
+  // inside the spawned isolate (native resources cannot cross boundaries).
+  late final String _visionModelPath;
+  late final String _textModelPath;
 
   OnnxSession._();
 
@@ -85,6 +90,8 @@ class OnnxSession implements InferenceSession {
       session._ort = ort;
       session._visionSession = vision;
       session._textSession = text;
+      session._visionModelPath = visionPath;
+      session._textModelPath = textPath;
       session._visionInputName = vision.inputNames.first;
       session._visionOutputName = vision.outputNames.first;
       session._textInputName = text.inputNames.first;
@@ -98,18 +105,33 @@ class OnnxSession implements InferenceSession {
 
   @override
   Future<Float32List> runVision(Float32List input) async {
-    final tensor = await onnx.OrtValue.fromList(
-      input.toList(),
-      [1, 3, 224, 224],
-    );
-    try {
-      final outputs = await _visionSession.run({_visionInputName: tensor});
-      final out = outputs[_visionOutputName]!;
-      final list = await out.asList() as List<dynamic>;
-      return Float32List.fromList(list.cast<double>());
-    } finally {
-      await tensor.dispose();
-    }
+    // ONNX Runtime has no built-in IsolateInterpreter (unlike flutter_litert).
+    // Use Isolate.run() to offload inference: create a temporary session
+    // inside the spawned isolate (sessions cannot cross isolate boundaries),
+    // run inference, close the session, and return the result.
+    final path = _visionModelPath;
+    final inputName = _visionInputName;
+    final outputName = _visionOutputName;
+    return Isolate.run(() async {
+      final ort = onnx.OnnxRuntime();
+      final session = await ort.createSession(path);
+      try {
+        final tensor = await onnx.OrtValue.fromList(
+          input.toList(),
+          [1, 3, 224, 224],
+        );
+        try {
+          final outputs = await session.run({inputName: tensor});
+          final out = outputs[outputName]!;
+          final list = await out.asList() as List<dynamic>;
+          return Float32List.fromList(list.cast<double>());
+        } finally {
+          await tensor.dispose();
+        }
+      } finally {
+        session.close();
+      }
+    });
   }
 
   @override

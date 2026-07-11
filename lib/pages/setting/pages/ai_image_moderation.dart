@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:PiliPlus/pages/setting/widgets/normal_item.dart';
 import 'package:PiliPlus/pages/setting/widgets/switch_item.dart';
 import 'package:PiliPlus/common/widgets/dialog/missing_model_dialog.dart';
+import 'package:PiliPlus/utils/ai_image_moderation_service.dart';
 import 'package:PiliPlus/utils/ai_model_storage.dart';
 import 'package:PiliPlus/utils/hf_model_downloader.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -130,6 +131,8 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
           _modelReady = true;
           Pref.aiModelDownloaded = true;
         });
+        // Replacing the model invalidates all previous cached results.
+        AiImageModerationService.invalidateCache();
         SmartDialog.showToast('模型下载完成');
       } else {
         SmartDialog.showToast('下载失败: 模型文件不完整');
@@ -314,9 +317,7 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
               absorbing: !imageBlockEnabled,
               child: SetSwitchItem(
                 title: '启用AI自动识别',
-                subtitle: imageBlockEnabled
-                    ? '使用CLIP模型自动识别评论图片内容'
-                    : '需先启用屏蔽图片',
+                subtitle: imageBlockEnabled ? '使用CLIP模型自动识别评论图片内容' : '需先启用屏蔽图片',
                 setKey: SettingBoxKey.enableAiImageModeration,
                 defaultVal: false,
                 onChanged: (_) => setState(() {}),
@@ -352,8 +353,7 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
             title: '设置Prompt',
             subtitle: '配置AI识别的提示词',
             leading: const Icon(Icons.edit_note),
-            onTap: (context, setState) =>
-                Get.toNamed('/aiPromptConfig'),
+            onTap: (context, setState) => Get.toNamed('/aiPromptConfig'),
           ),
           const Divider(height: 1),
           SetSwitchItem(
