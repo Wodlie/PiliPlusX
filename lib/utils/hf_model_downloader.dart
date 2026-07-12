@@ -65,7 +65,7 @@ class HfModelDownloader {
     }
 
     final (host, ownerRepo) = base;
-    final downloadBase = 'https://$host/$ownerRepo';
+    final downloadBase = 'https://$host/$ownerRepo/resolve/main';
 
     // 2. Ensure directories exist
     final modelsDir = await AiModelStorage.modelsDir;
@@ -168,7 +168,14 @@ class HfModelDownloader {
       }
     }
 
-    onProgress?.call(1.0, 'Download incomplete — missing files');
+    onProgress?.call(
+      1.0,
+      'Download incomplete — missing files. '
+      'Repository must contain: '
+      'tokenizer.json (or vocab.json + merges.txt), '
+      'vision_model.onnx/tflite, '
+      'text_model.onnx/tflite',
+    );
     return false;
   }
 
@@ -234,6 +241,9 @@ class HfModelDownloader {
   }
 
   /// Download a single file with up to [_maxRetries] retries.
+  ///
+  /// After a successful HTTP download the file is validated: HTML error
+  /// pages (e.g. from an incorrect URL) are rejected and deleted.
   static Future<bool> _downloadFileWithRetry(
     String url,
     String savePath, {
@@ -252,6 +262,16 @@ class HfModelDownloader {
             }
           },
         );
+        // Validate: reject HTML pages that were served instead of the model.
+        final file = File(savePath);
+        final bytes = await file.openRead(0, 64).expand((e) => e).toList();
+        final header = String.fromCharCodes(bytes).trim().toLowerCase();
+        if (header.startsWith('<!doctype') ||
+            header.startsWith('<html') ||
+            header.isEmpty) {
+          await file.delete();
+          return false;
+        }
         return true;
       } on DioException {
         if (attempt == _maxRetries - 1) return false;
