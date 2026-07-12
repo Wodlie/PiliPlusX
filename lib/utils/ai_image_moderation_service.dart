@@ -4,11 +4,15 @@ import 'dart:math' show sqrt;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:PiliPlus/utils/ai_cdn_url.dart';
 import 'package:PiliPlus/utils/ai_image_state.dart';
 import 'package:PiliPlus/utils/ai_inference_engine.dart';
+import 'package:PiliPlus/utils/ai_model_storage.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/clip_preprocessing.dart';
+import 'package:PiliPlus/utils/clip_preprocessor_config.dart';
 import 'package:PiliPlus/utils/clip_similarity.dart';
+import 'package:PiliPlus/utils/clip_tokenizer_config.dart';
 import 'package:PiliPlus/utils/image_block_service.dart';
 import 'package:PiliPlus/utils/lru_cache.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -100,9 +104,9 @@ abstract final class AiImageModerationService {
     }
 
     // 2. If no model or no embeddings → normal (fail-open)
-    if (!Pref.aiModelDownloaded || Pref.aiTextEmbeddings.length < 1536) {
-      return AiImageState.normal;
-    }
+    if (!Pref.aiModelDownloaded) return AiImageState.normal;
+    final embeds = Pref.aiTextEmbeddings;
+    if (embeds.isEmpty || embeds.length % 3 != 0) return AiImageState.normal;
 
     // 3. Normalize URL
     final key = _normalizeUrl(imageUrl);
@@ -129,11 +133,13 @@ abstract final class AiImageModerationService {
     }
 
     // 8. Add to queue and try to dispatch.
-    _evalQueue.add(_EvaluationTask(
-      key: key,
-      imageUrl: imageUrl,
-      completer: completer,
-    ));
+    _evalQueue.add(
+      _EvaluationTask(
+        key: key,
+        imageUrl: imageUrl,
+        completer: completer,
+      ),
+    );
     _dispatchNextEval();
 
     try {
@@ -153,13 +159,16 @@ abstract final class AiImageModerationService {
     try {
       // Load text embeddings from Pref
       final rawEmbeds = Pref.aiTextEmbeddings;
-      if (rawEmbeds.length < 1536) return AiImageState.normal;
+      if (rawEmbeds.isEmpty || rawEmbeds.length % 3 != 0) {
+        return AiImageState.normal;
+      }
 
-      // Parse 3×512 embeddings
+      // Parse 3 embeddings with dynamic dimension
+      final dim = rawEmbeds.length ~/ 3;
       final embedList = <Float32List>[
-        Float32List.fromList(rawEmbeds.sublist(0, 512)),
-        Float32List.fromList(rawEmbeds.sublist(512, 1024)),
-        Float32List.fromList(rawEmbeds.sublist(1024, 1536)),
+        Float32List(dim)..setRange(0, dim, rawEmbeds.sublist(0, dim)),
+        Float32List(dim)..setRange(0, dim, rawEmbeds.sublist(dim, 2 * dim)),
+        Float32List(dim)..setRange(0, dim, rawEmbeds.sublist(2 * dim, 3 * dim)),
       ];
 
       // Auto-invalidate cache if model format changed (model was replaced)
@@ -173,23 +182,51 @@ abstract final class AiImageModerationService {
       _session ??= await AiInferenceEngine.create();
       if (_session == null) return AiImageState.normal;
 
+      // Load preprocessor config from disk (fall back to defaults)
+      final preprocConfig = await ClipPreprocessorConfig.loadFromPath(
+        await AiModelStorage.getPreprocessorConfigPath(),
+      );
+      final effectiveConfig =
+          preprocConfig ?? ClipPreprocessorConfig.fromDefaults();
+
+      // Load tokenizer config for reference (tokenizer not run here)
+      final tokenizerConfig = await ClipTokenizerConfig.loadFromPath(
+        await AiModelStorage.getTokenizerConfigPath(),
+      );
+
       // Get input size and layout
       final inputSize = Pref.aiModelInputSize;
       final layout = ClipPreprocessing.layoutForFormat(format);
+      final H = effectiveConfig.inputHeight ?? inputSize;
+      final W = effectiveConfig.inputWidth ?? inputSize;
 
-      // Download image via CacheManager
-      final file = await CacheManager.manager.getSingleFile(imageUrl);
-      final bytes = await file.readAsBytes();
+      // Download image via CacheManager (use B站 CDN thumbnail URL)
+      final thumbnailUrl = aiThumbnailUrl(
+        imageUrl,
+        inputWidth: W,
+        inputHeight: H,
+      );
+      final bytes = await _loadImageBytes(thumbnailUrl);
 
       // Preprocess
       final input = await ClipPreprocessing.preprocessImage(
         bytes,
-        inputSize: inputSize,
+        config: effectiveConfig,
         layout: layout,
+        fallbackInputSize: inputSize,
       );
 
-      // Run vision encoder
-      final imageEmbed = await _session!.runVision(input);
+      // Run vision encoder with dynamic shape
+      final imageEmbed = await _session!.runVision(input, shape: [1, 3, H, W]);
+
+      // Validate image embedding dimension matches text embedding dimension
+      if (imageEmbed.length != dim) {
+        debugPrint(
+          'AiImageModerationService: image embedding dim mismatch '
+          '(image: ${imageEmbed.length}, text: $dim)',
+        );
+        return AiImageState.normal;
+      }
 
       // Normalize image embedding
       final normalizedImage = _normalize(imageEmbed);
@@ -200,9 +237,13 @@ abstract final class AiImageModerationService {
       // Cache result
       _resultCache[key] = state;
 
-      // Auto-blocklist: if MALICIOUS && aiAutoBlocklist
+      // Auto-blocklist: if BLOCKED && aiAutoBlocklist
       if (state == AiImageState.blocked && Pref.aiAutoBlocklist) {
-        await ImageBlockService.blockImage(imageUrl);
+        if (onAutoBlock != null) {
+          onAutoBlock!(imageUrl, 'ai_auto');
+        } else {
+          await ImageBlockService.addBlockedImage(imageUrl, source: 'ai_auto');
+        }
       }
 
       return state;
@@ -263,6 +304,28 @@ abstract final class AiImageModerationService {
   static void setCachedResult(String imageUrl, AiImageState state) {
     final key = _normalizeUrl(imageUrl);
     _resultCache[key] = state;
+  }
+
+  /// Mock image bytes for testing (bypasses [CacheManager] download).
+  ///
+  /// When set, [_loadImageBytes] returns these bytes directly instead of
+  /// downloading from the network. Pass `null` to restore normal behaviour.
+  @visibleForTesting
+  static Uint8List? mockImageBytes;
+
+  /// Test-only callback fired when an auto-block would be triggered.
+  ///
+  /// When non-null, replaces the real [ImageBlockService.addBlockedImage] call
+  /// so tests can verify the auto-block logic without requiring Isolate/pHash
+  /// computation (which is unavailable in test environments).
+  @visibleForTesting
+  static void Function(String imageUrl, String source)? onAutoBlock;
+
+  /// Load image bytes from [url], using [mockImageBytes] when set.
+  static Future<Uint8List> _loadImageBytes(String url) async {
+    if (mockImageBytes != null) return mockImageBytes!;
+    final file = await CacheManager.manager.getSingleFile(url);
+    return await file.readAsBytes();
   }
 
   /// Set a mock [InferenceSession] for testing (test helper only).
@@ -332,5 +395,22 @@ abstract final class AiImageModerationService {
       }
     }
     _generation++;
+  }
+
+  /// Dispose the inference session without clearing caches.
+  ///
+  /// Call when the vision encoder or text encoder model file is replaced.
+  /// The session will be recreated lazily on the next [_evaluateFresh].
+  static void disposeSession() {
+    _session?.dispose();
+    _session = null;
+    _lastFormat = null;
+  }
+
+  /// Clear the persisted text embeddings ([Pref.aiTextEmbeddings]).
+  ///
+  /// Call when the text encoder, tokenizer, or tokenizer config is replaced.
+  static void clearTextEmbeddings() {
+    Pref.aiTextEmbeddings = [];
   }
 }

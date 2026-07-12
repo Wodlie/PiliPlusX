@@ -468,6 +468,46 @@ abstract final class ImageBlockService {
     }
   }
 
+  /// Unified method to add a blocked image entry to the persistent block list.
+  /// Calls [blockImage] to compute and save pHash, then adds to
+  /// [Pref.imageBlockHashList] with deduplication by pHash.
+  ///
+  /// When [source] is `'ai_auto'`, adds metadata fields `source`, `aiState`,
+  /// and `timestamp` to the entry for AI auto-blocking traceability.
+  ///
+  /// Returns the entry map, or `null` if blocking (pHash computation) failed.
+  ///
+  /// Existing fields (`pHash`, `url`, `ts`) are preserved for backward
+  /// compatibility.
+  static Future<Map<String, dynamic>?> addBlockedImage(
+    String imageUrl, {
+    String source = 'manual',
+    bool flipEnabled = true,
+    bool rotateEnabled = true,
+  }) async {
+    final entry = await blockImage(
+      imageUrl,
+      flipEnabled: flipEnabled,
+      rotateEnabled: rotateEnabled,
+    );
+    if (entry == null) return null;
+
+    if (source == 'ai_auto') {
+      entry['source'] = 'ai_auto';
+      entry['aiState'] = 'blocked';
+      entry['timestamp'] = DateTime.now().millisecondsSinceEpoch;
+    }
+
+    final list = Pref.imageBlockHashList;
+    if (!list.any((e) => e['pHash'] == entry['pHash'])) {
+      list.add(entry);
+      Pref.imageBlockHashList = list;
+    }
+
+    invalidateResultCache();
+    return entry;
+  }
+
   /// Get cached pHash variants for a URL.
   static List<String>? getCachedHashes(String url) =>
       _hashCache[normalizeUrl(url)];

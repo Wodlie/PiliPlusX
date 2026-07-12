@@ -13,9 +13,9 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 ///
 /// Users edit three prompt texts (MALICIOUS, high-risk, normal). On save,
 /// each prompt is tokenized via CLIPTokenizer, encoded through the text
-/// encoder (InferenceSession.runText), L2-normalised, and the three 512‑
-/// element embeddings are concatenated into a single 1536-element list
-/// stored in [Pref.aiTextEmbeddings].
+/// encoder (InferenceSession.runText) which returns the model's actual
+/// embedding dimension, L2-normalised, and the three embeddings are
+/// concatenated into a single list stored in [Pref.aiTextEmbeddings].
 ///
 /// Encoding runs asynchronously so the UI thread is never blocked.
 class AiPromptConfigPage extends StatefulWidget {
@@ -98,8 +98,8 @@ class _AiPromptConfigPageState extends State<AiPromptConfigPage> {
         // 5a. Tokenize + encode each prompt.
         final embeddings = <Float32List>[];
         for (final text in [malicious, highRisk, normal]) {
-          final tokenIds = tokenizer.tokenize(text);
-          final rawEmbedding = await session.runText(tokenIds);
+          final tokens = tokenizer.tokenize(text);
+          final rawEmbedding = await session.runText(tokens);
 
           // 5b. L2 normalise.
           double sumSq = 0.0;
@@ -114,7 +114,17 @@ class _AiPromptConfigPageState extends State<AiPromptConfigPage> {
           embeddings.add(normalized);
         }
 
-        // 6. Concat 3×512 → 1536 items.
+        // 5c. Validate all three embeddings have the same dimension.
+        final dim0 = embeddings[0].length;
+        final dim1 = embeddings[1].length;
+        final dim2 = embeddings[2].length;
+        if (dim0 != dim1 || dim1 != dim2) {
+          if (mounted) Navigator.of(context).pop();
+          SmartDialog.showToast('嵌入维度不一致: $dim0, $dim1, $dim2，请检查模型文件');
+          return;
+        }
+
+        // 6. Concat embeddings.
         final concat = <double>[];
         for (final emb in embeddings) {
           concat.addAll(emb);
