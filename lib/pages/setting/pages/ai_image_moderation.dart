@@ -76,6 +76,13 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
 
     Pref.aiModelRepoUrl = url;
 
+    // Pre-validate repo files before opening the progress dialog.
+    final validationError = await HfModelDownloader.validateRepoFiles(url);
+    if (validationError != null) {
+      SmartDialog.showToast(validationError);
+      return;
+    }
+
     final progressNotifier = ValueNotifier<double>(0.0);
     final statusNotifier = ValueNotifier<String>('正在准备下载...');
 
@@ -253,6 +260,13 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
           Text(
             'HuggingFace 仓库地址',
             style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '仓库需包含：tokenizer.json、vision_model.onnx/tflite、text_model.onnx/tflite',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
           ),
           const SizedBox(height: 8),
           TextField(

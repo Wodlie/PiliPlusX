@@ -36,6 +36,53 @@ class HfModelDownloader {
 
   // ── Public entry-point ──────────────────────────────────────────────
 
+  /// Validates whether [repoUrl] contains the files required by this
+  /// downloader. Returns `null` if valid, otherwise a Chinese error message
+  /// describing what is missing.
+  static Future<String?> validateRepoFiles(String repoUrl) async {
+    final base = _parseBase(repoUrl);
+    if (base == null) return '无效的 HuggingFace 地址';
+
+    final (host, ownerRepo) = base;
+    final apiUrl = 'https://$host/api/models/$ownerRepo';
+
+    try {
+      final response = await Dio().get(apiUrl);
+      final data = response.data;
+      if (data is! Map<String, dynamic>) return '无法解析仓库信息';
+
+      final siblings = data['siblings'] as List<dynamic>?;
+      if (siblings == null) return '无法获取仓库文件列表';
+
+      final files = siblings
+          .whereType<Map<String, dynamic>>()
+          .map((e) => e['rfilename'] as String?)
+          .whereType<String>()
+          .toSet();
+
+      final hasTokenizer = _tokenizerPriority.any(files.contains) ||
+          (files.contains('vocab.json') && files.contains('merges.txt'));
+      final hasVision = _visionPriority.any(files.contains);
+      final hasText = _textPriority.any(files.contains);
+
+      if (hasTokenizer && hasVision && hasText) return null;
+
+      final missing = <String>[];
+      if (!hasTokenizer) missing.add('tokenizer.json（或 vocab.json + merges.txt）');
+      if (!hasVision) missing.add('vision_model.onnx/tflite 或 image_encoder.onnx/tflite');
+      if (!hasText) missing.add('text_model.onnx/tflite 或 text_encoder.onnx/tflite');
+
+      return '该仓库缺少必要文件：${missing.join('、')}';
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return '仓库不存在或无法访问';
+      }
+      return '检查仓库文件失败：${e.message}';
+    } catch (e) {
+      return '检查仓库文件失败：$e';
+    }
+  }
+
   /// Download all required files from a HuggingFace repo.
   ///
   /// [repoUrl] can be any HuggingFace URL pattern:
