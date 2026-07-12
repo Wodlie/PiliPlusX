@@ -481,8 +481,7 @@ class _ImageGridViewState extends State<ImageGridView> {
                   return LayoutId(
                     id: index,
                     child: Semantics(
-                      label:
-                          '图片，第 ${index + 1} 张，共 ${widget.picArr.length} 张',
+                      label: '图片，第 ${index + 1} 张，共 ${widget.picArr.length} 张',
                       button: true,
                       child: NetworkImgLayer(
                         src: item.url,

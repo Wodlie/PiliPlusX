@@ -281,8 +281,14 @@ void main() {
       'does not filter reply with only system @ and body content with emote',
       () async {
         await GStorage.setting.put(SettingBoxKey.enableAtFilter, true);
-        await GStorage.setting.put(SettingBoxKey.enableAtFilterBodyLength, true);
-        await GStorage.setting.put(SettingBoxKey.atFilterBodyLengthThreshold, 10);
+        await GStorage.setting.put(
+          SettingBoxKey.enableAtFilterBodyLength,
+          true,
+        );
+        await GStorage.setting.put(
+          SettingBoxKey.atFilterBodyLengthThreshold,
+          10,
+        );
 
         // Reply like "回复 @123456 :好冷[吃瓜]" – only the system @
         final reply = _makeReply(

@@ -108,15 +108,24 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
               onPressed: controller.canSort.value
                   ? controller.queryBySort
                   : null,
-              icon: Icon(Icons.sort, size: 16,
-                color: controller.canSort.value ? secondary : theme.colorScheme.outline),
+              icon: Icon(
+                Icons.sort,
+                size: 16,
+                color: controller.canSort.value
+                    ? secondary
+                    : theme.colorScheme.outline,
+              ),
               label: Obx(
                 () => Text(
                   controller.canSort.value
                       ? controller.sortType.value.label
                       : '排序不可用',
-                  style: TextStyle(fontSize: 13,
-                    color: controller.canSort.value ? secondary : theme.colorScheme.outline),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: controller.canSort.value
+                        ? secondary
+                        : theme.colorScheme.outline,
+                  ),
                 ),
               ),
             ),

@@ -45,8 +45,10 @@ abstract final class ClipSimilarity {
     Float32List imageEmbed,
     List<Float32List> textEmbeds,
   ) {
-    assert(textEmbeds.length == 3,
-        'textEmbeds must contain exactly 3 entries (MALICIOUS, high-risk, normal)');
+    assert(
+      textEmbeds.length == 3,
+      'textEmbeds must contain exactly 3 entries (MALICIOUS, high-risk, normal)',
+    );
 
     final scores = <double>[
       cosineSimilarity(imageEmbed, textEmbeds[0]),

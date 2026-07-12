@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -14,12 +13,10 @@ class MissingModelDialog {
   static bool checkAndShow(BuildContext context) {
     if (!Pref.enableAiImageModeration) return false;
     if (_shownThisSession) return false;
-    // Never configured a HF URL — no model expected.
-    if (Pref.aiModelRepoUrl.isEmpty) return false;
 
     // Schedule async check — don't block the UI
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final hasFiles = await AiModelStorage.hasModelFiles();
+      final hasFiles = await AiModelStorage.hasAllRequiredFiles();
       if (!hasFiles && context.mounted) {
         _shownThisSession = true;
         showMissingModelDialog(context);

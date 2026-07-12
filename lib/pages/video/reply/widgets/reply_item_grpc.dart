@@ -1569,9 +1569,11 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                                   onChanged: (v) {
                                     setDialogState(() {
                                       if (v == true) {
-                                        for (int i = 0;
-                                            i < pictures.length;
-                                            i++) {
+                                        for (
+                                          int i = 0;
+                                          i < pictures.length;
+                                          i++
+                                        ) {
                                           selected.add(i);
                                         }
                                       } else {
@@ -1650,7 +1652,8 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               ),
               title: Text('屏蔽图片', style: style.copyWith(color: errorColor)),
             ),
-          if (Pref.enableImageBlock && (hasBlockedImages || hasAiBlockedOrLowRes))
+          if (Pref.enableImageBlock &&
+              (hasBlockedImages || hasAiBlockedOrLowRes))
             ListTile(
               onTap: () {
                 Get.back();
@@ -1670,7 +1673,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               ),
               title: Text('恢复图片显示', style: style.copyWith(color: errorColor)),
             ),
-          if (Pref.enableImageBlock && hasAiBlockedOrLowRes && !hasBlockedImages)
+          if (Pref.enableImageBlock &&
+              hasAiBlockedOrLowRes &&
+              !hasBlockedImages)
             ListTile(
               onTap: () async {
                 Get.back();

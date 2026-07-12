@@ -28,7 +28,7 @@ void main() {
       cache['d'] = 'd';
 
       expect(cache.length, 3);
-      expect(cache.containsKey('a'), true);  // a was accessed recently
+      expect(cache.containsKey('a'), true); // a was accessed recently
       expect(cache.containsKey('b'), false); // b is the least recently used
       expect(cache.containsKey('c'), true);
       expect(cache.containsKey('d'), true);

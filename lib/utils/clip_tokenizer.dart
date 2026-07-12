@@ -28,8 +28,9 @@ class CLIPTokenizer {
 
   // ── Byte ↔ Unicode mapping (CLIP-specific) ────────────────────────
   static final Map<int, int> _byteToUnicode = _buildByteToUnicode();
-  static final Map<int, int> _unicodeToByte =
-      _byteToUnicode.map((k, v) => MapEntry(v, k));
+  static final Map<int, int> _unicodeToByte = _byteToUnicode.map(
+    (k, v) => MapEntry(v, k),
+  );
 
   // ── Pre-tokenizer regex ───────────────────────────────────────────
   static final RegExp _pattern = RegExp(
@@ -40,7 +41,7 @@ class CLIPTokenizer {
 
   // ── Constructor ────────────────────────────────────────────────────
   CLIPTokenizer._(this._vocab, this._bpeRanks)
-      : _decoder = _vocab.map((k, v) => MapEntry(v, k));
+    : _decoder = _vocab.map((k, v) => MapEntry(v, k));
 
   // ── Factory: load from directory ───────────────────────────────────
   /// Load tokenizer files from [tokenizerDir]. Auto-detects format:
@@ -69,8 +70,7 @@ class CLIPTokenizer {
     final vocabRaw = model['vocab'] as Map<String, dynamic>;
     final mergesRaw = model['merges'] as List<dynamic>;
 
-    final vocab =
-        vocabRaw.map((k, v) => MapEntry(k, (v as num).toInt()));
+    final vocab = vocabRaw.map((k, v) => MapEntry(k, (v as num).toInt()));
     final merges = mergesRaw.cast<String>().toList();
 
     return _fromMerges(vocab, merges);
@@ -123,8 +123,7 @@ class CLIPTokenizer {
     final vocabRaw = model['vocab'] as Map<String, dynamic>;
     final mergesRaw = model['merges'] as List<dynamic>;
 
-    final vocab =
-        vocabRaw.map((k, v) => MapEntry(k, (v as num).toInt()));
+    final vocab = vocabRaw.map((k, v) => MapEntry(k, (v as num).toInt()));
     final merges = mergesRaw.cast<String>().toList();
 
     return _fromMerges(vocab, merges);
@@ -151,7 +150,10 @@ class CLIPTokenizer {
     clean = clean.replaceAll(_whitespacePattern, ' ');
 
     // 3. Regex split
-    final rawTokens = _pattern.allMatches(clean).map((m) => m.group(0)!).toList();
+    final rawTokens = _pattern
+        .allMatches(clean)
+        .map((m) => m.group(0)!)
+        .toList();
 
     // 4. Byte-level BPE encode each token
     final bpeTokenIds = <int>[];
@@ -254,9 +256,7 @@ class CLIPTokenizer {
         }
         newWord.addAll(word.sublist(i, j));
         i = j;
-        if (word[i] == first &&
-            i < word.length - 1 &&
-            word[i + 1] == second) {
+        if (word[i] == first && i < word.length - 1 && word[i + 1] == second) {
           newWord.add(first + second);
           i += 2;
         } else {

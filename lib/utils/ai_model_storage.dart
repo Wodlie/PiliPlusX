@@ -84,6 +84,13 @@ abstract final class AiModelStorage {
     return vision != null && text != null;
   }
 
+  /// Check if all files required by the AI pipeline are present.
+  static Future<bool> hasAllRequiredFiles() async {
+    final vision = await getVisionPath();
+    final text = await getTextPath();
+    return vision != null && text != null && await hasTokenizer();
+  }
+
   /// Auto-detect model format by scanning files for known extensions.
   ///
   /// Returns `'onnx'`, `'tflite'`, or `''` (empty string if undetermined).
@@ -118,7 +125,9 @@ abstract final class AiModelStorage {
       if (await File(p.join(base, name)).exists()) return true;
     }
     final vocabExists = await File(p.join(base, _tokenizerVocabFile)).exists();
-    final mergesExists = await File(p.join(base, _tokenizerMergesFile)).exists();
+    final mergesExists = await File(
+      p.join(base, _tokenizerMergesFile),
+    ).exists();
     return vocabExists && mergesExists;
   }
 

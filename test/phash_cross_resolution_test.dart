@@ -26,10 +26,10 @@ void main() {
   group('pHash cross-resolution consistency', () {
     test('Set 2: image2_full.png ↔ image2_thumb_100w_q10.jpg (≤ 5)', () {
       // This pair IS the same image at different resolutions — distance is 0.
-      final fullBytes =
-          File('test/fixtures/image2_full.png').readAsBytesSync();
-      final thumbBytes =
-          File('test/fixtures/image2_thumb_100w_q10.jpg').readAsBytesSync();
+      final fullBytes = File('test/fixtures/image2_full.png').readAsBytesSync();
+      final thumbBytes = File(
+        'test/fixtures/image2_thumb_100w_q10.jpg',
+      ).readAsBytesSync();
 
       final fullImg = img.decodeImage(fullBytes)!;
       final thumbImg = img.decodeImage(thumbBytes)!;
@@ -44,8 +44,9 @@ void main() {
       // This pair may be different content or a very lossy downscale.
       // Empirical distance is 34 — use a generous bound that holds.
       final fullBytes = File('test/fixtures/image_full.png').readAsBytesSync();
-      final thumbBytes =
-          File('test/fixtures/image_thumb_100w_q10.jpg').readAsBytesSync();
+      final thumbBytes = File(
+        'test/fixtures/image_thumb_100w_q10.jpg',
+      ).readAsBytesSync();
 
       final fullImg = img.decodeImage(fullBytes)!;
       final thumbImg = img.decodeImage(thumbBytes)!;
@@ -61,10 +62,10 @@ void main() {
 
   group('ImageBlockService.hammingDistance', () {
     test('matches operator- for Set 2', () {
-      final fullBytes =
-          File('test/fixtures/image2_full.png').readAsBytesSync();
-      final thumbBytes =
-          File('test/fixtures/image2_thumb_100w_q10.jpg').readAsBytesSync();
+      final fullBytes = File('test/fixtures/image2_full.png').readAsBytesSync();
+      final thumbBytes = File(
+        'test/fixtures/image2_thumb_100w_q10.jpg',
+      ).readAsBytesSync();
 
       final fullImg = img.decodeImage(fullBytes)!;
       final thumbImg = img.decodeImage(thumbBytes)!;
@@ -74,20 +75,21 @@ void main() {
 
       final opDistance =
           ImageHash.fromHex(fullHex) - ImageHash.fromHex(thumbHex);
-      final utilityDistance =
-          ImageBlockService.hammingDistance(fullHex, thumbHex);
+      final utilityDistance = ImageBlockService.hammingDistance(
+        fullHex,
+        thumbHex,
+      );
 
       expect(utilityDistance, equals(opDistance));
       expect(utilityDistance, lessThanOrEqualTo(5));
     });
 
     test('distance to itself is 0', () {
-      final hashHex =
-          ImageHasher.perceptualHash(
-            img.decodeImage(
-              File('test/fixtures/image2_full.png').readAsBytesSync(),
-            )!,
-          ).toHex();
+      final hashHex = ImageHasher.perceptualHash(
+        img.decodeImage(
+          File('test/fixtures/image2_full.png').readAsBytesSync(),
+        )!,
+      ).toHex();
       expect(ImageBlockService.hammingDistance(hashHex, hashHex), equals(0));
     });
   });
@@ -134,19 +136,19 @@ void main() {
     });
 
     test('resize-before-rotate pHash matches full-res pHash (≤ 5)', () {
-      final bytes =
-          File('test/fixtures/image2_full.png').readAsBytesSync();
+      final bytes = File('test/fixtures/image2_full.png').readAsBytesSync();
 
       // computeImageHashes now resizes to 128px before hashing
-      final resizedHashes =
-          computeImageHashes(<Object?>[bytes, false, false]);
+      final resizedHashes = computeImageHashes(<Object?>[bytes, false, false]);
 
       // Compute full-res pHash directly (original approach)
       final fullImg = img.decodeImage(bytes)!;
       final fullHash = ImageHasher.perceptualHash(fullImg).toHex();
 
-      final distance =
-          ImageBlockService.hammingDistance(resizedHashes.first, fullHash);
+      final distance = ImageBlockService.hammingDistance(
+        resizedHashes.first,
+        fullHash,
+      );
       expect(distance, lessThanOrEqualTo(5));
     });
   });

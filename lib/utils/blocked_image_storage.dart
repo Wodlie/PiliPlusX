@@ -51,7 +51,6 @@ abstract final class BlockedImageStorage {
     }
   }
 
-
   static Future<void> tryReDownload(String pHash, String url) async {
     try {
       await saveImageFromUrl(pHash, url);

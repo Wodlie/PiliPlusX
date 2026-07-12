@@ -1353,23 +1353,30 @@ abstract final class Pref {
   static set aiModelInputSize(int value) =>
       _setting.put(SettingBoxKey.aiModelInputSize, value);
 
-  static String get aiPromptMalicious =>
-      _setting.get(SettingBoxKey.aiPromptMalicious, defaultValue: 'malicious content, harmful image');
+  static String get aiPromptMalicious => _setting.get(
+    SettingBoxKey.aiPromptMalicious,
+    defaultValue: 'malicious content, harmful image',
+  );
   static set aiPromptMalicious(String value) =>
       _setting.put(SettingBoxKey.aiPromptMalicious, value);
 
-  static String get aiPromptHighRisk =>
-      _setting.get(SettingBoxKey.aiPromptHighRisk, defaultValue: 'high risk content, potentially unsafe');
+  static String get aiPromptHighRisk => _setting.get(
+    SettingBoxKey.aiPromptHighRisk,
+    defaultValue: 'high risk content, potentially unsafe',
+  );
   static set aiPromptHighRisk(String value) =>
       _setting.put(SettingBoxKey.aiPromptHighRisk, value);
 
-  static String get aiPromptNormal =>
-      _setting.get(SettingBoxKey.aiPromptNormal, defaultValue: 'normal content, safe image');
+  static String get aiPromptNormal => _setting.get(
+    SettingBoxKey.aiPromptNormal,
+    defaultValue: 'normal content, safe image',
+  );
   static set aiPromptNormal(String value) =>
       _setting.put(SettingBoxKey.aiPromptNormal, value);
 
-  static List<double> get aiTextEmbeddings =>
-      List<double>.from(_setting.get(SettingBoxKey.aiTextEmbeddings, defaultValue: <dynamic>[]));
+  static List<double> get aiTextEmbeddings => List<double>.from(
+    _setting.get(SettingBoxKey.aiTextEmbeddings, defaultValue: <dynamic>[]),
+  );
   static set aiTextEmbeddings(List<double> value) =>
       _setting.put(SettingBoxKey.aiTextEmbeddings, value);
 

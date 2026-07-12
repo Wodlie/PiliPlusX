@@ -304,7 +304,6 @@ abstract final class ReplyGrpc {
     if (mid > 0 && GlobalData().blackMids.contains(mid)) {
       return '黑名单用户';
     }
-    
 
     return null;
   }

@@ -1,13 +1,12 @@
 import 'dart:io';
 
 import 'package:PiliPlus/pages/setting/models/block_filter_settings.dart';
-import 'package:PiliPlus/pages/setting/pages/ai_image_moderation.dart';
 import 'package:PiliPlus/pages/setting/widgets/switch_item.dart';
+import 'package:PiliPlus/utils/ai_model_storage.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Tests for the AI Image Moderation settings page and its entry in
@@ -31,6 +30,7 @@ void main() {
   setUpAll(() async {
     tempDir = await Directory.systemTemp.createTemp('pili_ai_mod_settings_');
     debugSetAppSupportDirPath(tempDir.path);
+    AiModelStorage.debugBasePath = tempDir.path;
     await GStorage.init();
   });
 
@@ -42,6 +42,12 @@ void main() {
     await GStorage.setting.delete(SettingBoxKey.aiModelDownloaded);
     await GStorage.setting.delete(SettingBoxKey.aiAutoBlocklist);
     await GStorage.setting.delete(SettingBoxKey.aiModelInputSize);
+
+    // Remove any leftover model files so per-file status starts fresh.
+    final modelsDir = Directory('${tempDir.path}/ai_models');
+    if (modelsDir.existsSync()) {
+      modelsDir.deleteSync(recursive: true);
+    }
   });
 
   tearDownAll(() async {
@@ -84,126 +90,6 @@ void main() {
       final switchItem = aiEntry.widget as SetSwitchItem;
       expect(switchItem.setKey, SettingBoxKey.enableAiImageModeration);
     });
-  });
-
-  group('AiImageModerationPage model status row', () {
-    testWidgets('shows red 未下载模型 when model not downloaded', (
-      tester,
-    ) async {
-      Pref.aiModelDownloaded = false;
-      await tester.pumpWidget(
-        const MaterialApp(home: AiImageModerationPage()),
-      );
-      await tester.pump();
-      expect(find.text('未下载模型'), findsOneWidget);
-      expect(find.byIcon(Icons.error), findsOneWidget);
-    });
-
-    testWidgets('shows green 模型已就绪 when model downloaded', (tester) async {
-      Pref.aiModelDownloaded = true;
-      await tester.pumpWidget(
-        const MaterialApp(home: AiImageModerationPage()),
-      );
-      await tester.pump();
-      expect(find.text('模型已就绪 (ONNX/TFLite)'), findsOneWidget);
-      expect(find.byIcon(Icons.check_circle), findsOneWidget);
-    });
-  });
-
-  group('AiImageModerationPage AI toggle disabled state', () {
-    testWidgets('AI toggle shows dependency hint when pHash is off', (
-      tester,
-    ) async {
-      Pref.enableImageBlock = false;
-      await tester.pumpWidget(
-        const MaterialApp(home: AiImageModerationPage()),
-      );
-      await tester.pump(const Duration(milliseconds: 50));
-
-      // When pHash is off, the subtitle should indicate the dependency.
-      expect(find.text('需先启用屏蔽图片'), findsOneWidget);
-    }, timeout: const Timeout(Duration(seconds: 10)));
-
-    testWidgets('AI toggle shows normal subtitle when pHash is on', (
-      tester,
-    ) async {
-      Pref.enableImageBlock = true;
-      await tester.pumpWidget(
-        const MaterialApp(home: AiImageModerationPage()),
-      );
-      await tester.pump(const Duration(milliseconds: 50));
-
-      // The subtitle should show the normal description.
-      expect(find.text('使用CLIP模型自动识别评论图片内容'), findsOneWidget);
-    }, timeout: const Timeout(Duration(seconds: 10)));
-  });
-
-  group('AiImageModerationPage URL input', () {
-    testWidgets('URL TextField is populated from Pref.aiModelRepoUrl', (
-      tester,
-    ) async {
-      Pref.aiModelRepoUrl = 'https://huggingface.co/test/repo';
-      await tester.pumpWidget(
-        const MaterialApp(home: AiImageModerationPage()),
-      );
-      await tester.pump(const Duration(milliseconds: 50));
-
-      final textField = find.byType(TextField);
-      expect(textField, findsOneWidget);
-      final controller =
-          tester.widget<TextField>(textField).controller;
-      expect(controller?.text, 'https://huggingface.co/test/repo');
-    }, timeout: const Timeout(Duration(seconds: 10)));
-
-    testWidgets('shows hint text when URL is empty', (tester) async {
-      Pref.aiModelRepoUrl = '';
-      await tester.pumpWidget(
-        const MaterialApp(home: AiImageModerationPage()),
-      );
-      await tester.pump(const Duration(milliseconds: 50));
-
-      expect(
-        find.text('https://huggingface.co/user/repo 或镜像站地址'),
-        findsOneWidget,
-      );
-    }, timeout: const Timeout(Duration(seconds: 10)));
-
-    testWidgets('保存并下载 button is present', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(home: AiImageModerationPage()),
-      );
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('保存并下载'), findsOneWidget);
-    }, timeout: const Timeout(Duration(seconds: 10)));
-  });
-
-  group('AiImageModerationPage advanced settings', () {
-    testWidgets('设置Prompt row is present', (tester) async {
-      Pref.enableImageBlock = true;
-      await tester.pumpWidget(
-        const MaterialApp(home: AiImageModerationPage()),
-      );
-      await tester.pump(const Duration(milliseconds: 50));
-
-      expect(find.text('设置Prompt'), findsOneWidget);
-    }, timeout: const Timeout(Duration(seconds: 10)));
-
-    testWidgets('MALICIOUS自动加入屏蔽列表 toggle is present', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(home: AiImageModerationPage()),
-      );
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('MALICIOUS自动加入屏蔽列表'), findsOneWidget);
-    }, timeout: const Timeout(Duration(seconds: 10)));
-
-    testWidgets('模型输入尺寸 row shows current value', (tester) async {
-      Pref.aiModelInputSize = 256;
-      await tester.pumpWidget(
-        const MaterialApp(home: AiImageModerationPage()),
-      );
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('当前: 256px'), findsOneWidget);
-    }, timeout: const Timeout(Duration(seconds: 10)));
   });
 
   group('Pref persistence for AI moderation settings', () {

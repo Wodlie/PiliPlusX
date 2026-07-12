@@ -5,6 +5,13 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
 
+/// Identifies one of the three model files the AI pipeline needs.
+enum AiModelFileType {
+  tokenizer,
+  vision,
+  text,
+}
+
 /// Downloads CLIP model and tokenizer files from a HuggingFace repo using
 /// Dio with progress reporting and automatic retry.
 ///
@@ -123,7 +130,6 @@ class HfModelDownloader {
     // 3. Track results
     bool visionOk = false;
     bool textOk = false;
-    bool tokenizerOk = false;
 
     // Track overall progress — we divide the total into [_fileGroupCount]
     // segments, one per file-group.
@@ -143,19 +149,16 @@ class HfModelDownloader {
         );
       },
     );
-    if (tokenizerFile != null) {
-      tokenizerOk = true;
-    } else {
-      // Try vocab.json + merges.txt pair
-      final vocabOk = await _downloadFileWithRetry(
+    if (tokenizerFile == null) {
+      // Try vocab.json + merges.txt pair as fallback.
+      await _downloadFileWithRetry(
         '$downloadBase/vocab.json',
         p.join(tokenizerDir, 'vocab.json'),
       );
-      final mergesOk = await _downloadFileWithRetry(
+      await _downloadFileWithRetry(
         '$downloadBase/merges.txt',
         p.join(tokenizerDir, 'merges.txt'),
       );
-      tokenizerOk = vocabOk && mergesOk;
     }
     completedGroups++;
 
@@ -224,6 +227,97 @@ class HfModelDownloader {
       'text_model.onnx/tflite',
     );
     return false;
+  }
+
+  // ── Per-file model management ───────────────────────────────────────
+
+  /// Canonical destination name for a picked/downloaded file of [type].
+  ///
+  /// The extension is preserved so [AiModelStorage] can detect the format.
+  static String _canonicalNameFor(AiModelFileType type, String extension) {
+    final ext = extension.toLowerCase();
+    return switch (type) {
+      AiModelFileType.tokenizer => 'tokenizer.$ext',
+      AiModelFileType.vision => 'vision_model.$ext',
+      AiModelFileType.text => 'text_model.$ext',
+    };
+  }
+
+  /// Copies a user-picked local file into the app model directory under
+  /// a canonical name.
+  ///
+  /// Returns the saved canonical path on success, `null` on failure.
+  static Future<String?> copyFromLocal(
+    File source,
+    AiModelFileType type,
+  ) async {
+    final ext = p.extension(source.path);
+    if (ext.isEmpty) return null;
+
+    final modelsDir = await AiModelStorage.modelsDir;
+    final tokenizerDir = await AiModelStorage.tokenizerDir;
+    await Directory(modelsDir).create(recursive: true);
+    await Directory(tokenizerDir).create(recursive: true);
+
+    final destDir = type == AiModelFileType.tokenizer ? tokenizerDir : modelsDir;
+    final destName = _canonicalNameFor(type, ext);
+    final destPath = p.join(destDir, destName);
+
+    await source.copy(destPath);
+    return destPath;
+  }
+
+  /// Downloads a single model file from [url] and saves it under a canonical
+  /// name in the app model directory.
+  ///
+  /// [url] may be a direct file URL or a HuggingFace `/resolve/main/...`
+  /// URL. The file extension is taken from the URL path when possible,
+  /// falling back to inspecting the HTTP response or the original filename.
+  ///
+  /// Returns the saved canonical path on success, `null` on failure.
+  static Future<String?> downloadSingleFile(
+    String url,
+    AiModelFileType type, {
+    void Function(double progress, String status)? onProgress,
+  }) async {
+    final ext = _extensionFromUrl(url) ?? _defaultExtensionFor(type);
+    final modelsDir = await AiModelStorage.modelsDir;
+    final tokenizerDir = await AiModelStorage.tokenizerDir;
+    await Directory(modelsDir).create(recursive: true);
+    await Directory(tokenizerDir).create(recursive: true);
+
+    final destDir = type == AiModelFileType.tokenizer ? tokenizerDir : modelsDir;
+    final destName = _canonicalNameFor(type, ext);
+    final destPath = p.join(destDir, destName);
+
+    onProgress?.call(0.0, 'Downloading $destName...');
+    final ok = await _downloadFileWithRetry(
+      url,
+      destPath,
+      onProgress: (p) => onProgress?.call(p, 'Downloading $destName...'),
+    );
+    if (!ok) return null;
+    return destPath;
+  }
+
+  static String? _extensionFromUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      final path = uri.path;
+      final ext = p.extension(path);
+      if (ext.isNotEmpty && ext.length <= 6) return ext.substring(1);
+    } catch (_) {
+      // ignore
+    }
+    return null;
+  }
+
+  static String _defaultExtensionFor(AiModelFileType type) {
+    return switch (type) {
+      AiModelFileType.tokenizer => 'json',
+      AiModelFileType.vision => 'onnx',
+      AiModelFileType.text => 'onnx',
+    };
   }
 
   // ── URL parsing ─────────────────────────────────────────────────────

@@ -280,19 +280,24 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
               onPressed: _controller.canSort.value
                   ? _controller.queryBySort
                   : null,
-              icon: Icon(Icons.sort, size: 16,
+              icon: Icon(
+                Icons.sort,
+                size: 16,
                 color: _controller.canSort.value
                     ? colorScheme.secondary
-                    : colorScheme.outline),
+                    : colorScheme.outline,
+              ),
               label: Obx(
                 () => Text(
                   _controller.canSort.value
                       ? _controller.sortType.value.text!
                       : '排序不可用',
-                  style: TextStyle(fontSize: 13,
+                  style: TextStyle(
+                    fontSize: 13,
                     color: _controller.canSort.value
                         ? colorScheme.secondary
-                        : colorScheme.outline),
+                        : colorScheme.outline,
+                  ),
                 ),
               ),
             ),
