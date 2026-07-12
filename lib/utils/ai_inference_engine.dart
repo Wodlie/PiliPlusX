@@ -1,4 +1,4 @@
-import 'dart:io' show File, Platform;
+import 'dart:io' show File;
 import 'dart:isolate';
 import 'dart:typed_data';
 
@@ -65,17 +65,11 @@ class OnnxSession implements InferenceSession {
 
   /// Create an [OnnxSession] from model files stored on disk.
   ///
-  /// Throws [StateError] if:
-  ///   - The platform does not meet ONNX Runtime minimum requirements, or
-  ///   - Model files are not found.
+  /// Throws [StateError] if model files are not found.
+  ///
+  /// ONNX Runtime is supported on all platforms (Android, iOS, Linux,
+  /// macOS, Windows) via the flutter_onnxruntime plugin.
   static Future<OnnxSession> create() async {
-    if (!Platform.isIOS && !Platform.isMacOS) {
-      throw StateError(
-        'ONNX Runtime requires iOS 16+ or macOS 14+. '
-        'Use TFLite on other platforms.',
-      );
-    }
-
     final visionPath = await AiModelStorage.getVisionPath();
     final textPath = await AiModelStorage.getTextPath();
     if (visionPath == null || textPath == null) {
@@ -233,42 +227,54 @@ class TfliteSession implements InferenceSession {
 /// Entry-point for creating an [InferenceSession] based on the model format
 /// discovered on disk.
 abstract final class AiInferenceEngine {
+  /// The error message from the most recent failed [create] call, or `null`
+  /// if the last call succeeded or no call has been made.
+  ///
+  /// Callers can inspect this to show a user-friendly diagnostic when
+  /// [create] returns `null`.
+  static String? lastCreateError;
+
   /// Detect the model format and create the appropriate session.
   ///
-  /// Returns `null` when no model files are available.
+  /// Returns `null` when no model files are available or session creation
+  /// fails for all available formats.  Check [lastCreateError] for the
+  /// reason.
   ///
   /// Selection priority:
-  ///   1. ONNX (requires iOS 16+ / macOS 14+)
-  ///   2. TFLite (all platforms)
+  ///   1. ONNX (all platforms)
+  ///   2. TFLite (fallback)
   static Future<InferenceSession?> create() async {
+    lastCreateError = null;
     final format = await AiModelStorage.detectFormat();
 
     switch (format.toLowerCase()) {
       case 'onnx':
-        if (Platform.isIOS || Platform.isMacOS) {
-          try {
-            return await OnnxSession.create();
-          } catch (_) {
-            // Fall through to TFLite
-          }
+        try {
+          return await OnnxSession.create();
+        } catch (e) {
+          lastCreateError = 'ONNX: $e';
         }
         if (await AiModelStorage.hasBothEncoders()) {
           try {
             return await TfliteSession.create();
-          } catch (_) {
+          } catch (e) {
+            lastCreateError = 'TFLite(onnx-fallback): $e';
             return null;
           }
         }
+        lastCreateError ??= 'ONNX 格式已检测到但缺少编码器文件';
         return null;
 
       case 'tflite':
         try {
           return await TfliteSession.create();
-        } catch (_) {
+        } catch (e) {
+          lastCreateError = 'TFLite: $e';
           return null;
         }
 
       default:
+        lastCreateError = '未检测到模型文件，请先导入模型';
         return null;
     }
   }
