@@ -64,8 +64,8 @@ class HfModelDownloader {
       return false;
     }
 
-    final (owner, repo) = base;
-    final downloadBase = 'https://${owner[0]}/$repo';
+    final (host, ownerRepo) = base;
+    final downloadBase = 'https://$host/$ownerRepo';
 
     // 2. Ensure directories exist
     final modelsDir = await AiModelStorage.modelsDir;
@@ -276,7 +276,8 @@ class HfModelDownloader {
     if (onProgress == null) return;
 
     const groupWeight = 1.0 / _fileGroupCount;
-    final overall = (completedGroups * groupWeight) +
+    final overall =
+        (completedGroups * groupWeight) +
         (groupIndex + 1) * groupWeight * groupProgress;
     final clipped = overall.clamp(0.0, 1.0);
 
