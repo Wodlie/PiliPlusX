@@ -60,9 +60,11 @@ void main() {
         // AI: blocked
         AiImageModerationService.setCachedResult(url, AiImageState.blocked);
 
-        await tester.pumpWidget(_buildImageGridView([
-          ImageModel(width: 100, height: 100, url: url),
-        ]));
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(width: 100, height: 100, url: url),
+          ]),
+        );
 
         // Pump to process deferred AI evaluation + setState rebuild
         await tester.pump();
@@ -77,22 +79,27 @@ void main() {
     );
 
     testWidgets(
-      'AI lowRes shows NetworkImgLayer with low quality',
+      'AI highRisk shows blurred NetworkImgLayer',
       (tester) async {
         const url = 'https://example.com/ai-lowres.jpg';
         // pHash: not blocked
         ImageBlockService.setCachedResult(url, false);
-        // AI: lowRes
-        AiImageModerationService.setCachedResult(url, AiImageState.lowRes);
+        // AI: highRisk
+        AiImageModerationService.setCachedResult(url, AiImageState.highRisk);
 
-        await tester.pumpWidget(_buildImageGridView([
-          ImageModel(width: 100, height: 100, url: url),
-        ]));
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(width: 100, height: 100, url: url),
+          ]),
+        );
 
         // Pump to process deferred AI evaluation + setState rebuild
         await tester.pump();
         await tester.pump();
 
+        // highRisk wraps NetworkImgLayer in ImageFiltered blur with warning text
+        expect(find.byType(ImageFiltered), findsOneWidget);
+        expect(find.text('图片可能引起不适，点击后查看'), findsOneWidget);
         expect(find.byType(NetworkImgLayer), findsOneWidget);
         expect(find.byType(BlockedImagePlaceholder), findsNothing);
 
@@ -110,9 +117,11 @@ void main() {
         // AI: normal
         AiImageModerationService.setCachedResult(url, AiImageState.normal);
 
-        await tester.pumpWidget(_buildImageGridView([
-          ImageModel(width: 100, height: 100, url: url),
-        ]));
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(width: 100, height: 100, url: url),
+          ]),
+        );
 
         // Pump to process deferred AI evaluation + setState rebuild
         await tester.pump();
@@ -127,21 +136,27 @@ void main() {
     );
 
     testWidgets(
-      'AI pending (no cache) shows NetworkImgLayer optimistically',
+      'AI pending shows placeholder with CircularProgressIndicator',
       (tester) async {
         const url = 'https://example.com/ai-pending.jpg';
         // pHash: not blocked
         ImageBlockService.setCachedResult(url, false);
-        // Do NOT set AI cache — AI still pending
+        // AI: cached as pending (async evaluation hasn't completed yet)
+        AiImageModerationService.setCachedResult(url, AiImageState.pending);
 
-        await tester.pumpWidget(_buildImageGridView([
-          ImageModel(width: 100, height: 100, url: url),
-        ]));
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(width: 100, height: 100, url: url),
+          ]),
+        );
 
+        // Pump to process deferred AI evaluation → reads cached pending → rebuild
+        await tester.pump();
         await tester.pump();
 
-        // AI pending → optimistic normal render
-        expect(find.byType(NetworkImgLayer), findsOneWidget);
+        // Pending → neutral placeholder with spinner, not the actual image
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        expect(find.byType(NetworkImgLayer), findsNothing);
         expect(find.byType(BlockedImagePlaceholder), findsNothing);
 
         await tester.pumpWidget(const SizedBox());
@@ -158,9 +173,11 @@ void main() {
         // AI: normal (would show if pHash didn't block)
         AiImageModerationService.setCachedResult(url, AiImageState.normal);
 
-        await tester.pumpWidget(_buildImageGridView([
-          ImageModel(width: 100, height: 100, url: url),
-        ]));
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(width: 100, height: 100, url: url),
+          ]),
+        );
 
         await tester.pump();
 
@@ -180,22 +197,62 @@ void main() {
         ImageBlockService.setCachedResult(url, false);
         AiImageModerationService.setCachedResult(url, AiImageState.blocked);
 
-        await tester.pumpWidget(MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: ImageGridView(
-                picArr: [ImageModel(width: 100, height: 100, url: url)],
-                tempUnblockedUrls: {url},
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: ImageGridView(
+                  picArr: [ImageModel(width: 100, height: 100, url: url)],
+                  tempUnblockedUrls: {url},
+                ),
               ),
             ),
           ),
-        ));
+        );
 
         // Pump to process deferred AI evaluation + setState rebuild
         await tester.pump();
         await tester.pump();
 
         // tempUnblocked → normal render despite AI blocked
+        expect(find.byType(NetworkImgLayer), findsOneWidget);
+        expect(find.byType(BlockedImagePlaceholder), findsNothing);
+
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump(const Duration(milliseconds: 600));
+      },
+    );
+
+    testWidgets(
+      'AI highRisk tap adds URL to temp unblock and shows normal display',
+      (tester) async {
+        const url = 'https://example.com/ai-highrisk-tap.jpg';
+        // pHash: not blocked
+        ImageBlockService.setCachedResult(url, false);
+        // AI: highRisk
+        AiImageModerationService.setCachedResult(url, AiImageState.highRisk);
+
+        await tester.pumpWidget(
+          _buildImageGridView([
+            ImageModel(width: 100, height: 100, url: url),
+          ]),
+        );
+
+        // Pump to process deferred AI evaluation + setState rebuild
+        await tester.pump();
+        await tester.pump();
+
+        // Verify highRisk state is shown
+        expect(find.byType(ImageFiltered), findsOneWidget);
+        expect(find.text('图片可能引起不适，点击后查看'), findsOneWidget);
+
+        // Tap the warning text to temporarily unblock
+        await tester.tap(find.text('图片可能引起不适，点击后查看'));
+        await tester.pump();
+
+        // After tap → temp unblocked → normal display (no blur)
+        expect(find.byType(ImageFiltered), findsNothing);
+        expect(find.text('图片可能引起不适，点击后查看'), findsNothing);
         expect(find.byType(NetworkImgLayer), findsOneWidget);
         expect(find.byType(BlockedImagePlaceholder), findsNothing);
 

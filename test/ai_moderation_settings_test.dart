@@ -65,16 +65,12 @@ void main() {
 
   group('block_filter_settings entry', () {
     test('contains an entry titled AI图片识别', () {
-      final titles = blockFilterSettings
-          .map((m) => m.effectiveTitle)
-          .toList();
+      final titles = blockFilterSettings.map((m) => m.effectiveTitle).toList();
       expect(titles, contains('AI图片识别'));
     });
 
     test('AI图片识别 entry appears after 屏蔽图片', () {
-      final titles = blockFilterSettings
-          .map((m) => m.effectiveTitle)
-          .toList();
+      final titles = blockFilterSettings.map((m) => m.effectiveTitle).toList();
       final imageBlockIdx = titles.indexOf('屏蔽图片');
       final aiIdx = titles.indexOf('AI图片识别');
       expect(imageBlockIdx, isNot(-1));

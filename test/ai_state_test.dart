@@ -51,8 +51,8 @@ void main() {
       expect(AiImageState.values, contains(AiImageState.blocked));
     });
 
-    test('contains lowRes', () {
-      expect(AiImageState.values, contains(AiImageState.lowRes));
+    test('contains highRisk', () {
+      expect(AiImageState.values, contains(AiImageState.highRisk));
     });
 
     test('contains normal', () {
@@ -169,12 +169,21 @@ void main() {
         GStorage.setting.put(SettingBoxKey.aiModelInputSize, 512),
       ]);
 
-      expect(Pref.enableAiImageModeration, true,
-          reason: 'enableAiImageModeration must persist');
-      expect(Pref.aiAutoBlocklist, false,
-          reason: 'aiAutoBlocklist must persist independently');
-      expect(Pref.aiModelInputSize, 512,
-          reason: 'aiModelInputSize must persist independently');
+      expect(
+        Pref.enableAiImageModeration,
+        true,
+        reason: 'enableAiImageModeration must persist',
+      );
+      expect(
+        Pref.aiAutoBlocklist,
+        false,
+        reason: 'aiAutoBlocklist must persist independently',
+      );
+      expect(
+        Pref.aiModelInputSize,
+        512,
+        reason: 'aiModelInputSize must persist independently',
+      );
     });
   });
 }

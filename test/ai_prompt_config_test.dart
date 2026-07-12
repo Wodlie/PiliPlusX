@@ -48,44 +48,48 @@ void main() {
   });
 
   group('validation', () {
-    testWidgets('empty prompts prevent save and leave prior values intact', (
-      tester,
-    ) async {
-      // Pre-set some existing values to verify they don't change.
-      Pref.aiPromptMalicious = 'original malicious';
-      Pref.aiPromptHighRisk = 'original high-risk';
-      Pref.aiPromptNormal = 'original normal';
+    testWidgets(
+      'empty prompts prevent save and leave prior values intact',
+      (
+        tester,
+      ) async {
+        // Pre-set some existing values to verify they don't change.
+        Pref.aiPromptMalicious = 'original malicious';
+        Pref.aiPromptHighRisk = 'original high-risk';
+        Pref.aiPromptNormal = 'original normal';
 
-      await tester.pumpWidget(
-        const MaterialApp(home: AiPromptConfigPage()),
-      );
-      await tester.pump();
+        await tester.pumpWidget(
+          const MaterialApp(home: AiPromptConfigPage()),
+        );
+        await tester.pump();
 
-      // Verify the page structure before interaction.
-      expect(find.text('MALICIOUS'), findsOneWidget);
-      expect(find.text('high-risk'), findsOneWidget);
-      expect(find.text('normal'), findsOneWidget);
-      expect(find.text('保存'), findsOneWidget);
+        // Verify the page structure before interaction.
+        expect(find.text('MALICIOUS'), findsOneWidget);
+        expect(find.text('high-risk'), findsOneWidget);
+        expect(find.text('normal'), findsOneWidget);
+        expect(find.text('保存'), findsOneWidget);
 
-      // Clear all three text fields.
-      final fields = find.byType(TextField);
-      expect(fields, findsNWidgets(3));
+        // Clear all three text fields.
+        final fields = find.byType(TextField);
+        expect(fields, findsNWidgets(3));
 
-      await tester.enterText(fields.at(0), '');
-      await tester.enterText(fields.at(1), '');
-      await tester.enterText(fields.at(2), '');
-      await tester.pump();
+        await tester.enterText(fields.at(0), '');
+        await tester.enterText(fields.at(1), '');
+        await tester.enterText(fields.at(2), '');
+        await tester.pump();
 
-      // Tap the "保存" button.
-      await tester.tap(find.text('保存'));
-      await tester.pump();
+        // Tap the "保存" button.
+        await tester.tap(find.text('保存'));
+        await tester.pump();
 
-      // Original values must be unchanged (save aborted because prompts
-      // were empty — toast '提示词不能为空' is shown via SmartDialog).
-      expect(Pref.aiPromptMalicious, 'original malicious');
-      expect(Pref.aiPromptHighRisk, 'original high-risk');
-      expect(Pref.aiPromptNormal, 'original normal');
-    }, timeout: const Timeout(Duration(seconds: 10)));
+        // Original values must be unchanged (save aborted because prompts
+        // were empty — toast '提示词不能为空' is shown via SmartDialog).
+        expect(Pref.aiPromptMalicious, 'original malicious');
+        expect(Pref.aiPromptHighRisk, 'original high-risk');
+        expect(Pref.aiPromptNormal, 'original normal');
+      },
+      timeout: const Timeout(Duration(seconds: 10)),
+    );
   });
 
   group('Pref', () {

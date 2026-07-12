@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:PiliPlus/utils/ai_model_storage.dart';
 import 'package:PiliPlus/utils/ai_inference_engine.dart';
+import 'package:PiliPlus/utils/clip_tokenizer_config.dart';
 import 'package:PiliPlus/utils/hf_model_downloader.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -23,19 +24,24 @@ class MockInferenceSession implements InferenceSession {
   int visionCalls = 0;
   int textCalls = 0;
   bool disposed = false;
+  List<int>? lastVisionShape;
+  TokenizedText? lastTextInput;
 
   @override
-  Future<Float32List> runVision(Float32List input) async {
+  Future<Float32List> runVision(
+    Float32List input, {
+    required List<int> shape,
+  }) async {
     visionCalls++;
-    return mockVisionOutput ??
-        Float32List.fromList(List.filled(512, 0.5));
+    lastVisionShape = shape;
+    return mockVisionOutput ?? Float32List.fromList(List.filled(512, 0.5));
   }
 
   @override
-  Future<Float32List> runText(List<int> tokenIds) async {
+  Future<Float32List> runText(TokenizedText tokens) async {
     textCalls++;
-    return mockTextOutput ??
-        Float32List.fromList(List.filled(512, 0.3));
+    lastTextInput = tokens;
+    return mockTextOutput ?? Float32List.fromList(List.filled(512, 0.3));
   }
 
   @override
@@ -153,8 +159,11 @@ void main() {
         await _createDummyModelFile('$mDir/vision_model.onnx');
         await _createDummyModelFile('$mDir/text_model.tflite');
         final format = await AiModelStorage.detectFormat();
-        expect(format == 'onnx' || format == 'tflite', isTrue,
-            reason: 'Expected onnx or tflite but got "$format"');
+        expect(
+          format == 'onnx' || format == 'tflite',
+          isTrue,
+          reason: 'Expected onnx or tflite but got "$format"',
+        );
       });
     });
 
@@ -228,6 +237,52 @@ void main() {
         await AiModelStorage.deleteAllModels();
       });
     });
+
+    group('hasPreprocessorConfig', () {
+      test('returns false when file does not exist', () async {
+        expect(await AiModelStorage.hasPreprocessorConfig(), isFalse);
+      });
+
+      test('returns true when file exists', () async {
+        final mDir = await AiModelStorage.modelsDir;
+        await Directory(mDir).create(recursive: true);
+        await File(
+          p.join(mDir, 'preprocessor_config.json'),
+        ).writeAsString('{}');
+        expect(await AiModelStorage.hasPreprocessorConfig(), isTrue);
+      });
+    });
+
+    group('hasTokenizerConfig', () {
+      test('returns false when file does not exist', () async {
+        expect(await AiModelStorage.hasTokenizerConfig(), isFalse);
+      });
+
+      test('returns true when file exists', () async {
+        final tDir = await AiModelStorage.tokenizerDir;
+        await Directory(tDir).create(recursive: true);
+        await File(p.join(tDir, 'tokenizer_config.json')).writeAsString('{}');
+        expect(await AiModelStorage.hasTokenizerConfig(), isTrue);
+      });
+    });
+
+    group('hasAllRequiredFiles', () {
+      test('returns true even without config files', () async {
+        final mDir = await AiModelStorage.modelsDir;
+        final tDir = await AiModelStorage.tokenizerDir;
+        await Directory(mDir).create(recursive: true);
+        await Directory(tDir).create(recursive: true);
+        await _createDummyModelFile('$mDir/vision_model.onnx');
+        await _createDummyModelFile('$mDir/text_model.onnx');
+        await _createDummyFile('$tDir/tokenizer.json');
+        // hasAllRequiredFiles only checks vision, text, and tokenizer.
+        // Config files (preprocessor_config.json, tokenizer_config.json)
+        // are NOT required — they are optional extras.
+        expect(await AiModelStorage.hasAllRequiredFiles(), isTrue);
+        expect(await AiModelStorage.hasPreprocessorConfig(), isFalse);
+        expect(await AiModelStorage.hasTokenizerConfig(), isFalse);
+      });
+    });
   });
 
   // ======================================================================
@@ -273,7 +328,10 @@ void main() {
     test('mock runVision returns expected Float32List', () async {
       final expected = Float32List.fromList(List.filled(512, 0.42));
       final session = MockInferenceSession(mockVisionOutput: expected);
-      final result = await session.runVision(Float32List(150528));
+      final result = await session.runVision(
+        Float32List(150528),
+        shape: [1, 3, 224, 224],
+      );
       expect(result, expected);
       expect(session.visionCalls, 1);
     });
@@ -281,7 +339,12 @@ void main() {
     test('mock runText returns expected Float32List', () async {
       final expected = Float32List.fromList(List.filled(512, 0.77));
       final session = MockInferenceSession(mockTextOutput: expected);
-      final result = await session.runText(List.filled(77, 1));
+      final result = await session.runText(
+        TokenizedText(
+          inputIds: List.filled(77, 1),
+          attentionMask: List.filled(77, 1),
+        ),
+      );
       expect(result, expected);
       expect(session.textCalls, 1);
     });
@@ -295,10 +358,79 @@ void main() {
 
     test('session can be created and used for both vision and text', () async {
       final session = MockInferenceSession();
-      final visionOut = await session.runVision(Float32List(150528));
-      final textOut = await session.runText(List.filled(77, 1));
+      final visionOut = await session.runVision(
+        Float32List(150528),
+        shape: [1, 3, 224, 224],
+      );
+      final textOut = await session.runText(
+        TokenizedText(
+          inputIds: List.filled(77, 1),
+          attentionMask: List.filled(77, 1),
+        ),
+      );
       expect(visionOut, hasLength(512));
       expect(textOut, hasLength(512));
+    });
+
+    test('runVision records shape [1,3,336,336]', () async {
+      final session = MockInferenceSession();
+      await session.runVision(
+        Float32List(3 * 336 * 336),
+        shape: [1, 3, 336, 336],
+      );
+      expect(session.lastVisionShape, [1, 3, 336, 336]);
+      expect(session.visionCalls, 1);
+    });
+
+    test('runVision records shape [1,3,256,256]', () async {
+      final session = MockInferenceSession();
+      await session.runVision(
+        Float32List(3 * 256 * 256),
+        shape: [1, 3, 256, 256],
+      );
+      expect(session.lastVisionShape, [1, 3, 256, 256]);
+      expect(session.visionCalls, 1);
+    });
+
+    test('runText tracks input tokens', () async {
+      final tokens = TokenizedText(
+        inputIds: List.filled(77, 1),
+        attentionMask: List.filled(77, 1),
+      );
+      final session = MockInferenceSession();
+      final result = await session.runText(tokens);
+      expect(session.textCalls, 1);
+      expect(session.lastTextInput, tokens);
+      expect(result, hasLength(512));
+    });
+
+    test(
+      'output buffer size from mock tensor shape (not hardcoded 512)',
+      () async {
+        final customOutput = Float32List.fromList(List.filled(256, 0.99));
+        final session = MockInferenceSession(mockTextOutput: customOutput);
+        final result = await session.runText(
+          TokenizedText(
+            inputIds: List.filled(77, 1),
+            attentionMask: List.filled(77, 1),
+          ),
+        );
+        expect(result, hasLength(256));
+        expect(result[0], closeTo(0.99, 0.001));
+      },
+    );
+
+    test('session reuse increments vision call counter', () async {
+      final session = MockInferenceSession();
+      await session.runVision(
+        Float32List(3 * 336 * 336),
+        shape: [1, 3, 336, 336],
+      );
+      await session.runVision(
+        Float32List(3 * 256 * 256),
+        shape: [1, 3, 256, 256],
+      );
+      expect(session.visionCalls, 2);
     });
   });
 
@@ -316,5 +448,20 @@ void main() {
       final session = await AiInferenceEngine.create();
       expect(session, isNull);
     });
+
+    test(
+      'throws StateError for mixed ONNX vision and TFLite text encoders',
+      () async {
+        final mDir = await AiModelStorage.modelsDir;
+        await Directory(mDir).create(recursive: true);
+        await _createDummyModelFile('$mDir/vision_model.onnx');
+        await _createDummyModelFile('$mDir/text_model.tflite');
+
+        await expectLater(
+          AiInferenceEngine.create(),
+          throwsA(isA<StateError>()),
+        );
+      },
+    );
   });
 }

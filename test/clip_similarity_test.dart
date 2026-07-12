@@ -127,39 +127,44 @@ void main() {
     });
 
     test('matches MALICIOUS → AiImageState.blocked', () {
-      final (state, confidence) =
-          ClipSimilarity.classify(malEmbed, textEmbeds);
+      final (state, confidence) = ClipSimilarity.classify(malEmbed, textEmbeds);
       expect(state, AiImageState.blocked);
       expect(confidence, closeTo(1.0, 1e-6));
     });
 
-    test('matches high-risk → AiImageState.lowRes', () {
-      final (state, confidence) =
-          ClipSimilarity.classify(highRiskEmbed, textEmbeds);
-      expect(state, AiImageState.lowRes);
+    test('matches high-risk → AiImageState.highRisk', () {
+      final (state, confidence) = ClipSimilarity.classify(
+        highRiskEmbed,
+        textEmbeds,
+      );
+      expect(state, AiImageState.highRisk);
       expect(confidence, closeTo(1.0, 1e-6));
     });
 
     test('matches normal → AiImageState.normal', () {
-      final (state, confidence) =
-          ClipSimilarity.classify(normalEmbed, textEmbeds);
+      final (state, confidence) = ClipSimilarity.classify(
+        normalEmbed,
+        textEmbeds,
+      );
       expect(state, AiImageState.normal);
       expect(confidence, closeTo(1.0, 1e-6));
     });
 
-    test('ambiguous embedding (equidistant) → AiImageState.blocked (first)', () {
-      // equally similar to all three → argmax picks first → blocked
-      final ambiguous = Float32List.fromList([0.5, 0.5, 0.5]);
-      final (state, _) = ClipSimilarity.classify(ambiguous, textEmbeds);
-      expect(state, AiImageState.blocked);
-    });
+    test(
+      'ambiguous embedding (equidistant) → AiImageState.blocked (first)',
+      () {
+        // equally similar to all three → argmax picks first → blocked
+        final ambiguous = Float32List.fromList([0.5, 0.5, 0.5]);
+        final (state, _) = ClipSimilarity.classify(ambiguous, textEmbeds);
+        expect(state, AiImageState.blocked);
+      },
+    );
 
-    test('partial match high-risk → AiImageState.lowRes', () {
+    test('partial match high-risk → AiImageState.highRisk', () {
       // Slightly closer to highRisk (index 1) but not pure
       final mixed = Float32List.fromList([0.1, 0.9, 0.2]);
-      final (state, confidence) =
-          ClipSimilarity.classify(mixed, textEmbeds);
-      expect(state, AiImageState.lowRes);
+      final (state, confidence) = ClipSimilarity.classify(mixed, textEmbeds);
+      expect(state, AiImageState.highRisk);
       expect(confidence, greaterThan(0.0));
     });
   });
