@@ -40,7 +40,10 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
       _checkingFiles = false;
     });
     // After model check, show dialog if AI is enabled but models missing.
-    if (mounted && Pref.enableAiImageModeration && !ready) {
+    if (mounted &&
+        Pref.enableAiImageModeration &&
+        Pref.aiModelRepoUrl.isNotEmpty &&
+        !ready) {
       MissingModelDialog.showMissingModelDialog(context);
     }
   }

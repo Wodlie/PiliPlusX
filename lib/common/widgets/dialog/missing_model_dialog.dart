@@ -14,6 +14,8 @@ class MissingModelDialog {
   static bool checkAndShow(BuildContext context) {
     if (!Pref.enableAiImageModeration) return false;
     if (_shownThisSession) return false;
+    // Never configured a HF URL — no model expected.
+    if (Pref.aiModelRepoUrl.isEmpty) return false;
 
     // Schedule async check — don't block the UI
     WidgetsBinding.instance.addPostFrameCallback((_) async {
