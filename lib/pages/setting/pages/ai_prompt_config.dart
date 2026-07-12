@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'dart:typed_data';
 
 import 'package:PiliPlus/utils/ai_image_moderation_service.dart';
@@ -82,25 +83,33 @@ class _AiPromptConfigPageState extends State<AiPromptConfigPage> {
     );
 
     try {
-      // 4. Load tokenizer & inference session.
+      // 4. Check format / platform compatibility before loading.
+      final modelFormat = await AiModelStorage.detectFormat();
+      if (modelFormat == 'onnx' && !(Platform.isIOS || Platform.isMacOS)) {
+        if (mounted) Navigator.of(context).pop();
+        SmartDialog.showToast('当前平台不支持ONNX格式，请导入TFLite格式的模型文件');
+        return;
+      }
+
+      // 5. Load tokenizer & inference session.
       final tokenizerDir = await AiModelStorage.tokenizerDir;
       final tokenizer = await CLIPTokenizer.loadFromPath(tokenizerDir);
       final session = await AiInferenceEngine.create();
 
       if (session == null) {
         if (mounted) Navigator.of(context).pop();
-        SmartDialog.showToast('无法创建推理会话');
+        SmartDialog.showToast('无法创建推理会话，请确认模型文件完整且格式正确');
         return;
       }
 
       try {
-        // 5a. Tokenize + encode each prompt.
+        // 6a. Tokenize + encode each prompt.
         final embeddings = <Float32List>[];
         for (final text in [malicious, highRisk, normal]) {
           final tokenIds = tokenizer.tokenize(text);
           final rawEmbedding = await session.runText(tokenIds);
 
-          // 5b. L2 normalise.
+          // 6b. L2 normalise.
           double sumSq = 0.0;
           for (int i = 0; i < rawEmbedding.length; i++) {
             sumSq += rawEmbedding[i] * rawEmbedding[i];
@@ -113,25 +122,25 @@ class _AiPromptConfigPageState extends State<AiPromptConfigPage> {
           embeddings.add(normalized);
         }
 
-        // 6. Concat 3×512 → 1536 items.
+        // 7. Concat 3×512 → 1536 items.
         final concat = <double>[];
         for (final emb in embeddings) {
           concat.addAll(emb);
         }
 
-        // 7. Persist to Pref.
+        // 8. Persist to Pref.
         Pref.aiTextEmbeddings = concat;
         Pref.aiPromptMalicious = malicious;
         Pref.aiPromptHighRisk = highRisk;
         Pref.aiPromptNormal = normal;
 
-        // 8. Invalidate downstream caches.
+        // 9. Invalidate downstream caches.
         AiImageModerationService.invalidateCache();
       } finally {
         session.dispose();
       }
 
-      // 9. Dismiss loading, report success.
+      // 10. Dismiss loading, report success.
       if (mounted) Navigator.of(context).pop();
       SmartDialog.showToast('保存成功');
     } catch (e) {
