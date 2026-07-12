@@ -72,7 +72,7 @@ jobs:
           mkdir -p usr/share/icons/hicolor/512x512/apps
 
           printf "复制文件...\n"
-          cp -r ../build/linux/x64/release/bundle/* opt/PiliPlusX
+          cp -rL ../build/linux/x64/release/bundle/* opt/PiliPlusX
           cp -r ../assets/linux/DEBIAN .
           cp ../assets/linux/com.Wodlie.PiliPlusX.desktop usr/share/applications
           cp ../assets/images/logo/logo.png usr/share/icons/hicolor/512x512/apps/piliplusx.png
@@ -140,7 +140,7 @@ jobs:
 
           %install
           mkdir -p %{buildroot}/opt/PiliPlusX
-          cp -r bundle/* %{buildroot}/opt/PiliPlusX/
+          cp -rL bundle/* %{buildroot}/opt/PiliPlusX/
 
           # 二进制权限与命令行入口
           chmod 755 %{buildroot}/opt/PiliPlusX/piliplusx
@@ -198,7 +198,7 @@ jobs:
           mkdir -p "$APPDIR/usr/share/icons/hicolor/512x512/apps"
 
           printf "复制应用文件...\n"
-          cp -r build/linux/x64/release/bundle/* "$APPDIR/usr/bin/"
+          cp -rL build/linux/x64/release/bundle/* "$APPDIR/usr/bin/"
 
           printf "复制桌面文件和图标...\n"
           cp assets/linux/com.Wodlie.PiliPlusX.desktop "$APPDIR/com.Wodlie.PiliPlusX.desktop"
