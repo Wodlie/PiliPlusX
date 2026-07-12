@@ -24,6 +24,8 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
   bool _hasTokenizer = false;
   bool _hasVision = false;
   bool _hasText = false;
+  bool _hasPreprocessorConfig = false;
+  bool _hasTokenizerConfig = false;
 
   @override
   void initState() {
@@ -36,11 +38,15 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
     final hasTokenizer = await AiModelStorage.hasTokenizer();
     final hasVision = await AiModelStorage.getVisionPath() != null;
     final hasText = await AiModelStorage.getTextPath() != null;
+    final hasPreprocessorConfig = await AiModelStorage.hasPreprocessorConfig();
+    final hasTokenizerConfig = await AiModelStorage.hasTokenizerConfig();
     if (!mounted) return;
     setState(() {
       _hasTokenizer = hasTokenizer;
       _hasVision = hasVision;
       _hasText = hasText;
+      _hasPreprocessorConfig = hasPreprocessorConfig;
+      _hasTokenizerConfig = hasTokenizerConfig;
       _checkingFiles = false;
     });
   }
@@ -72,6 +78,9 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
       AiModelFileType.tokenizer => '分词器 (tokenizer.json)',
       AiModelFileType.vision => '视觉编码器 (vision_model.*)',
       AiModelFileType.text => '文本编码器 (text_model.*)',
+      AiModelFileType.preprocessorConfig =>
+        '图像预处理配置 (preprocessor_config.json)（可选）',
+      AiModelFileType.tokenizerConfig => '分词器配置 (tokenizer_config.json)（可选）',
     };
   }
 
@@ -80,6 +89,8 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
       AiModelFileType.tokenizer => const ['json'],
       AiModelFileType.vision => const ['onnx', 'tflite'],
       AiModelFileType.text => const ['onnx', 'tflite'],
+      AiModelFileType.preprocessorConfig => const ['json'],
+      AiModelFileType.tokenizerConfig => const ['json'],
     };
   }
 
@@ -103,7 +114,19 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
       }
       await _updateModelReadyFlag();
       await _refreshFileStatus();
-      AiImageModerationService.invalidateCache();
+      switch (type) {
+        case AiModelFileType.vision:
+        case AiModelFileType.preprocessorConfig:
+          AiImageModerationService.disposeSession();
+          AiImageModerationService.invalidateCache();
+        case AiModelFileType.text:
+          AiImageModerationService.disposeSession();
+          AiImageModerationService.invalidateCache();
+          AiImageModerationService.clearTextEmbeddings();
+        case AiModelFileType.tokenizer:
+        case AiModelFileType.tokenizerConfig:
+          AiImageModerationService.clearTextEmbeddings();
+      }
       SmartDialog.showToast('${_fileTypeLabel(type)}已导入');
     } catch (e) {
       SmartDialog.dismiss();
@@ -207,7 +230,19 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
       if (saved != null) {
         await _updateModelReadyFlag();
         await _refreshFileStatus();
-        AiImageModerationService.invalidateCache();
+        switch (type) {
+          case AiModelFileType.vision:
+          case AiModelFileType.preprocessorConfig:
+            AiImageModerationService.disposeSession();
+            AiImageModerationService.invalidateCache();
+          case AiModelFileType.text:
+            AiImageModerationService.disposeSession();
+            AiImageModerationService.invalidateCache();
+            AiImageModerationService.clearTextEmbeddings();
+          case AiModelFileType.tokenizer:
+          case AiModelFileType.tokenizerConfig:
+            AiImageModerationService.clearTextEmbeddings();
+        }
         SmartDialog.showToast('${_fileTypeLabel(type)}下载完成');
       } else {
         SmartDialog.showToast('下载失败: 请检查地址是否有效');
@@ -287,9 +322,7 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              ready
-                  ? '模型已就绪 (ONNX/TFLite)'
-                  : '模型文件不完整',
+              ready ? '模型已就绪 (ONNX/TFLite)' : '模型文件不完整',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: ready ? Colors.green : theme.colorScheme.error,
               ),
@@ -317,6 +350,16 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
         AiModelFileType.text,
         _hasText,
         'text_model.onnx/tflite',
+      ),
+      (
+        AiModelFileType.preprocessorConfig,
+        _hasPreprocessorConfig,
+        'preprocessor_config.json',
+      ),
+      (
+        AiModelFileType.tokenizerConfig,
+        _hasTokenizerConfig,
+        'tokenizer_config.json',
       ),
     ];
 
@@ -463,8 +506,9 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
           ),
           const Divider(height: 1),
           NormalItem(
-            title: '模型输入尺寸',
-            getSubtitle: () => '当前: ${Pref.aiModelInputSize}px',
+            title: '模型输入尺寸（配置缺失时）',
+            getSubtitle: () =>
+                '当前: ${Pref.aiModelInputSize}px\n配置文件存在时优先使用配置文件',
             leading: const Icon(Icons.crop_free),
             onTap: (context, setState) => _showInputSizeDialog(),
           ),

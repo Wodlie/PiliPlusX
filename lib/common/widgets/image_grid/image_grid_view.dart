@@ -17,6 +17,7 @@
 
 import 'dart:io' show Platform;
 import 'dart:math' show min;
+import 'dart:ui' show ImageFilter;
 
 import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/style.dart';
@@ -137,19 +138,47 @@ class _ImageGridViewState extends State<ImageGridView> {
   }
 
   /// Fire-and-forget AI evaluation. Sync cache check first, then async eval.
+  ///
+  /// Sets [AiImageState.pending] before the async evaluation to prevent the
+  /// original image from flashing during evaluation. Dropped/cancelled tasks
+  /// (queue overflow or fail-open) are not cached as normal — the pending
+  /// state is removed so re-evaluation can occur when re-entering view.
   Future<void> _evaluateAiImage(String imgSrc) async {
+    // Guard: skip if already evaluated or evaluation in-progress.
+    if (_aiImageStatus.containsKey(imgSrc)) return;
+
     // a. Sync cache check
     final cached = AiImageModerationService.getCachedResult(imgSrc);
     if (cached != null) {
-      if (mounted && _aiImageStatus[imgSrc] == null) {
+      if (mounted) {
         _aiImageStatus[imgSrc] = cached;
         setState(() {});
       }
       return;
     }
-    // b. Fire-and-forget async evaluation
+
+    // b. Set pending before async eval to prevent original image flash.
+    if (mounted) {
+      setState(() => _aiImageStatus[imgSrc] = AiImageState.pending);
+    }
+
+    // c. Fire-and-forget async evaluation
     final result = await AiImageModerationService.evaluateImage(imgSrc);
-    if (mounted && _aiImageStatus[imgSrc] == null) {
+
+    // d. Dropped/cancelled tasks: result is normal but not cached by the
+    //    service (queue overflow or fail-open). Don't cache as normal —
+    //    remove pending state so re-evaluation is possible.
+    if (result == AiImageState.normal &&
+        AiImageModerationService.getCachedResult(imgSrc) == null) {
+      if (mounted && _aiImageStatus[imgSrc] == AiImageState.pending) {
+        _aiImageStatus.remove(imgSrc);
+        setState(() {});
+      }
+      return;
+    }
+
+    // e. Set final state only if still pending (not overridden).
+    if (mounted && _aiImageStatus[imgSrc] == AiImageState.pending) {
       _aiImageStatus[imgSrc] = result;
       setState(() {});
     }
@@ -188,19 +217,11 @@ class _ImageGridViewState extends State<ImageGridView> {
           ListTile(
             onTap: () async {
               Get.back();
-              final entry = await ImageBlockService.blockImage(imgSrc);
-              if (entry != null) {
-                final list = Pref.imageBlockHashList;
-                if (!list.any((e) => e['pHash'] == entry['pHash'])) {
-                  list.add(entry);
-                  Pref.imageBlockHashList = list;
-                  ImageBlockService.invalidateResultCache();
-                }
-                if (mounted) {
-                  setState(() => _imageBlockStatus[imgSrc] = true);
-                }
-                SmartDialog.showToast('已屏蔽图片');
+              await ImageBlockService.addBlockedImage(imgSrc);
+              if (mounted) {
+                setState(() => _imageBlockStatus[imgSrc] = true);
               }
+              SmartDialog.showToast('已屏蔽图片');
             },
             leading: const Icon(
               Icons.block,
@@ -221,7 +242,15 @@ class _ImageGridViewState extends State<ImageGridView> {
     if (_enableBlock) {
       final isBlocked = _imageBlockStatus[item.url] == true;
       final aiBlocked = _aiImageStatus[item.url] == AiImageState.blocked;
+      final aiHighRisk = _aiImageStatus[item.url] == AiImageState.highRisk;
       final tempUnblocked = _isTempUnblocked(item.url);
+
+      // HighRisk: tap to temporarily reveal (add to tempUnblock set, no navigation)
+      if (aiHighRisk && !tempUnblocked) {
+        setState(() => _tempUnblockedSrcs.add(item.url));
+        return;
+      }
+
       if ((isBlocked || aiBlocked) && !tempUnblocked) return;
     }
 
@@ -343,16 +372,8 @@ class _ImageGridViewState extends State<ImageGridView> {
         PopupMenuItem(
           height: 42,
           onTap: () async {
-            final entry = await ImageBlockService.blockImage(item.url);
-            if (entry != null) {
-              final list = Pref.imageBlockHashList;
-              if (!list.any((e) => e['pHash'] == entry['pHash'])) {
-                list.add(entry);
-                Pref.imageBlockHashList = list;
-                ImageBlockService.invalidateResultCache();
-              }
-              SmartDialog.showToast('已屏蔽图片');
-            }
+            await ImageBlockService.addBlockedImage(item.url);
+            SmartDialog.showToast('已屏蔽图片');
           },
           child: const Text(
             '屏蔽图片',
@@ -405,7 +426,7 @@ class _ImageGridViewState extends State<ImageGridView> {
 
             // ── Blocked: show placeholder component instead of image ──
             // ── Pending: show neutral loading placeholder while async block check runs ──
-            // ── AI: blocked/lowRes override after pHash passes ──
+            // ── AI: blocked/highRisk override after pHash passes ──
             // ── Normal: show preview image ──
             if (_enableBlock) {
               final isBlocked = _imageBlockStatus[imgSrc] == true;
@@ -477,23 +498,66 @@ class _ImageGridViewState extends State<ImageGridView> {
                     ),
                   );
                 }
-                if (aiState == AiImageState.lowRes) {
+                if (aiState == AiImageState.highRisk) {
                   return LayoutId(
                     id: index,
                     child: Semantics(
                       label: '图片，第 ${index + 1} 张，共 ${widget.picArr.length} 张',
                       button: true,
-                      child: NetworkImgLayer(
-                        src: item.url,
-                        width: width,
-                        height: height,
-                        quality: 10,
-                        borderRadius: borderRadius,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ImageFiltered(
+                            imageFilter: ImageFilter.blur(
+                              sigmaX: 15,
+                              sigmaY: 15,
+                            ),
+                            child: NetworkImgLayer(
+                              src: item.url,
+                              width: width,
+                              height: height,
+                              borderRadius: borderRadius,
+                            ),
+                          ),
+                          Container(color: Colors.black.withOpacity(0.4)),
+                          Center(
+                            child: Text(
+                              '图片可能引起不适，点击后查看',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );
                 }
-                // aiState == null (pending) or normal → optimistic normal render (fail-open)
+                if (aiState == AiImageState.pending) {
+                  return LayoutId(
+                    id: index,
+                    child: Container(
+                      width: width,
+                      height: height,
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: borderRadius,
+                      ),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                // aiState == null or normal → optimistic normal render (fail-open)
               }
             }
 
