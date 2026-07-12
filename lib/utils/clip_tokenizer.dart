@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+
+import 'package:PiliPlus/utils/clip_tokenizer_config.dart';
 
 /// Pure-Dart CLIP ByteLevel BPE tokenizer.
 ///
@@ -11,16 +12,32 @@ import 'dart:typed_data';
 /// Supports two formats:
 ///   1. `tokenizer.json` (HuggingFace tokenizers format) — single file
 ///   2. `vocab.json` + `merges.txt` (OpenAI CLIP format) — two files
+///
+/// Accepts an optional [ClipTokenizerConfig] for config-driven behavior
+/// (special token IDs, lowercase, prefix space, context length).
 class CLIPTokenizer {
-  // ── Special token IDs ──────────────────────────────────────────────
-  static const int bosId = 49406;
-  static const int eosId = 49407;
-  static const int padId = 0;
+  // ── Special token IDs (instance fields, driven by config) ──────────
+  /// Beginning-of-sequence token ID.
+  final int bosId;
+
+  /// End-of-sequence token ID.
+  final int eosId;
+
+  /// Padding token ID.
+  final int padId;
+
+  /// Maximum sequence length (default 77).
+  final int contextLength;
+
+  // ── Config-driven flags ────────────────────────────────────────────
+  final bool _doLowerCase;
+  final bool _addPrefixSpace;
 
   // ── Vocab and BPE state ────────────────────────────────────────────
   final Map<String, int> _vocab;
   final Map<int, String> _decoder;
   final Map<String, int> _bpeRanks;
+  final Map<int, String> _addedTokens;
   final Map<String, String> _cache = <String, String>{
     '<|startoftext|>': '<|startoftext|>',
     '<|endoftext|>': '<|endoftext|>',
@@ -40,47 +57,94 @@ class CLIPTokenizer {
   );
 
   // ── Constructor ────────────────────────────────────────────────────
-  CLIPTokenizer._(this._vocab, this._bpeRanks)
-    : _decoder = _vocab.map((k, v) => MapEntry(v, k));
+  CLIPTokenizer._(
+    this._vocab,
+    this._bpeRanks,
+    this._addedTokens, {
+    ClipTokenizerConfig? config,
+  }) : _decoder = _vocab.map((k, v) => MapEntry(v, k)),
+       bosId = _resolveTokenId(
+         config?.bosToken,
+         config,
+         _vocab,
+         _addedTokens,
+         49406,
+       ),
+       eosId = _resolveTokenId(
+         config?.eosToken,
+         config,
+         _vocab,
+         _addedTokens,
+         49407,
+       ),
+       padId = _resolveTokenId(
+         config?.padToken,
+         config,
+         _vocab,
+         _addedTokens,
+         0,
+       ),
+       contextLength = config?.contextLength ?? 77,
+       _doLowerCase = config?.doLowerCase ?? true,
+       _addPrefixSpace = config?.addPrefixSpace ?? false;
 
   // ── Factory: load from directory ───────────────────────────────────
   /// Load tokenizer files from [tokenizerDir]. Auto-detects format:
   ///
   /// 1. `tokenizer.json` (HuggingFace tokenizers format) — single file
   /// 2. `vocab.json` + `merges.txt` (OpenAI CLIP format) — two files
-  static Future<CLIPTokenizer> loadFromPath(String tokenizerDir) async {
+  ///
+  /// An optional [config] controls special token IDs, lowercasing,
+  /// prefix-space, and context length.
+  static Future<CLIPTokenizer> loadFromPath(
+    String tokenizerDir, {
+    ClipTokenizerConfig? config,
+  }) async {
     final dir = Directory(tokenizerDir);
     final tokenizerFile = File('${dir.path}/tokenizer.json');
     final vocabFile = File('${dir.path}/vocab.json');
     final mergesFile = File('${dir.path}/merges.txt');
 
     if (await tokenizerFile.exists()) {
-      return _loadFromHuggingFace(tokenizerFile);
+      return _loadFromHuggingFace(tokenizerFile, config: config);
     } else if (await vocabFile.exists() && await mergesFile.exists()) {
-      return _loadFromOpenAI(vocabFile, mergesFile);
+      return _loadFromOpenAI(vocabFile, mergesFile, config: config);
     }
     throw ArgumentError('No tokenizer files found in: $tokenizerDir');
   }
 
   /// Load from HuggingFace `tokenizer.json` format.
-  static Future<CLIPTokenizer> _loadFromHuggingFace(File file) async {
+  static Future<CLIPTokenizer> _loadFromHuggingFace(
+    File file, {
+    ClipTokenizerConfig? config,
+  }) async {
     final content = await file.readAsString();
     final json = jsonDecode(content) as Map<String, dynamic>;
     final model = json['model'] as Map<String, dynamic>;
+
+    // Validate BPE type
+    final modelType = model['type'] as String?;
+    if (modelType != 'BPE') {
+      throw UnsupportedError('Unsupported tokenizer type: $modelType');
+    }
+
     final vocabRaw = model['vocab'] as Map<String, dynamic>;
     final mergesRaw = model['merges'] as List<dynamic>;
+    final addedTokensRaw = json['added_tokens'] as List<dynamic>?;
 
     final vocab = vocabRaw.map((k, v) => MapEntry(k, (v as num).toInt()));
-    final merges = mergesRaw.cast<String>().toList();
+    final merges = _parseMerges(mergesRaw);
+    final addedTokens = _parseAddedTokensFromJson(addedTokensRaw);
 
-    return _fromMerges(vocab, merges);
+    return _fromMerges(vocab, merges, addedTokens, config: config);
   }
 
   /// Load from OpenAI CLIP `vocab.json` + `merges.txt` format.
   static Future<CLIPTokenizer> _loadFromOpenAI(
     File vocabFile,
-    File mergesFile,
-  ) async {
+    File mergesFile, {
+    ClipTokenizerConfig? config,
+  }) async {
     final vocabContent = await vocabFile.readAsString();
     final vocabRaw = jsonDecode(vocabContent) as Map<String, dynamic>;
     final vocab = vocabRaw.map((k, v) => MapEntry(k, (v as num).toInt()));
@@ -95,19 +159,21 @@ class CLIPTokenizer {
       }
     }
 
-    return _fromMerges(vocab, merges);
+    return _fromMerges(vocab, merges, const <int, String>{}, config: config);
   }
 
-  /// Build a [CLIPTokenizer] from parsed vocab and merges.
+  /// Build a [CLIPTokenizer] from parsed vocab, merges, and added tokens.
   static CLIPTokenizer _fromMerges(
     Map<String, int> vocab,
     List<String> merges,
-  ) {
+    Map<int, String> addedTokens, {
+    ClipTokenizerConfig? config,
+  }) {
     final bpeRanks = <String, int>{};
     for (int i = 0; i < merges.length; i++) {
       bpeRanks[merges[i]] = i;
     }
-    return CLIPTokenizer._(vocab, bpeRanks);
+    return CLIPTokenizer._(vocab, bpeRanks, addedTokens, config: config);
   }
 
   /// Create a [CLIPTokenizer] from a HuggingFace `tokenizer.json` string.
@@ -117,34 +183,63 @@ class CLIPTokenizer {
   ///
   /// The [jsonContent] must be a valid tokenizer.json with a `model` field
   /// containing `vocab` (Map<String,int>) and `merges` (List<String>).
-  static CLIPTokenizer fromJson(String jsonContent) {
+  ///
+  /// An optional [config] controls special token IDs, lowercasing,
+  /// prefix-space, and context length.
+  static CLIPTokenizer fromJson(
+    String jsonContent, {
+    ClipTokenizerConfig? config,
+  }) {
     final json = jsonDecode(jsonContent) as Map<String, dynamic>;
     final model = json['model'] as Map<String, dynamic>;
+
+    // Validate BPE type
+    final modelType = model['type'] as String?;
+    if (modelType != 'BPE') {
+      throw UnsupportedError('Unsupported tokenizer type: $modelType');
+    }
+
     final vocabRaw = model['vocab'] as Map<String, dynamic>;
     final mergesRaw = model['merges'] as List<dynamic>;
+    final addedTokensRaw = json['added_tokens'] as List<dynamic>?;
 
     final vocab = vocabRaw.map((k, v) => MapEntry(k, (v as num).toInt()));
-    final merges = mergesRaw.cast<String>().toList();
+    final merges = _parseMerges(mergesRaw);
+    final addedTokens = _parseAddedTokensFromJson(addedTokensRaw);
 
-    return _fromMerges(vocab, merges);
+    return _fromMerges(vocab, merges, addedTokens, config: config);
   }
 
   // ── Public API ─────────────────────────────────────────────────────
-  /// Tokenize [text] to CLIP token IDs.
+  /// Tokenize [text] to CLIP token IDs with attention mask.
   ///
   /// Algorithm (matches OpenAI CLIP simple_tokenizer.py):
-  ///   1. NFC normalize → lower case → strip
-  ///   2. Replace all whitespace runs with single space
-  ///   3. CLIP regex split
-  ///   4. Byte-level BPE encoding per split token
-  ///   5. Prepend BOS (49406), append EOS (49407)
-  ///   6. Pad/truncate to [contextLength] (default 77)
+  ///   1. NFC normalize → lower case (config-driven) → strip
+  ///   2. Optionally prepend space ([addPrefixSpace])
+  ///   3. Replace all whitespace runs with single space
+  ///   4. CLIP regex split
+  ///   5. Byte-level BPE encoding per split token
+  ///   6. Prepend BOS, append EOS
+  ///   7. Pad/truncate to [contextLength] (default 77)
+  ///   8. Generate attention mask (1 for real tokens, 0 for padding)
   ///
-  /// Returns a [List<int>] of exactly [contextLength] elements.
-  List<int> tokenize(String text, {int contextLength = 77}) {
-    // 1. NFC normalize (via UTF-8 roundtrip) → lowercase → strip
-    final normalized = utf8.decode(text.codeUnits, allowMalformed: true);
-    var clean = normalized.toLowerCase().trim();
+  /// Returns a [TokenizedText] of exactly [contextLength] elements.
+  ///
+  /// Truncation preserves EOS: the last position is always EOS.
+  TokenizedText tokenize(String text, {int? contextLength}) {
+    final effectiveContextLength = contextLength ?? this.contextLength;
+
+    // 1. NFC normalize (via UTF-8 roundtrip)
+    var clean = utf8.decode(text.codeUnits, allowMalformed: true);
+
+    // 1b. Config-driven preprocessing
+    if (_doLowerCase) {
+      clean = clean.toLowerCase();
+    }
+    if (_addPrefixSpace) {
+      clean = ' $clean';
+    }
+    clean = clean.trim();
 
     // 2. Collapse whitespace
     clean = clean.replaceAll(_whitespacePattern, ' ');
@@ -176,16 +271,30 @@ class CLIPTokenizer {
     }
 
     // 5. Prepend BOS, append EOS
-    final result = <int>[bosId, ...bpeTokenIds, eosId];
+    var result = <int>[bosId, ...bpeTokenIds, eosId];
 
-    // 6. Pad or truncate
-    if (result.length > contextLength) {
-      return result.sublist(0, contextLength);
+    // 6. Truncate preserving EOS
+    if (result.length > effectiveContextLength) {
+      result = result.sublist(0, effectiveContextLength);
+      result[effectiveContextLength - 1] = eosId;
     }
-    return [
-      ...result,
-      ...List.filled(contextLength - result.length, padId),
+
+    // 7. Track real token count before padding
+    final realLength = result.length;
+
+    // 8. Pad
+    final padCount = effectiveContextLength - result.length;
+    if (padCount > 0) {
+      result.addAll(List.filled(padCount, padId));
+    }
+
+    // 9. Build attention mask: 1 for real tokens, 0 for padding
+    final attentionMask = <int>[
+      ...List.filled(realLength, 1),
+      ...List.filled(padCount, 0),
     ];
+
+    return TokenizedText(inputIds: result, attentionMask: attentionMask);
   }
 
   /// Decode token IDs back to text (approximate).
@@ -289,6 +398,80 @@ class CLIPTokenizer {
 
   // ── Helpers ────────────────────────────────────────────────────────
   static final RegExp _whitespacePattern = RegExp(r'\s+');
+
+  /// Resolve a special token ID following the lookup order:
+  /// 1. `config.addedTokens` (from tokenizer_config.json)
+  /// 2. `_addedTokens` (from tokenizer.json `added_tokens` array)
+  /// 3. Query vocab by special token string
+  /// 4. Fallback default
+  static int _resolveTokenId(
+    String? tokenString,
+    ClipTokenizerConfig? config,
+    Map<String, int> vocab,
+    Map<int, String> addedTokens,
+    int fallback,
+  ) {
+    if (tokenString == null) return fallback;
+
+    // 1. Check config.addedTokens (from tokenizer_config.json)
+    if (config != null) {
+      for (final entry in config.addedTokens.entries) {
+        if (entry.value == tokenString) return entry.key;
+      }
+    }
+
+    // 2. Check tokenizer.json added_tokens array
+    for (final entry in addedTokens.entries) {
+      if (entry.value == tokenString) return entry.key;
+    }
+
+    // 3. Query vocab by special token string
+    final vocabId = vocab[tokenString];
+    if (vocabId != null) return vocabId;
+
+    // 4. Fallback
+    return fallback;
+  }
+
+  /// Parse `merges` from tokenizer.json, supporting both:
+  /// - `List<String>`: `["c a", "a t", ...]`
+  /// - `List<List<String>>`: `[["c", "a"], ["a", "t"], ...]`
+  static List<String> _parseMerges(List<dynamic> mergesRaw) {
+    if (mergesRaw.isEmpty) return <String>[];
+
+    // If the first element is a String, treat as List<String>
+    if (mergesRaw.first is String) {
+      return mergesRaw.cast<String>().toList();
+    }
+
+    // Otherwise treat as List<List<String>> (two-element array format)
+    return mergesRaw.map((pair) {
+      final arr = pair as List<dynamic>;
+      return '${arr[0]} ${arr[1]}';
+    }).toList();
+  }
+
+  /// Parse `added_tokens` array from tokenizer.json.
+  ///
+  /// Input format: `[{"id": 49406, "content": "<|startoftext|>"}]`
+  /// Output: `{49406: "<|startoftext|>"}`
+  static Map<int, String> _parseAddedTokensFromJson(
+    List<dynamic>? addedTokensRaw,
+  ) {
+    if (addedTokensRaw == null || addedTokensRaw.isEmpty) {
+      return const <int, String>{};
+    }
+    final result = <int, String>{};
+    for (final item in addedTokensRaw) {
+      if (item is! Map<String, dynamic>) continue;
+      final id = item['id'];
+      final content = item['content'];
+      if (id is num && content is String) {
+        result[id.toInt()] = content;
+      }
+    }
+    return result;
+  }
 
   /// Build the CLIP byte-to-unicode mapping.
   ///

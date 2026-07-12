@@ -1,8 +1,8 @@
 import 'dart:io' show File;
-import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:PiliPlus/utils/ai_model_storage.dart';
+import 'package:PiliPlus/utils/clip_tokenizer_config.dart';
 import 'package:flutter_onnxruntime/flutter_onnxruntime.dart' as onnx;
 import 'package:flutter_litert/flutter_litert.dart' as tflite;
 
@@ -24,15 +24,15 @@ abstract class InferenceSession {
   ///
   /// Returns a 512-element image embedding (caller normalises with
   /// [ClipSimilarity]).
-  Future<Float32List> runVision(Float32List input);
+  Future<Float32List> runVision(Float32List input, {required List<int> shape});
 
-  /// Run the text encoder on token IDs.
+  /// Run the text encoder on tokenized text.
   ///
-  /// [tokenIds] is a 77-element list produced by [CLIPTokenizer.tokenize].
+  /// [tokens] is produced by [CLIPTokenizer.tokenize] and contains both
+  /// input IDs and an attention mask.
   ///
-  /// Returns a 512-element text embedding (caller normalises with
-  /// [ClipSimilarity]).
-  Future<Float32List> runText(List<int> tokenIds);
+  /// Returns a text embedding (caller normalises with [ClipSimilarity]).
+  Future<Float32List> runText(TokenizedText tokens);
 
   /// Release all native resources (sessions, tensors, interpreters).
   void dispose();
@@ -56,10 +56,6 @@ class OnnxSession implements InferenceSession {
   late final String _visionOutputName;
   late final String _textInputName;
   late final String _textOutputName;
-  // Model paths are needed by [Isolate.run] which creates temporary sessions
-  // inside the spawned isolate (native resources cannot cross boundaries).
-  late final String _visionModelPath;
-  late final String _textModelPath;
 
   OnnxSession._();
 
@@ -84,8 +80,6 @@ class OnnxSession implements InferenceSession {
       session._ort = ort;
       session._visionSession = vision;
       session._textSession = text;
-      session._visionModelPath = visionPath;
-      session._textModelPath = textPath;
       session._visionInputName = vision.inputNames.first;
       session._visionOutputName = vision.outputNames.first;
       session._textInputName = text.inputNames.first;
@@ -98,49 +92,74 @@ class OnnxSession implements InferenceSession {
   }
 
   @override
-  Future<Float32List> runVision(Float32List input) async {
-    // ONNX Runtime has no built-in IsolateInterpreter (unlike flutter_litert).
-    // Use Isolate.run() to offload inference: create a temporary session
-    // inside the spawned isolate (sessions cannot cross isolate boundaries),
-    // run inference, close the session, and return the result.
-    final path = _visionModelPath;
-    final inputName = _visionInputName;
-    final outputName = _visionOutputName;
-    return Isolate.run(() async {
-      final ort = onnx.OnnxRuntime();
-      final session = await ort.createSession(path);
-      try {
-        final tensor = await onnx.OrtValue.fromList(
-          input.toList(),
-          [1, 3, 224, 224],
-        );
-        try {
-          final outputs = await session.run({inputName: tensor});
-          final out = outputs[outputName]!;
-          final list = await out.asList() as List<dynamic>;
-          return Float32List.fromList(list.cast<double>());
-        } finally {
-          await tensor.dispose();
-        }
-      } finally {
-        session.close();
-      }
-    });
+  Future<Float32List> runVision(
+    Float32List input, {
+    required List<int> shape,
+  }) async {
+    final tensor = await onnx.OrtValue.fromList(input.toList(), shape);
+    try {
+      final outputs = await _visionSession.run({_visionInputName: tensor});
+      final out = outputs[_visionOutputName]!;
+      final raw = await out.asFlattenedList();
+      final flat = _flattenList(raw as List<dynamic>);
+      return Float32List.fromList(flat.cast<double>());
+    } finally {
+      await tensor.dispose();
+    }
   }
 
   @override
-  Future<Float32List> runText(List<int> tokenIds) async {
-    final tensor = await onnx.OrtValue.fromList(
-      tokenIds.map((e) => e.toInt()).toList(),
-      [1, 77],
-    );
+  Future<Float32List> runText(TokenizedText tokens) async {
+    final inputNames = _textSession.inputNames;
+
+    // Fuzzy match input names (case-insensitive).
+    String? inputIdsName;
+    String? attentionMaskName;
+    for (final name in inputNames) {
+      final lower = name.toLowerCase();
+      if (lower == 'input_ids') {
+        inputIdsName = name;
+      } else if (lower == 'attention_mask') {
+        attentionMaskName = name;
+      }
+    }
+
+    final shape = [1, tokens.inputIds.length];
+    final inputs = <String, onnx.OrtValue>{};
+
+    if (inputIdsName != null) {
+      final tensor = await onnx.OrtValue.fromList(
+        tokens.inputIds.toList(),
+        shape,
+      );
+      inputs[inputIdsName] = tensor;
+    }
+
+    if (attentionMaskName != null && inputNames.length > 1) {
+      final maskTensor = await onnx.OrtValue.fromList(
+        tokens.attentionMask.toList(),
+        shape,
+      );
+      inputs[attentionMaskName] = maskTensor;
+    }
+
+    if (inputs.isEmpty) {
+      throw StateError(
+        'No supported input found in model input names: $inputNames. '
+        'Expected at least "input_ids".',
+      );
+    }
+
     try {
-      final outputs = await _textSession.run({_textInputName: tensor});
+      final outputs = await _textSession.run(inputs);
       final out = outputs[_textOutputName]!;
-      final list = await out.asList() as List<dynamic>;
-      return Float32List.fromList(list.cast<double>());
+      final raw = await out.asFlattenedList();
+      final flat = _flattenList(raw as List<dynamic>);
+      return Float32List.fromList(flat.cast<double>());
     } finally {
-      await tensor.dispose();
+      for (final v in inputs.values) {
+        await v.dispose();
+      }
     }
   }
 
@@ -150,6 +169,27 @@ class OnnxSession implements InferenceSession {
     _textSession.close();
     _ort = null;
   }
+}
+
+// ==========================================================================
+// Helpers
+// ==========================================================================
+
+/// Recursively flatten a nested [List] of numeric values into a single-level
+/// [List]<[num]>.
+///
+/// ONNX Runtime may return outputs shaped `[1, 512]`, `[1, 512, 1]`, or other
+/// multi-dimensional layouts.  This helper collapses any nesting depth.
+List<num> _flattenList(List<dynamic> list) {
+  final result = <num>[];
+  for (final item in list) {
+    if (item is List<dynamic>) {
+      result.addAll(_flattenList(item));
+    } else if (item is num) {
+      result.add(item);
+    }
+  }
+  return result;
 }
 
 // ==========================================================================
@@ -196,17 +236,44 @@ class TfliteSession implements InferenceSession {
   }
 
   @override
-  Future<Float32List> runVision(Float32List input) async {
+  Future<Float32List> runVision(
+    Float32List input, {
+    required List<int> shape,
+  }) async {
     final outputs = _visionModel!.run([input]);
     return outputs.first;
   }
 
   @override
-  Future<Float32List> runText(List<int> tokenIds) async {
-    final input = [tokenIds.toList()];
-    final output = [List.filled(512, 0.0)];
-    await _textIsolate!.run(input, output);
-    return Float32List.fromList(output.first.cast<double>());
+  Future<Float32List> runText(TokenizedText tokens) async {
+    // Dynamic output buffer size from the model's output tensor shape.
+    final outputTensors = _textInterpreter!.getOutputTensors();
+    final outputTensor = outputTensors.first;
+    final outputShape = outputTensor.shape;
+    final outputDim = outputShape.length >= 2
+        ? outputShape[outputShape.length - 1]
+        : outputShape[0];
+
+    // Determine how many inputs the model expects.
+    final inputTensors = _textInterpreter!.getInputTensors();
+
+    final outputBuffer = [List.filled(outputDim, 0.0)];
+
+    if (inputTensors.length > 1) {
+      // Model expects both input_ids and attention_mask.
+      final inputList = <Object>[
+        [tokens.inputIds.toList()],
+        [tokens.attentionMask.toList()],
+      ];
+      await _textIsolate!.runForMultipleInputs(inputList, {0: outputBuffer});
+    } else {
+      // Model expects only input_ids.
+      await _textIsolate!.run([tokens.inputIds.toList()], outputBuffer);
+    }
+
+    return Float32List.fromList(
+      (outputBuffer.first as List<dynamic>).cast<double>(),
+    );
   }
 
   @override
@@ -240,11 +307,21 @@ abstract final class AiInferenceEngine {
   /// fails for all available formats.  Check [lastCreateError] for the
   /// reason.
   ///
-  /// Selection priority:
-  ///   1. ONNX (all platforms)
-  ///   2. TFLite (fallback)
+  /// Selection is driven by the detected model format on disk.
   static Future<InferenceSession?> create() async {
     lastCreateError = null;
+
+    // Verify vision and text encoders use the same format.
+    final visionPath = await AiModelStorage.getVisionPath();
+    final textPath = await AiModelStorage.getTextPath();
+    if (visionPath != null && textPath != null) {
+      final visionIsOnnx = visionPath.endsWith('.onnx');
+      final textIsOnnx = textPath.endsWith('.onnx');
+      if (visionIsOnnx != textIsOnnx) {
+        throw StateError('不支持混合编码器格式');
+      }
+    }
+
     final format = await AiModelStorage.detectFormat();
 
     switch (format.toLowerCase()) {
@@ -253,14 +330,6 @@ abstract final class AiInferenceEngine {
           return await OnnxSession.create();
         } catch (e) {
           lastCreateError = 'ONNX: $e';
-        }
-        if (await AiModelStorage.hasBothEncoders()) {
-          try {
-            return await TfliteSession.create();
-          } catch (e) {
-            lastCreateError = 'TFLite(onnx-fallback): $e';
-            return null;
-          }
         }
         lastCreateError ??= 'ONNX 格式已检测到但缺少编码器文件';
         return null;
