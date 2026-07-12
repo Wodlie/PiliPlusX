@@ -1218,12 +1218,12 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
       hasUnblockedImages = item.content.pictures.isNotEmpty;
     }
 
-    // Also check AI moderation state for blocked/lowRes images.
-    bool hasAiBlockedOrLowRes = false;
+    // Also check AI moderation state for blocked/highRisk images.
+    bool hasAiBlockedOrHighRisk = false;
     for (final pic in item.content.pictures) {
       final aiState = AiImageModerationService.getCachedResult(pic.imgSrc);
-      if (aiState == AiImageState.blocked || aiState == AiImageState.lowRes) {
-        hasAiBlockedOrLowRes = true;
+      if (aiState == AiImageState.blocked || aiState == AiImageState.highRisk) {
+        hasAiBlockedOrHighRisk = true;
         break;
       }
     }
@@ -1394,19 +1394,11 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                       .toList(),
                   onBlockImages: (urls) async {
                     for (final url in urls) {
-                      final entry = await ImageBlockService.blockImage(
+                      await ImageBlockService.addBlockedImage(
                         url,
                         flipEnabled: Pref.imageBlockFlipEnabled,
                         rotateEnabled: Pref.imageBlockRotateEnabled,
                       );
-                      if (entry != null) {
-                        final list = Pref.imageBlockHashList;
-                        if (!list.any((e) => e['pHash'] == entry['pHash'])) {
-                          list.add(entry);
-                          Pref.imageBlockHashList = list;
-                          ImageBlockService.invalidateResultCache();
-                        }
-                      }
                     }
                   },
                 );
@@ -1526,19 +1518,11 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                 final pictures = item.content.pictures;
                 if (pictures.length <= 1) {
                   // Single image: block directly.
-                  final entry = await ImageBlockService.blockImage(
+                  await ImageBlockService.addBlockedImage(
                     pictures.first.imgSrc,
                     flipEnabled: Pref.imageBlockFlipEnabled,
                     rotateEnabled: Pref.imageBlockRotateEnabled,
                   );
-                  if (entry != null) {
-                    final list = Pref.imageBlockHashList;
-                    if (!list.any((e) => e['pHash'] == entry['pHash'])) {
-                      list.add(entry);
-                      Pref.imageBlockHashList = list;
-                      ImageBlockService.invalidateResultCache();
-                    }
-                  }
                   if (mounted) setState(() => _blockImageVersion++);
                   SmartDialog.showToast('已屏蔽图片');
                   return;
@@ -1625,19 +1609,11 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                 if (result != true || selected.isEmpty) return;
 
                 for (final i in selected) {
-                  final entry = await ImageBlockService.blockImage(
+                  await ImageBlockService.addBlockedImage(
                     pictures[i].imgSrc,
                     flipEnabled: Pref.imageBlockFlipEnabled,
                     rotateEnabled: Pref.imageBlockRotateEnabled,
                   );
-                  if (entry != null) {
-                    final list = Pref.imageBlockHashList;
-                    if (!list.any((e) => e['pHash'] == entry['pHash'])) {
-                      list.add(entry);
-                      Pref.imageBlockHashList = list;
-                      ImageBlockService.invalidateResultCache();
-                    }
-                  }
                 }
                 if (mounted) setState(() => _blockImageVersion++);
                 SmartDialog.showToast(
@@ -1653,7 +1629,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               title: Text('屏蔽图片', style: style.copyWith(color: errorColor)),
             ),
           if (Pref.enableImageBlock &&
-              (hasBlockedImages || hasAiBlockedOrLowRes))
+              (hasBlockedImages || hasAiBlockedOrHighRisk))
             ListTile(
               onTap: () {
                 Get.back();
@@ -1674,7 +1650,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               title: Text('恢复图片显示', style: style.copyWith(color: errorColor)),
             ),
           if (Pref.enableImageBlock &&
-              hasAiBlockedOrLowRes &&
+              hasAiBlockedOrHighRisk &&
               !hasBlockedImages)
             ListTile(
               onTap: () async {
@@ -1685,19 +1661,13 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     pic.imgSrc,
                   );
                   if (aiState == AiImageState.blocked ||
-                      aiState == AiImageState.lowRes) {
-                    final entry = await ImageBlockService.blockImage(
+                      aiState == AiImageState.highRisk) {
+                    final entry = await ImageBlockService.addBlockedImage(
                       pic.imgSrc,
                       flipEnabled: Pref.imageBlockFlipEnabled,
                       rotateEnabled: Pref.imageBlockRotateEnabled,
                     );
                     if (entry != null) {
-                      final list = Pref.imageBlockHashList;
-                      if (!list.any((e) => e['pHash'] == entry['pHash'])) {
-                        list.add(entry);
-                        Pref.imageBlockHashList = list;
-                        ImageBlockService.invalidateResultCache();
-                      }
                       count++;
                     }
                   }

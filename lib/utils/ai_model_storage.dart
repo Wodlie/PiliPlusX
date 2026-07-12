@@ -131,6 +131,24 @@ abstract final class AiModelStorage {
     return vocabExists && mergesExists;
   }
 
+  // ── Config file helpers ──────────────────────────────────────────────
+
+  /// Returns the path to the preprocessor config file.
+  static Future<String> getPreprocessorConfigPath() async =>
+      p.join(await modelsDir, 'preprocessor_config.json');
+
+  /// Returns the path to the tokenizer config file.
+  static Future<String> getTokenizerConfigPath() async =>
+      p.join(await tokenizerDir, 'tokenizer_config.json');
+
+  /// Returns `true` if a preprocessor config file exists on disk.
+  static Future<bool> hasPreprocessorConfig() async =>
+      File(await getPreprocessorConfigPath()).exists();
+
+  /// Returns `true` if a tokenizer config file exists on disk.
+  static Future<bool> hasTokenizerConfig() async =>
+      File(await getTokenizerConfigPath()).exists();
+
   /// Delete all AI model files (models + tokenizer) from disk.
   ///
   /// This removes the entire `ai_models/` directory tree.

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:PiliPlus/utils/ai_model_storage.dart';
@@ -5,11 +6,13 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
 
-/// Identifies one of the three model files the AI pipeline needs.
+/// Identifies one of the model/configuration files the AI pipeline needs.
 enum AiModelFileType {
   tokenizer,
   vision,
   text,
+  preprocessorConfig,
+  tokenizerConfig,
 }
 
 /// Downloads CLIP model and tokenizer files from a HuggingFace repo using
@@ -67,7 +70,8 @@ class HfModelDownloader {
           .whereType<String>()
           .toSet();
 
-      final hasTokenizer = _tokenizerPriority.any(files.contains) ||
+      final hasTokenizer =
+          _tokenizerPriority.any(files.contains) ||
           (files.contains('vocab.json') && files.contains('merges.txt'));
       final hasVision = _visionPriority.any(files.contains);
       final hasText = _textPriority.any(files.contains);
@@ -75,9 +79,12 @@ class HfModelDownloader {
       if (hasTokenizer && hasVision && hasText) return null;
 
       final missing = <String>[];
-      if (!hasTokenizer) missing.add('tokenizer.json（或 vocab.json + merges.txt）');
-      if (!hasVision) missing.add('vision_model.onnx/tflite 或 image_encoder.onnx/tflite');
-      if (!hasText) missing.add('text_model.onnx/tflite 或 text_encoder.onnx/tflite');
+      if (!hasTokenizer)
+        missing.add('tokenizer.json（或 vocab.json + merges.txt）');
+      if (!hasVision)
+        missing.add('vision_model.onnx/tflite 或 image_encoder.onnx/tflite');
+      if (!hasText)
+        missing.add('text_model.onnx/tflite 或 text_encoder.onnx/tflite');
 
       return '该仓库缺少必要文件：${missing.join('、')}';
     } on DioException catch (e) {
@@ -240,6 +247,8 @@ class HfModelDownloader {
       AiModelFileType.tokenizer => 'tokenizer.$ext',
       AiModelFileType.vision => 'vision_model.$ext',
       AiModelFileType.text => 'text_model.$ext',
+      AiModelFileType.preprocessorConfig => 'preprocessor_config.$ext',
+      AiModelFileType.tokenizerConfig => 'tokenizer_config.$ext',
     };
   }
 
@@ -254,12 +263,27 @@ class HfModelDownloader {
     final ext = p.extension(source.path);
     if (ext.isEmpty) return null;
 
+    // Validate JSON for config files before overwriting any existing file.
+    if (type == AiModelFileType.preprocessorConfig ||
+        type == AiModelFileType.tokenizerConfig) {
+      try {
+        final content = await source.readAsString();
+        json.decode(content); // throws if invalid JSON
+      } catch (_) {
+        throw FormatException('无效的 JSON 配置文件: ${source.path}');
+      }
+    }
+
     final modelsDir = await AiModelStorage.modelsDir;
     final tokenizerDir = await AiModelStorage.tokenizerDir;
     await Directory(modelsDir).create(recursive: true);
     await Directory(tokenizerDir).create(recursive: true);
 
-    final destDir = type == AiModelFileType.tokenizer ? tokenizerDir : modelsDir;
+    final destDir = switch (type) {
+      AiModelFileType.tokenizer ||
+      AiModelFileType.tokenizerConfig => tokenizerDir,
+      _ => modelsDir,
+    };
     final destName = _canonicalNameFor(type, ext);
     final destPath = p.join(destDir, destName);
 
@@ -286,7 +310,11 @@ class HfModelDownloader {
     await Directory(modelsDir).create(recursive: true);
     await Directory(tokenizerDir).create(recursive: true);
 
-    final destDir = type == AiModelFileType.tokenizer ? tokenizerDir : modelsDir;
+    final destDir = switch (type) {
+      AiModelFileType.tokenizer ||
+      AiModelFileType.tokenizerConfig => tokenizerDir,
+      _ => modelsDir,
+    };
     final destName = _canonicalNameFor(type, ext);
     final destPath = p.join(destDir, destName);
 
@@ -297,6 +325,19 @@ class HfModelDownloader {
       onProgress: (p) => onProgress?.call(p, 'Downloading $destName...'),
     );
     if (!ok) return null;
+
+    // Validate JSON for config files after download.
+    if (type == AiModelFileType.preprocessorConfig ||
+        type == AiModelFileType.tokenizerConfig) {
+      try {
+        final content = await File(destPath).readAsString();
+        json.decode(content); // throws if invalid JSON
+      } catch (_) {
+        await File(destPath).delete();
+        return null;
+      }
+    }
+
     return destPath;
   }
 
@@ -317,6 +358,8 @@ class HfModelDownloader {
       AiModelFileType.tokenizer => 'json',
       AiModelFileType.vision => 'onnx',
       AiModelFileType.text => 'onnx',
+      AiModelFileType.preprocessorConfig => 'json',
+      AiModelFileType.tokenizerConfig => 'json',
     };
   }
 

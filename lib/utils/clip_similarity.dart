@@ -1,5 +1,6 @@
 import 'package:PiliPlus/utils/ai_image_state.dart';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 /// CLIP zero-shot image classification utilities.
 abstract final class ClipSimilarity {
@@ -39,7 +40,7 @@ abstract final class ClipSimilarity {
   /// Classify image embedding against 3 text embeddings (MALICIOUS, high-risk, normal).
   /// Returns (state, confidence) where confidence is the cosine similarity score.
   /// Index 0 → AiImageState.blocked (MALICIOUS)
-  /// Index 1 → AiImageState.lowRes (high-risk)
+  /// Index 1 → AiImageState.highRisk (high-risk)
   /// Index 2 → AiImageState.normal (normal)
   static (AiImageState, double) classify(
     Float32List imageEmbed,
@@ -50,6 +51,13 @@ abstract final class ClipSimilarity {
       'textEmbeds must contain exactly 3 entries (MALICIOUS, high-risk, normal)',
     );
 
+    final expectedDim = textEmbeds[0].length;
+    if (imageEmbed.length != expectedDim ||
+        textEmbeds.any((t) => t.length != expectedDim)) {
+      debugPrint('AiImageState classify: embedding dimension mismatch');
+      return (AiImageState.normal, 0.0);
+    }
+
     final scores = <double>[
       cosineSimilarity(imageEmbed, textEmbeds[0]),
       cosineSimilarity(imageEmbed, textEmbeds[1]),
@@ -59,7 +67,7 @@ abstract final class ClipSimilarity {
     final bestIdx = argmax(scores);
     final state = switch (bestIdx) {
       0 => AiImageState.blocked,
-      1 => AiImageState.lowRes,
+      1 => AiImageState.highRisk,
       2 => AiImageState.normal,
       _ => AiImageState.normal,
     };

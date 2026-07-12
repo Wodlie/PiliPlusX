@@ -1,1 +1,1 @@
-enum AiImageState { blocked, lowRes, normal, pending }
+enum AiImageState { blocked, highRisk, normal, pending }
