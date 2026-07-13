@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io' show File;
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:PiliPlus/utils/ai_model_storage.dart';
@@ -21,17 +23,12 @@ abstract class InferenceSession {
   /// [input] is a flat [Float32List] produced by [ClipPreprocessing].
   ///   - For ONNX: shape `[1, 3, H, W]` (NCHW, channel-first)
   ///   - For TFLite: shape `[1, H, W, 3]` (NHWC, channel-last)
-  ///
-  /// Returns a 512-element image embedding (caller normalises with
-  /// [ClipSimilarity]).
   Future<Float32List> runVision(Float32List input, {required List<int> shape});
 
   /// Run the text encoder on tokenized text.
   ///
   /// [tokens] is produced by [CLIPTokenizer.tokenize] and contains both
   /// input IDs and an attention mask.
-  ///
-  /// Returns a text embedding (caller normalises with [ClipSimilarity]).
   Future<Float32List> runText(TokenizedText tokens);
 
   /// Release all native resources (sessions, tensors, interpreters).
@@ -39,32 +36,155 @@ abstract class InferenceSession {
 }
 
 // ==========================================================================
-// ONNX Runtime session
+// Persistent ONNX vision worker isolate
+// ==========================================================================
+
+/// Manages a long-lived worker isolate dedicated to ONNX vision inference.
+///
+/// The worker creates its own [OnnxRuntime] + [OrtSession] once at startup
+/// (not per image), then processes inference requests sent via [SendPort].
+/// This keeps heavy ONNX computation off the main isolate so the UI stays
+/// responsive even during back-to-back evaluations.
+class _OnnxVisionWorker {
+  Isolate? _isolate;
+  SendPort? _sendPort;
+  final ReceivePort _receivePort = ReceivePort();
+  int _nextId = 0;
+  final Map<int, Completer<Float32List>> _completers = {};
+  String? _lastError;
+
+  /// Spawn the worker isolate and wait for it to initialise its ONNX session.
+  Future<void> start(String modelPath, String inputName, String outputName) async {
+    _isolate = await Isolate.spawn(
+      _visionWorkerMain,
+      <String, dynamic>{
+        'replyPort': _receivePort.sendPort,
+        'modelPath': modelPath,
+        'inputName': inputName,
+        'outputName': outputName,
+      },
+    );
+
+    // Wait for the worker to signal readiness (its ReceivePort's SendPort).
+    final initMsg = await _receivePort.first;
+    if (initMsg is Map) {
+      final error = initMsg['error'] as String?;
+      if (error != null) {
+        _lastError = error;
+        throw StateError('ONNX vision worker init failed: $error');
+      }
+      _sendPort = initMsg['ready'] as SendPort?;
+      if (_sendPort == null) {
+        throw StateError('ONNX vision worker init failed: no ready signal');
+      }
+    } else {
+      throw StateError('ONNX vision worker init failed: unexpected message');
+    }
+
+    // Listen for responses.
+    _receivePort.listen((message) {
+      if (message is List) {
+        final id = message[0] as int;
+        final error = message.length > 2 ? message[2] as String? : null;
+        final completer = _completers.remove(id);
+        if (completer != null) {
+          if (error != null) {
+            completer.completeError(Exception(error));
+          } else {
+            completer.complete(message[1] as Float32List);
+          }
+        }
+      }
+    });
+  }
+
+  /// Send an inference request to the worker isolate.
+  Future<Float32List> run(Float32List input, List<int> shape) async {
+    final id = _nextId++;
+    final completer = Completer<Float32List>();
+    _completers[id] = completer;
+    _sendPort!.send([id, input, shape]);
+    return completer.future;
+  }
+
+  /// Kill the worker isolate and release resources.
+  void dispose() {
+    _isolate?.kill(priority: Isolate.immediate);
+    _isolate = null;
+    _sendPort = null;
+    _receivePort.close();
+    _completers.clear();
+  }
+}
+
+/// Top-level entry point for the ONNX vision worker isolate.
+///
+/// Receives model metadata, creates its own ONNX session, then listens for
+/// inference requests on a [ReceivePort].  Each request is processed
+/// sequentially (the ONNX runtime is inherently single-session).
+@pragma('vm:entry-point')
+Future<void> _visionWorkerMain(Map<String, dynamic> params) async {
+  final replyPort = params['replyPort'] as SendPort;
+  final modelPath = params['modelPath'] as String;
+  final inputName = params['inputName'] as String;
+  final outputName = params['outputName'] as String;
+
+  onnx.OnnxRuntime? ort;
+  onnx.OrtSession? session;
+  try {
+    ort = onnx.OnnxRuntime();
+    session = await ort.createSession(modelPath);
+  } catch (e) {
+    replyPort.send({'error': e.toString()});
+    return;
+  }
+
+  final receivePort = ReceivePort();
+  replyPort.send({'ready': receivePort.sendPort});
+
+  await for (final message in receivePort) {
+    final data = message as List<Object?>;
+    final id = data[0] as int;
+    final input = data[1] as Float32List;
+    final shape = data[2] as List<int>;
+
+    try {
+      final tensor = await onnx.OrtValue.fromList(input.toList(), shape);
+      try {
+        final outputs = await session!.run({inputName: tensor});
+        final out = outputs[outputName]!;
+        final raw = await out.asFlattenedList();
+        final flat = _flattenList(raw as List<dynamic>);
+        replyPort.send([id, Float32List.fromList(flat.cast<double>())]);
+      } finally {
+        await tensor.dispose();
+      }
+    } catch (e) {
+      replyPort.send([id, null, e.toString()]);
+    }
+  }
+}
+
+// ==========================================================================
+// ONNX Runtime session (text runs on main isolate, vision offloaded)
 // ==========================================================================
 
 /// Inference session backed by [flutter_onnxruntime].
 ///
-/// Only available on platforms that meet ONNX Runtime requirements:
-///   - iOS 16+
-///   - macOS 14+
-/// Other platforms fall back to [TfliteSession].
+/// Text encoding runs on the main isolate (fast, small models).  Vision
+/// encoding is offloaded to a persistent worker isolate so heavy ONNX
+/// computation doesn't block the UI.
 class OnnxSession implements InferenceSession {
-  onnx.OnnxRuntime? _ort;
-  late final onnx.OrtSession _visionSession;
+  _OnnxVisionWorker? _visionWorker;
   late final onnx.OrtSession _textSession;
-  late final String _visionInputName;
-  late final String _visionOutputName;
-  late final String _textInputName;
   late final String _textOutputName;
 
   OnnxSession._();
 
   /// Create an [OnnxSession] from model files stored on disk.
   ///
-  /// Throws [StateError] if model files are not found.
-  ///
-  /// ONNX Runtime is supported on all platforms (Android, iOS, Linux,
-  /// macOS, Windows) via the flutter_onnxruntime plugin.
+  /// Spawns a persistent worker isolate for vision inference and creates a
+  /// text session on the main isolate.
   static Future<OnnxSession> create() async {
     final visionPath = await AiModelStorage.getVisionPath();
     final textPath = await AiModelStorage.getTextPath();
@@ -72,23 +192,31 @@ class OnnxSession implements InferenceSession {
       throw StateError('ONNX model files not found on disk.');
     }
 
+    // Create text session on main isolate (fast, small model).
     final ort = onnx.OnnxRuntime();
+    late final onnx.OrtSession textSession;
     try {
-      final vision = await ort.createSession(visionPath);
-      final text = await ort.createSession(textPath);
-      final session = OnnxSession._();
-      session._ort = ort;
-      session._visionSession = vision;
-      session._textSession = text;
-      session._visionInputName = vision.inputNames.first;
-      session._visionOutputName = vision.outputNames.first;
-      session._textInputName = text.inputNames.first;
-      session._textOutputName = text.outputNames.first;
-      return session;
+      textSession = await ort.createSession(textPath);
     } catch (e) {
-      ort;
+      throw StateError('Failed to create ONNX text session: $e');
+    }
+
+    // Start persistent worker isolate for vision inference.
+    final visionInputName = (await ort.createSession(visionPath)).inputNames.first;
+    final visionOutputName = (await ort.createSession(visionPath)).outputNames.first;
+    final worker = _OnnxVisionWorker();
+    try {
+      await worker.start(visionPath, visionInputName, visionOutputName);
+    } catch (e) {
+      textSession.close();
       rethrow;
     }
+
+    final session = OnnxSession._();
+    session._visionWorker = worker;
+    session._textSession = textSession;
+    session._textOutputName = textSession.outputNames.first;
+    return session;
   }
 
   @override
@@ -96,16 +224,7 @@ class OnnxSession implements InferenceSession {
     Float32List input, {
     required List<int> shape,
   }) async {
-    final tensor = await onnx.OrtValue.fromList(input.toList(), shape);
-    try {
-      final outputs = await _visionSession.run({_visionInputName: tensor});
-      final out = outputs[_visionOutputName]!;
-      final raw = await out.asFlattenedList();
-      final flat = _flattenList(raw as List<dynamic>);
-      return Float32List.fromList(flat.cast<double>());
-    } finally {
-      await tensor.dispose();
-    }
+    return _visionWorker!.run(input, shape);
   }
 
   @override
@@ -165,9 +284,9 @@ class OnnxSession implements InferenceSession {
 
   @override
   void dispose() {
-    _visionSession.close();
+    _visionWorker?.dispose();
+    _visionWorker = null;
     _textSession.close();
-    _ort = null;
   }
 }
 
@@ -296,9 +415,6 @@ class TfliteSession implements InferenceSession {
 abstract final class AiInferenceEngine {
   /// The error message from the most recent failed [create] call, or `null`
   /// if the last call succeeded or no call has been made.
-  ///
-  /// Callers can inspect this to show a user-friendly diagnostic when
-  /// [create] returns `null`.
   static String? lastCreateError;
 
   /// Detect the model format and create the appropriate session.
@@ -306,8 +422,6 @@ abstract final class AiInferenceEngine {
   /// Returns `null` when no model files are available or session creation
   /// fails for all available formats.  Check [lastCreateError] for the
   /// reason.
-  ///
-  /// Selection is driven by the detected model format on disk.
   static Future<InferenceSession?> create() async {
     lastCreateError = null;
 
