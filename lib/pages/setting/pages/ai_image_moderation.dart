@@ -103,8 +103,15 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
 
     SmartDialog.showLoading(msg: '正在复制文件...');
     try {
+      // Verify the picked file is accessible before attempting copy.
+      final pickedFile = File(result.xFile.path);
+      if (!await pickedFile.exists()) {
+        SmartDialog.dismiss();
+        SmartDialog.showToast('无法访问所选文件');
+        return;
+      }
       final saved = await HfModelDownloader.copyFromLocal(
-        File(result.xFile.path),
+        pickedFile,
         type,
       );
       SmartDialog.dismiss();
@@ -112,8 +119,15 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
         SmartDialog.showToast('文件复制失败，请检查文件格式');
         return;
       }
+      // Verify the copied file actually exists on disk.
+      if (!await File(saved).exists()) {
+        SmartDialog.showToast('文件复制后未找到，请重试');
+        return;
+      }
       await _updateModelReadyFlag();
       await _refreshFileStatus();
+      // Force a UI rebuild after file operations settle.
+      if (mounted) setState(() {});
       switch (type) {
         case AiModelFileType.vision:
         case AiModelFileType.preprocessorConfig:
@@ -230,6 +244,7 @@ class _AiImageModerationPageState extends State<AiImageModerationPage> {
       if (saved != null) {
         await _updateModelReadyFlag();
         await _refreshFileStatus();
+        if (mounted) setState(() {});
         switch (type) {
           case AiModelFileType.vision:
           case AiModelFileType.preprocessorConfig:
