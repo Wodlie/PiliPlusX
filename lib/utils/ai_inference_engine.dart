@@ -129,7 +129,7 @@ class OnnxSession implements InferenceSession {
 
     if (inputIdsName != null) {
       final tensor = await onnx.OrtValue.fromList(
-        tokens.inputIds.toList(),
+        Int64List.fromList(tokens.inputIds),
         shape,
       );
       inputs[inputIdsName] = tensor;
@@ -137,7 +137,7 @@ class OnnxSession implements InferenceSession {
 
     if (attentionMaskName != null && inputNames.length > 1) {
       final maskTensor = await onnx.OrtValue.fromList(
-        tokens.attentionMask.toList(),
+        Int64List.fromList(tokens.attentionMask),
         shape,
       );
       inputs[attentionMaskName] = maskTensor;
