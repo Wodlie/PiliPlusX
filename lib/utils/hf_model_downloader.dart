@@ -260,7 +260,10 @@ class HfModelDownloader {
     File source,
     AiModelFileType type,
   ) async {
-    final ext = p.extension(source.path);
+    // p.extension returns ".onnx" with leading dot. Strip it so that
+    // _canonicalNameFor produces "vision_model.onnx" not "vision_model..onnx".
+    var ext = p.extension(source.path);
+    if (ext.startsWith('.')) ext = ext.substring(1);
     if (ext.isEmpty) return null;
 
     // Validate JSON for config files before overwriting any existing file.
