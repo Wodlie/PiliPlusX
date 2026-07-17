@@ -712,28 +712,6 @@ void main() {
 
   group('addBlockedImage', () {
     test(
-      'Case 1: AI auto-block (source=ai_auto) does not throw, returns null',
-      () async {
-        // In production, addBlockedImage(source: 'ai_auto') would:
-        //   1. Compute pHash via blockImage
-        //   2. Add source='ai_auto', aiState='blocked', timestamp metadata
-        //   3. Append to Pref.imageBlockHashList
-        // In test without network, blockImage returns null.
-        Pref.imageBlockHashList = <Map<String, dynamic>>[];
-        final result = await ImageBlockService.addBlockedImage(
-          'https://i0.hdslb.com/bfs/album/ai_image.jpg',
-          source: 'ai_auto',
-        );
-        expect(result, isNull, reason: 'blockImage fails without network');
-        expect(
-          Pref.imageBlockHashList,
-          isEmpty,
-          reason: 'Pref unchanged when blockImage fails',
-        );
-      },
-    );
-
-    test(
       'Case 2: Dedup — same pHash not re-added when blockImage succeeds',
       () async {
         // Pre-populate block list with a known pHash. In production,
@@ -764,7 +742,7 @@ void main() {
       'Case 3: highRisk — no entry added when blockImage fails',
       () async {
         // When blockImage fails (e.g. download error, which simulates a
-        // highRisk rejection in the AI moderation pipeline), addBlockedImage
+        // highRisk rejection), addBlockedImage
         // returns null and Pref stays unchanged.
         Pref.imageBlockHashList = <Map<String, dynamic>>[];
 
@@ -796,23 +774,6 @@ void main() {
           isNull,
           reason: 'blockImage fails regardless of enableImageBlock',
         );
-        expect(Pref.imageBlockHashList, isEmpty);
-      },
-    );
-
-    test(
-      'Case 5: source=ai_auto entry metadata fields',
-      () async {
-        Pref.imageBlockHashList = <Map<String, dynamic>>[];
-
-        await ImageBlockService.addBlockedImage(
-          'https://i0.hdslb.com/bfs/album/ai_image.jpg',
-          source: 'ai_auto',
-        );
-
-        // In production, when blockImage succeeds, the entry would
-        // contain: {pHash, url, ts, source: 'ai_auto', aiState: 'blocked',
-        // timestamp}.  In test, blockImage fails so Pref stays empty.
         expect(Pref.imageBlockHashList, isEmpty);
       },
     );

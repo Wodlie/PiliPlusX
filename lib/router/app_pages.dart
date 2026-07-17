@@ -163,14 +163,6 @@ class Routes {
       name: '/imageBlockSetting',
       page: () => const ImageBlockSettingPage(),
     ),
-    GetPage(
-      name: '/aiImageModeration',
-      page: () => const AiImageModerationPage(),
-    ),
-    GetPage(
-      name: '/aiPromptConfig',
-      page: () => const AiPromptConfigPage(),
-    ),
     GetPage(name: '/upowerRank', page: () => const UpowerRankPage()),
     GetPage(name: '/spaceSetting', page: () => const SpaceSettingPage()),
     GetPage(name: '/dynTopicRcmd', page: () => const DynTopicRcmdPage()),

@@ -17,7 +17,6 @@
 
 import 'dart:io' show Platform;
 import 'dart:math' show min;
-import 'dart:ui' show ImageFilter;
 
 import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/style.dart';
@@ -29,8 +28,6 @@ import 'package:PiliPlus/models/common/image_preview_type.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
-import 'package:PiliPlus/utils/ai_image_moderation_service.dart';
-import 'package:PiliPlus/utils/ai_image_state.dart';
 import 'package:PiliPlus/utils/image_block_service.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
@@ -100,9 +97,6 @@ class _ImageGridViewState extends State<ImageGridView> {
   /// Blocking state per image URL (pHash-based).
   final Map<String, bool> _imageBlockStatus = {};
 
-  /// AI moderation state per image URL.
-  final Map<String, AiImageState> _aiImageStatus = {};
-
   final Set<String> _tempUnblockedSrcs = {};
 
   bool _isTempUnblocked(String url) =>
@@ -129,57 +123,6 @@ class _ImageGridViewState extends State<ImageGridView> {
     final blocked = await ImageBlockService.evaluateBlock(imgSrc);
     if (mounted && _imageBlockStatus[imgSrc] == null) {
       _imageBlockStatus[imgSrc] = blocked;
-      // 2. If pHash does NOT block, fire AI evaluation
-      if (!blocked) {
-        _evaluateAiImage(imgSrc);
-      }
-      setState(() {});
-    }
-  }
-
-  /// Fire-and-forget AI evaluation. Sync cache check first, then async eval.
-  ///
-  /// Sets [AiImageState.pending] before the async evaluation to prevent the
-  /// original image from flashing during evaluation. Dropped/cancelled tasks
-  /// (queue overflow or fail-open) are not cached as normal — the pending
-  /// state is removed so re-evaluation can occur when re-entering view.
-  Future<void> _evaluateAiImage(String imgSrc) async {
-    // Guard: skip if already evaluated or evaluation in-progress.
-    if (_aiImageStatus.containsKey(imgSrc)) return;
-
-    // a. Sync cache check
-    final cached = AiImageModerationService.getCachedResult(imgSrc);
-    if (cached != null) {
-      if (mounted) {
-        _aiImageStatus[imgSrc] = cached;
-        setState(() {});
-      }
-      return;
-    }
-
-    // b. Set pending before async eval to prevent original image flash.
-    if (mounted) {
-      setState(() => _aiImageStatus[imgSrc] = AiImageState.pending);
-    }
-
-    // c. Fire-and-forget async evaluation
-    final result = await AiImageModerationService.evaluateImage(imgSrc);
-
-    // d. Dropped/cancelled tasks: result is normal but not cached by the
-    //    service (queue overflow or fail-open). Don't cache as normal —
-    //    remove pending state so re-evaluation is possible.
-    if (result == AiImageState.normal &&
-        AiImageModerationService.getCachedResult(imgSrc) == null) {
-      if (mounted && _aiImageStatus[imgSrc] == AiImageState.pending) {
-        _aiImageStatus.remove(imgSrc);
-        setState(() {});
-      }
-      return;
-    }
-
-    // e. Set final state only if still pending (not overridden).
-    if (mounted && _aiImageStatus[imgSrc] == AiImageState.pending) {
-      _aiImageStatus[imgSrc] = result;
       setState(() {});
     }
   }
@@ -241,17 +184,9 @@ class _ImageGridViewState extends State<ImageGridView> {
     // If blocked and not temporarily unblocked → do nothing.
     if (_enableBlock) {
       final isBlocked = _imageBlockStatus[item.url] == true;
-      final aiBlocked = _aiImageStatus[item.url] == AiImageState.blocked;
-      final aiHighRisk = _aiImageStatus[item.url] == AiImageState.highRisk;
       final tempUnblocked = _isTempUnblocked(item.url);
 
-      // HighRisk: tap to temporarily reveal (add to tempUnblock set, no navigation)
-      if (aiHighRisk && !tempUnblocked) {
-        setState(() => _tempUnblockedSrcs.add(item.url));
-        return;
-      }
-
-      if ((isBlocked || aiBlocked) && !tempUnblocked) return;
+      if (isBlocked && !tempUnblocked) return;
     }
 
     final imgList = widget.picArr.map(
@@ -320,9 +255,8 @@ class _ImageGridViewState extends State<ImageGridView> {
     // If blocked and not temporarily unblocked → no context menu.
     if (_enableBlock) {
       final isBlocked = _imageBlockStatus[item.url] == true;
-      final aiBlocked = _aiImageStatus[item.url] == AiImageState.blocked;
       final tempUnblocked = _isTempUnblocked(item.url);
-      if ((isBlocked || aiBlocked) && !tempUnblocked) return;
+      if (isBlocked && !tempUnblocked) return;
     }
 
     HapticFeedback.mediumImpact();
@@ -426,7 +360,6 @@ class _ImageGridViewState extends State<ImageGridView> {
 
             // ── Blocked: show placeholder component instead of image ──
             // ── Pending: show neutral loading placeholder while async block check runs ──
-            // ── AI: blocked/highRisk override after pHash passes ──
             // ── Normal: show preview image ──
             if (_enableBlock) {
               final isBlocked = _imageBlockStatus[imgSrc] == true;
@@ -471,94 +404,12 @@ class _ImageGridViewState extends State<ImageGridView> {
                       ),
                     );
                   }
-                  // syncResult == false → fire AI evaluation (deferred to avoid setState during build)
-                  Future.microtask(() => _evaluateAiImage(imgSrc));
                 } else {
                   // Cache miss — show neutral loading placeholder until async eval completes
                   return LayoutId(id: index, child: placeHolder);
                 }
               }
 
-              // ── AI state checks (only when pHash passed) ──
-              if (!tempUnblocked) {
-                final aiState = _aiImageStatus[imgSrc];
-                if (aiState == AiImageState.blocked) {
-                  return LayoutId(
-                    id: index,
-                    child: Semantics(
-                      label:
-                          '图片已屏蔽，第 ${index + 1} 张，共 ${widget.picArr.length} 张',
-                      button: true,
-                      child: BlockedImagePlaceholder(
-                        width: width,
-                        height: height,
-                        borderRadius: borderRadius,
-                        onLongPress: () => _showUnblockMenu(context, imgSrc),
-                      ),
-                    ),
-                  );
-                }
-                if (aiState == AiImageState.highRisk) {
-                  return LayoutId(
-                    id: index,
-                    child: Semantics(
-                      label: '图片，第 ${index + 1} 张，共 ${widget.picArr.length} 张',
-                      button: true,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          ImageFiltered(
-                            imageFilter: ImageFilter.blur(
-                              sigmaX: 15,
-                              sigmaY: 15,
-                            ),
-                            child: NetworkImgLayer(
-                              src: item.url,
-                              width: width,
-                              height: height,
-                              borderRadius: borderRadius,
-                            ),
-                          ),
-                          Container(color: Colors.black.withOpacity(0.4)),
-                          Center(
-                            child: Text(
-                              '图片可能引起不适，点击后查看',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-                if (aiState == AiImageState.pending) {
-                  return LayoutId(
-                    id: index,
-                    child: Container(
-                      width: width,
-                      height: height,
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        borderRadius: borderRadius,
-                      ),
-                      child: const Center(
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                // aiState == null or normal → optimistic normal render (fail-open)
-              }
             }
 
             // ── Normal: show preview image ──

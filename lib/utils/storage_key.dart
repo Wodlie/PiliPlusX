@@ -293,17 +293,7 @@ abstract final class SettingBoxKey {
       imageBlockFlipEnabled = 'imageBlockFlipEnabled',
       imageBlockRotateEnabled = 'imageBlockRotateEnabled',
       imageBlockDisplayMode = 'imageBlockDisplayMode',
-      imageBlockHashList = 'imageBlockHashList',
-      enableAiImageModeration = 'enableAiImageModeration',
-      aiModelRepoUrl = 'aiModelRepoUrl',
-      aiModelDownloaded = 'aiModelDownloaded',
-      aiModelFormat = 'aiModelFormat',
-      aiModelInputSize = 'aiModelInputSize',
-      aiPromptMalicious = 'aiPromptMalicious',
-      aiPromptHighRisk = 'aiPromptHighRisk',
-      aiPromptNormal = 'aiPromptNormal',
-      aiTextEmbeddings = 'aiTextEmbeddings',
-      aiAutoBlocklist = 'aiAutoBlocklist';
+       imageBlockHashList = 'imageBlockHashList';
 }
 
 abstract final class LocalCacheKey {

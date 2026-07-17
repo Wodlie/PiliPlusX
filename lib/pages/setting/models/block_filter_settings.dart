@@ -91,25 +91,6 @@ List<SettingsModel> get blockFilterSettings => [
       onTap: (context) => Get.toNamed('/imageBlockSetting'),
     ),
   ),
-  SplitModel(
-    normalModel: const NormalModel.split(
-      title: 'AI图片识别',
-      subtitle: 'CLIP模型自动识别评论图片内容',
-      leading: Icon(Icons.psychology_outlined),
-    ),
-    switchModel: SwitchModel.split(
-      defaultVal: false,
-      setKey: SettingBoxKey.enableAiImageModeration,
-      onTap: (context) {
-        if (!Pref.enableImageBlock) {
-          SmartDialog.showToast('需先启用屏蔽图片');
-          return;
-        }
-        Get.toNamed('/aiImageModeration');
-      },
-    ),
-  ),
-
   // 动态过滤组
   getBanWordModel(
     title: '动态关键词过滤',

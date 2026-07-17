@@ -472,9 +472,6 @@ abstract final class ImageBlockService {
   /// Calls [blockImage] to compute and save pHash, then adds to
   /// [Pref.imageBlockHashList] with deduplication by pHash.
   ///
-  /// When [source] is `'ai_auto'`, adds metadata fields `source`, `aiState`,
-  /// and `timestamp` to the entry for AI auto-blocking traceability.
-  ///
   /// Returns the entry map, or `null` if blocking (pHash computation) failed.
   ///
   /// Existing fields (`pHash`, `url`, `ts`) are preserved for backward
@@ -491,12 +488,6 @@ abstract final class ImageBlockService {
       rotateEnabled: rotateEnabled,
     );
     if (entry == null) return null;
-
-    if (source == 'ai_auto') {
-      entry['source'] = 'ai_auto';
-      entry['aiState'] = 'blocked';
-      entry['timestamp'] = DateTime.now().millisecondsSinceEpoch;
-    }
 
     final list = Pref.imageBlockHashList;
     if (!list.any((e) => e['pHash'] == entry['pHash'])) {

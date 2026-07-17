@@ -106,7 +106,7 @@ Base: `package:flutter_lints/flutter.yaml`. Key enforced rules:
 ## TESTING
 
 - **Run**: `flutter test` (no custom config, no `dart_test.yaml`)
-- **Coverage**: ~357 tests across 27 files. Heaviest: account/identity/BUVID lifecycle (6 files), AI image moderation/CLIP pipeline (8 files), reply blocking (3 files)
+- **Coverage**: ~357 tests across 27 files. Heaviest: account/identity/BUVID lifecycle (6 files), reply blocking (3 files)
 - **Pages coverage**: **0%** — no page controller/view tests despite 114 pages
 - **No mockito/mocktail**: manual file-local mock classes (`_MockInferenceSession`, `_FakePathProviderPlatform`)
 - **Hive boilerplate**: every test that touches `Pref`/`GStorage` duplicates `setUpAll`/`tearDownAll` with temp dir + `GStorage.init()` — no shared helper exists

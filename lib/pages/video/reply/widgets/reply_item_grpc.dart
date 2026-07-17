@@ -4,8 +4,6 @@ import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
-import 'package:PiliPlus/utils/ai_image_moderation_service.dart';
-import 'package:PiliPlus/utils/ai_image_state.dart';
 import 'package:PiliPlus/utils/image_block_service.dart';
 import 'package:PiliPlus/common/widgets/dialog/report.dart';
 import 'package:PiliPlus/common/widgets/extra_hit_test_widget.dart';
@@ -42,7 +40,6 @@ import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:PiliPlus/common/widgets/dialog/missing_model_dialog.dart';
 import 'package:PiliPlus/utils/url_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart'
@@ -574,7 +571,6 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   }
 
   Widget _buildCommentImages(BuildContext context, ColorScheme colorScheme) {
-    MissingModelDialog.checkAndShow(context);
     final manualLoad = Pref.manualLoadCommentImage;
     if (!manualLoad || _loadManualImages) {
       return ImageGridView(
@@ -1218,16 +1214,6 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
       hasUnblockedImages = item.content.pictures.isNotEmpty;
     }
 
-    // Also check AI moderation state for blocked/highRisk images.
-    bool hasAiBlockedOrHighRisk = false;
-    for (final pic in item.content.pictures) {
-      final aiState = AiImageModerationService.getCachedResult(pic.imgSrc);
-      if (aiState == AiImageState.blocked || aiState == AiImageState.highRisk) {
-        hasAiBlockedOrHighRisk = true;
-        break;
-      }
-    }
-
     return Padding(
       padding: .only(
         bottom: MediaQuery.viewPaddingOf(context).bottom + 20,
@@ -1628,8 +1614,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               ),
               title: Text('屏蔽图片', style: style.copyWith(color: errorColor)),
             ),
-          if (Pref.enableImageBlock &&
-              (hasBlockedImages || hasAiBlockedOrHighRisk))
+          if (Pref.enableImageBlock && hasBlockedImages)
             ListTile(
               onTap: () {
                 Get.back();
@@ -1648,43 +1633,6 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                 size: 19,
               ),
               title: Text('恢复图片显示', style: style.copyWith(color: errorColor)),
-            ),
-          if (Pref.enableImageBlock &&
-              hasAiBlockedOrHighRisk &&
-              !hasBlockedImages)
-            ListTile(
-              onTap: () async {
-                Get.back();
-                int count = 0;
-                for (final pic in item.content.pictures) {
-                  final aiState = AiImageModerationService.getCachedResult(
-                    pic.imgSrc,
-                  );
-                  if (aiState == AiImageState.blocked ||
-                      aiState == AiImageState.highRisk) {
-                    final entry = await ImageBlockService.addBlockedImage(
-                      pic.imgSrc,
-                      flipEnabled: Pref.imageBlockFlipEnabled,
-                      rotateEnabled: Pref.imageBlockRotateEnabled,
-                    );
-                    if (entry != null) {
-                      count++;
-                    }
-                  }
-                }
-                if (mounted) setState(() => _blockImageVersion++);
-                SmartDialog.showToast('已屏蔽$count张图片');
-              },
-              minLeadingWidth: 0,
-              leading: Icon(
-                Icons.block,
-                color: errorColor,
-                size: 19,
-              ),
-              title: Text(
-                '屏蔽图片',
-                style: style.copyWith(color: errorColor),
-              ),
             ),
           ListTile(
             onTap: () {
