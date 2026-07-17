@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-07-08
-**Commit:** `011c1844a`
+**Generated:** 2026-07-14
+**Commit:** `bfa7a278a`
 **Branch:** `dev`
 
 ## OVERVIEW
@@ -103,8 +103,20 @@ Base: `package:flutter_lints/flutter.yaml`. Key enforced rules:
 - Release builds are signed (Android); dev builds are unsigned
 - Impeller explicitly disabled on Android
 
+## TESTING
+
+- **Run**: `flutter test` (no custom config, no `dart_test.yaml`)
+- **Coverage**: ~357 tests across 27 files. Heaviest: account/identity/BUVID lifecycle (6 files), AI image moderation/CLIP pipeline (8 files), reply blocking (3 files)
+- **Pages coverage**: **0%** — no page controller/view tests despite 114 pages
+- **No mockito/mocktail**: manual file-local mock classes (`_MockInferenceSession`, `_FakePathProviderPlatform`)
+- **Hive boilerplate**: every test that touches `Pref`/`GStorage` duplicates `setUpAll`/`tearDownAll` with temp dir + `GStorage.init()` — no shared helper exists
+- **Widget tests**: wrap in `MaterialApp` + `Scaffold`, not `GetMaterialApp` (no GetX injection in tests)
+- **No integration tests**: no `integration_test/` directory
+- **Key test anchors**: `test/buvid_lifecycle_test.dart` · `test/grpc_identity_test.dart` · `test/identity_migration_test.dart` · `test/identity_profile_test.dart` · `test/request_identity_adapters_test.dart` · `test/web_gaia_identity_test.dart`
+
 ## CHILD GUIDES
 
+- `.github/workflows/AGENTS.md`
 - `lib/pages/AGENTS.md`
 - `lib/pages/common/AGENTS.md`
 - `lib/pages/video/AGENTS.md`
