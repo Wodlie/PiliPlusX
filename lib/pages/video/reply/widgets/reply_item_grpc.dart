@@ -35,9 +35,11 @@ import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/global_data.dart';
+import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
+import 'package:PiliPlus/utils/share_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/url_utils.dart';
@@ -1476,6 +1478,22 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             minLeadingWidth: 0,
             leading: const Icon(Icons.copy_all_outlined, size: 19),
             title: Text('复制全部', style: style),
+          ),
+          ListTile(
+            onTap: () {
+              Get.back();
+              final int type = item.type.toInt();
+              final String url = switch (type) {
+                1 => 'https://www.bilibili.com/video/${IdUtils.av2bv(item.oid.toInt())}/#reply${item.id}',
+                12 => 'https://www.bilibili.com/read/cv${item.oid.toInt()}/#reply${item.id}',
+                11 || 17 => 'https://www.bilibili.com/opus/${item.oid.toInt()}/#reply${item.id}',
+                _ => '${item.oid.toInt()}#reply${item.id}',
+              };
+              ShareUtils.shareText(url);
+            },
+            minLeadingWidth: 0,
+            leading: const Icon(Icons.share_outlined, size: 19),
+            title: Text('分享', style: style),
           ),
           ListTile(
             onTap: () {
