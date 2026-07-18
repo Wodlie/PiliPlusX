@@ -62,6 +62,8 @@ abstract final class WbiSign {
 
   // 为请求参数进行 wbi 签名
   static void encWbi(Map<String, Object> params, String mixinKey) {
+    // 追加 web 端风控指纹参数（与官方 Web 端一致）
+    appendRiskFingerprintParams(params);
     params['wts'] = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     // 按照 key 重排参数
     final List<String> keys = params.keys.toList()..sort();
@@ -74,6 +76,19 @@ abstract final class WbiSign {
     params['w_rid'] = md5
         .convert(utf8.encode(queryStr + mixinKey))
         .toString(); // 计算 w_rid
+  }
+
+  /// 追加 Web 端风控指纹参数
+  /// 对应官方 Web 端 / BiliPai WbiUtils.kt::appendRiskFingerprintParams()
+  /// 这些参数会参与 w_rid 签名计算，缺失会触发 -352 / -412 风控
+  static void appendRiskFingerprintParams(Map<String, Object> params) {
+    // 已存在则不覆盖（允许调用方自定义）
+    params['dm_img_list'] ??= '[]';
+    params['dm_img_str'] ??=
+        'V2ViR0wgMS4wIChPcGVuR0wgRVMgMi4wIENocm9taXVtKQ';
+    params['dm_cover_img_str'] ??=
+        'QU5HTEUgKE5WSURJQSwgTlZJRElBIEdlRm9yY2UgR1RYIDEwNjAgNkdCIERpcmVjdDNEMTEgdnNfNV8wIHBzXzVfMCwgRDNEMTEp';
+    params['dm_img_inter'] ??= '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}';
   }
 
   static Future<String> _getWbiKeys() async {

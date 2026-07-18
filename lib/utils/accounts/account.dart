@@ -90,7 +90,7 @@ class LoginAccount extends Account {
 
   @override
   Map<String, String> get grpcHeaders =>
-      GrpcHeaders.newHeaders(accessKey, buvid, deviceProfile);
+      GrpcHeaders.newHeaders(accessKey, buvid, deviceProfile, mid);
 
   @override
   late final String csrf =

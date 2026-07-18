@@ -29,6 +29,7 @@ abstract final class GrpcHeaders {
     String? accessKey,
     String? buvid,
     AppDeviceProfile? deviceProfile,
+    int? mid,
   ]) {
     final identity = _resolveHeaderIdentity(
       accessKey: accessKey,
@@ -51,6 +52,12 @@ abstract final class GrpcHeaders {
       'buvid': resolvedBuvid,
       'bili-http-engine': 'cronet',
       if (identity.auroraEid != null) 'x-bili-aurora-eid': identity.auroraEid!,
+      // 由 Kc0.a（Aurora 拦截器）始终加入：
+      // - x-bili-mid（未登录为 0）
+      // - x-bili-aurora-eid（已经上面处理）
+      // - x-bili-aurora-zone（已存在）
+      // 见 reverse-output/verification/05_grpc_minimal_headers.md
+      'x-bili-mid': '${mid ?? 0}',
       'x-bili-device-bin': base64Encode(
         Device(
           appId: 5,
@@ -80,8 +87,14 @@ abstract final class GrpcHeaders {
         ).writeToBuffer(),
       ),
       'x-bili-exps-bin': '',
+      // 由 Jc0.a（主 Metadata 构建器）始终加入：
+      // - x-bili-restriction-bin（Restriction proto，无登录态约束时为空）
+      // 见 Jc0/a.java line 48: metadata.put(aVar.e, runtimeHelper.restriction().toByteArray())
+      'x-bili-restriction-bin': '',
       if (accessKey != null) 'authorization': 'identify_v1 $accessKey',
       'x-bili-fawkes-req-bin': fawkes(identity.derived.sessionId),
+      // 由 Sc0.a（Ticket 拦截器）总是接续 Aurora 处理之后无条件添加
+      'x-bili-ticket': '',
       'x-bili-metadata-bin': base64Encode(
         Metadata(
           accessKey: accessKey,
