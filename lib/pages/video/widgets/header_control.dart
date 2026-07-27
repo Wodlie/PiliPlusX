@@ -53,6 +53,7 @@ import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/storage_utils.dart';
+import 'package:PiliPlus/utils/subtitle_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/video_utils.dart';
@@ -572,7 +573,17 @@ class HeaderControlState extends State<HeaderControl>
                               onTap: () {
                                 plPlayerController.onlyPlayAudio.value =
                                     !onlyPlayAudio;
-                                widget.videoDetailCtr.playerInit();
+                                final player =
+                                    plPlayerController.videoPlayerController!;
+                                if (onlyPlayAudio &&
+                                    player.state.tracks.video.length <= 2) {
+                                  videoDetailCtr.playerInit();
+                                } else {
+                                  player.setProperty(
+                                    'file-local-options/vid',
+                                    onlyPlayAudio ? 'auto' : 'no',
+                                  );
+                                }
                               },
                               text: " 听视频 ",
                               selectStatus: onlyPlayAudio,
@@ -706,7 +717,7 @@ class HeaderControlState extends State<HeaderControl>
                           if (!mounted) return;
                           String sub = buffer.toString();
                           sub = await compute<List, String>(
-                            VideoHttp.processList,
+                            SubtitleUtils.json2Vtt,
                             jsonDecode(sub)['body'],
                           );
                           if (!mounted) return;
@@ -1162,35 +1173,61 @@ class HeaderControlState extends State<HeaderControl>
     );
   }
 
-  Future<_SubtitleFormat?> _showFormatDialog() {
-    return showDialog<_SubtitleFormat>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('选择格式'),
-        children: [
-          DialogOption(
-            onPressed: () => Get.back(result: _SubtitleFormat.json),
-            child: const Text('JSON'),
-          ),
-          DialogOption(
-            onPressed: () => Get.back(result: _SubtitleFormat.vtt),
-            child: const Text('WEBVTT'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void onExportSubtitle() {
     showDialog(
       context: context,
       builder: (context) {
+        SubtitleFormat format = .vtt;
         final subtitles = videoDetailCtr.subtitles;
+        final secondary = ColorScheme.of(context).secondary;
         return SimpleDialog(
-          clipBehavior: Clip.hardEdge,
+          clipBehavior: .hardEdge,
           contentPadding: const .only(bottom: 12),
           titlePadding: const .fromLTRB(20, 20, 20, 12),
-          title: const Text('保存字幕'),
+          title: Row(
+            children: [
+              const Expanded(child: Text('保存字幕')),
+              const Text('格式: ', style: TextStyle(fontSize: 14)),
+              Builder(
+                builder: (context) => PopupMenuButton<SubtitleFormat>(
+                  tooltip: '',
+                  initialValue: format,
+                  onSelected: (value) {
+                    format = value;
+                    (context as Element).markNeedsBuild();
+                  },
+                  itemBuilder: (_) => SubtitleFormat.values
+                      .map(
+                        (e) => PopupMenuItem(
+                          value: e,
+                          height: 35,
+                          child: Text(e.label),
+                        ),
+                      )
+                      .toList(),
+                  child: Padding(
+                    padding: const .symmetric(horizontal: 2, vertical: 5),
+                    child: Text.rich(
+                      style: .new(fontSize: 14, color: secondary),
+                      TextSpan(
+                        children: [
+                          TextSpan(text: format.label),
+                          WidgetSpan(
+                            alignment: .middle,
+                            child: Icon(
+                              size: 14,
+                              MdiIcons.unfoldMoreHorizontal,
+                              color: secondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           children: List.generate(subtitles.length, (i) {
             final item = subtitles[i];
             return DialogOption(
@@ -1198,27 +1235,33 @@ class HeaderControlState extends State<HeaderControl>
                 Get.back();
                 final url = item.subtitleUrl;
                 if (url == null || url.isEmpty) return;
-                final format = await _showFormatDialog();
-                if (format == null) return;
                 try {
                   final Uint8List bytes;
                   switch (format) {
-                    case .vtt:
-                      var subtitle = videoDetailCtr.vttSubtitles[i];
+                    case .vtt || .srt:
+                      var subtitle = format == .vtt
+                          ? videoDetailCtr.vttSubtitles[i]?.id
+                          : null;
                       if (subtitle == null) {
                         final res = await VideoHttp.vttSubtitles(
                           item.subtitleUrl!,
+                          format: format,
                         );
                         if (res == null) return;
-                        subtitle = (isData: true, id: res);
-                        videoDetailCtr.vttSubtitles[i] = subtitle;
+                        subtitle = res;
+                        if (format == .vtt) {
+                          videoDetailCtr.vttSubtitles[i] = (
+                            isData: true,
+                            id: res,
+                          );
+                        }
                       }
-                      bytes = utf8.encode(subtitle.id);
+                      bytes = utf8.encode(subtitle);
                     case .json:
                       final res = await Request.dio.get<Uint8List>(
                         url.http2https,
                         options: Options(
-                          responseType: ResponseType.bytes,
+                          responseType: .bytes,
                           headers: Constants.baseHeaders,
                           extra: {'account': const NoAccount()},
                         ),
@@ -1231,13 +1274,14 @@ class HeaderControlState extends State<HeaderControl>
                         ),
                       );
                   }
-                  String name =
-                      '${introController.videoDetail.value.title}-${videoDetailCtr.bvid}-${videoDetailCtr.cid.value}-${item.lanDoc}.${format.name}';
+                  final videoDetail = introController.videoDetail.value;
+                  final name =
+                      '${videoDetail.title}-${videoDetail.owner?.name}(${videoDetail.owner?.mid})-${videoDetailCtr.bvid}-${videoDetailCtr.cid.value}-${item.lanDoc}.${format.name}'
+                          .replaceAll(
+                            Platform.isWindows ? RegExp(r'[<>:/\\|?*"]') : '/',
+                            '_',
+                          );
                   // Reserved characters may not be used in file names. See: https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
-                  name = name.replaceAll(
-                    Platform.isWindows ? RegExp(r'[<>:/\\|?*"]') : '/',
-                    '_',
-                  );
                   StorageUtils.saveBytes2File(
                     name: name,
                     bytes: bytes,
@@ -1248,10 +1292,7 @@ class HeaderControlState extends State<HeaderControl>
                   SmartDialog.showToast(e.toString());
                 }
               },
-              child: Text(
-                item.lanDoc ?? item.lan,
-                style: const TextStyle(fontSize: 14),
-              ),
+              child: Text(item.lanDoc ?? item.lan),
             );
           }),
         );
@@ -1313,14 +1354,14 @@ class HeaderControlState extends State<HeaderControl>
 
         void updateFontScaleFS(double val) {
           plPlayerController
-            ..subtitleFontScaleFS = val
+            ..subtitleFontScaleFS = val.toPrecision(2)
             ..updateSubtitleStyle();
           setState(() {});
         }
 
         void updateFontScale(double val) {
           plPlayerController
-            ..subtitleFontScale = val
+            ..subtitleFontScale = val.toPrecision(2)
             ..updateSubtitleStyle();
           setState(() {});
         }
@@ -1370,7 +1411,7 @@ class HeaderControlState extends State<HeaderControl>
                         min: 0.5,
                         max: 2.5,
                         value: subtitleFontScale,
-                        divisions: 20,
+                        divisions: 200,
                         label:
                             '${(subtitleFontScale * 100).toStringAsFixed(1)}%',
                         onChanged: updateFontScale,
@@ -1399,7 +1440,7 @@ class HeaderControlState extends State<HeaderControl>
                         min: 0.5,
                         max: 2.5,
                         value: subtitleFontScaleFS,
-                        divisions: 20,
+                        divisions: 200,
                         label:
                             '${(subtitleFontScaleFS * 100).toStringAsFixed(1)}%',
                         onChanged: updateFontScaleFS,
@@ -1513,7 +1554,9 @@ class HeaderControlState extends State<HeaderControl>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('背景不透明度 ${(subtitleBgOpacity * 100).toInt()}%'),
+                      Text(
+                        '背景不透明度 ${(subtitleBgOpacity * 100).toStringAsFixed(1)}%',
+                      ),
                       resetBtn(theme, '67%', () => updateOpacity(0.67)),
                     ],
                   ),
@@ -1529,6 +1572,7 @@ class HeaderControlState extends State<HeaderControl>
                       child: Slider(
                         min: 0,
                         max: 1,
+                        divisions: 100,
                         value: subtitleBgOpacity,
                         onChanged: updateOpacity,
                       ),
@@ -1717,10 +1761,8 @@ class HeaderControlState extends State<HeaderControl>
               title,
               spacing: 30,
               velocity: 30,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              strutStyle: const StrutStyle(fontSize: 16, leading: 0),
+              style: const TextStyle(color: Colors.white, fontSize: 16),
               provider: effectiveProvider,
             );
           },
@@ -2135,5 +2177,3 @@ class HeaderControlState extends State<HeaderControl>
     );
   }
 }
-
-enum _SubtitleFormat { json, vtt }

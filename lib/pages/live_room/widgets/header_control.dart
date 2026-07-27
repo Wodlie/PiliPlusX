@@ -78,11 +78,8 @@ class _LiveHeaderControlState extends State<LiveHeaderControl>
         liveController.title.value,
         spacing: 30,
         velocity: 30,
-        style: const TextStyle(
-          fontSize: 15,
-          height: 1,
-          color: Colors.white,
-        ),
+        strutStyle: const StrutStyle(fontSize: 15, leading: 0),
+        style: const TextStyle(fontSize: 15, height: 1, color: Colors.white),
       ),
     );
     if (isFullScreen) {
@@ -187,28 +184,25 @@ class _LiveHeaderControlState extends State<LiveHeaderControl>
               ),
             ),
           Obx(
-            () {
-              final onlyPlayAudio = plPlayerController.onlyPlayAudio.value;
-              return ComBtn(
-                height: 30,
-                tooltip: '仅播放音频',
-                onTap: () {
-                  plPlayerController.onlyPlayAudio.value = !onlyPlayAudio;
-                  widget.onPlayAudio();
-                },
-                icon: onlyPlayAudio
-                    ? const Icon(
-                        size: 18,
-                        MdiIcons.musicCircle,
-                        color: Colors.white,
-                      )
-                    : const Icon(
-                        size: 18,
-                        MdiIcons.musicCircleOutline,
-                        color: Colors.white,
-                      ),
-              );
-            },
+            () => ComBtn(
+              height: 30,
+              tooltip: '仅播放音频',
+              onTap: () {
+                plPlayerController.onlyPlayAudio.toggle();
+                widget.onPlayAudio();
+              },
+              icon: plPlayerController.onlyPlayAudio.value
+                  ? const Icon(
+                      size: 18,
+                      MdiIcons.musicCircle,
+                      color: Colors.white,
+                    )
+                  : const Icon(
+                      size: 18,
+                      MdiIcons.musicCircleOutline,
+                      color: Colors.white,
+                    ),
+            ),
           ),
           if (PlatformUtils.isMobile)
             Obx(() {

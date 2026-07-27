@@ -42,14 +42,14 @@ List<SettingsModel> get privacySettings => [
 ];
 
 Widget _getAccountDetail(BuildContext context) {
-  final slivers = <Widget>[];
+  final children = <Widget>[];
   final theme = TextTheme.of(context);
   final colorScheme = ColorScheme.of(context);
   for (final i in AccountType.values) {
     final url = ApiType.apiTypeSet[i];
     if (url == null) continue;
 
-    slivers
+    children
       ..add(Center(child: Text(i.title, style: theme.titleMedium)))
       ..add(
         Text(
@@ -59,10 +59,12 @@ Widget _getAccountDetail(BuildContext context) {
       )
       ..add(SelectableText(url.join('\n')));
   }
-  return Column(
-    mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.start,
-    spacing: 8,
-    children: slivers,
+  return SelectionArea(
+    child: Column(
+      mainAxisSize: .min,
+      crossAxisAlignment: .start,
+      spacing: 8,
+      children: children,
+    ),
   );
 }

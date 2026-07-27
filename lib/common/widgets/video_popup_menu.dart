@@ -1,13 +1,15 @@
 import 'package:PiliPlus/common/widgets/custom_icon.dart';
 import 'package:PiliPlus/http/user.dart';
 import 'package:PiliPlus/http/video.dart';
-import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/models/home/rcmd/result.dart';
 import 'package:PiliPlus/models/model_video.dart';
 import 'package:PiliPlus/models_new/space/space_archive/item.dart';
 import 'package:PiliPlus/pages/mine/controller.dart';
 import 'package:PiliPlus/pages/search/widgets/search_text.dart';
+import 'package:PiliPlus/pages/video/ai_conclusion/view.dart';
+import 'package:PiliPlus/pages/video/introduction/ugc/controller.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -53,11 +55,40 @@ class VideoPopupMenu extends StatelessWidget {
                     const Icon(CustomIcons.identifier_circle, size: 16),
                     () => Utils.copyText(videoItem.bvid!),
                   ),
-                  _VideoCustomAction(
-                    '稍后再看',
-                    const Icon(MdiIcons.clockTimeEightOutline, size: 16),
-                    () => UserHttp.toViewLater(bvid: videoItem.bvid),
-                  ),
+                  if (Accounts.main.isLogin)
+                    _VideoCustomAction(
+                      '稍后再看',
+                      const Icon(MdiIcons.clockTimeEightOutline, size: 16),
+                      () => UserHttp.toViewLater(bvid: videoItem.bvid),
+                    ),
+                  if (videoItem.cid != null && Pref.enableAi)
+                    _VideoCustomAction(
+                      'AI总结',
+                      const Icon(CustomIcons.ai_circle, size: 16),
+                      () async {
+                        final res = await UgcIntroController.getAiConclusion(
+                          videoItem.bvid!,
+                          videoItem.cid!,
+                          videoItem.owner.mid,
+                        );
+                        if (res != null && context.mounted) {
+                          showDialog(
+                            context: context,
+                            builder: (context) => Dialog(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                child: AiConclusionPanel.buildContent(
+                                  context,
+                                  Theme.of(context),
+                                  res,
+                                  tap: false,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
                 ],
                 if (videoItem is! SpaceArchiveItem) ...[
                   _VideoCustomAction(
@@ -69,11 +100,11 @@ class VideoPopupMenu extends StatelessWidget {
                     '不感兴趣',
                     const Icon(MdiIcons.thumbDownOutline, size: 16),
                     () {
-                      String? accessKey = Accounts.get(
-                        AccountType.recommend,
-                      ).accessKey;
-                      if (accessKey == null || accessKey == "") {
-                        SmartDialog.showToast("请退出账号后重新登录");
+                      final rcmd = Accounts.get(.recommend);
+                      if (rcmd.accessKey == null || rcmd.accessKey == "") {
+                        SmartDialog.showToast(
+                          rcmd.isLogin ? '请退出账号后重新登录' : '账号未登录',
+                        );
                         return;
                       }
                       if (videoItem case final RcmdVideoItemAppModel item) {

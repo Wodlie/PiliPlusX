@@ -43,6 +43,7 @@ import 'package:PiliPlus/utils/recommend_filter.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:PiliPlus/utils/subtitle_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:PiliPlus/utils/wbi_sign.dart';
 import 'package:dio/dio.dart';
@@ -940,87 +941,54 @@ abstract final class VideoHttp {
     }
   }
 
-  static String _subtitleTimecode(num seconds) {
-    int h = seconds ~/ 3600;
-    seconds %= 3600;
-    int m = seconds ~/ 60;
-    seconds %= 60;
-    String sms = seconds.toStringAsFixed(3).padLeft(6, '0');
-    return h == 0
-        ? "${m.toString().padLeft(2, '0')}:$sms"
-        : "${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:$sms";
-  }
-
-  static String processList(List list) {
-    final sb = StringBuffer('WEBVTT\n\n')
-      ..writeAll(
-        list.map(
-          (item) =>
-              '${_subtitleTimecode(item['from'])} --> ${_subtitleTimecode(item['to'])}\n${item['content'].trim()}',
-        ),
-        '\n\n',
-      );
-    return sb.toString();
-  }
-
-  static num _subtitleSeconds(dynamic value) {
-    if (value is num) {
-      return value;
+  static Future<String?> vttSubtitles(
+    String subtitleUrl, {
+    SubtitleFormat format = .vtt,
+  }) async {
+    final res = await Request().get("https:$subtitleUrl");
+    if (res.data?['body'] case List list) {
+      switch (format) {
+        case .json:
+          throw UnimplementedError();
+        case .vtt:
+          return compute<List, String>(SubtitleUtils.json2Vtt, list);
+        case .srt:
+          return compute<List, String>(SubtitleUtils.json2Srt, list);
+      }
     }
-    return num.tryParse(value.toString()) ?? 0;
+    return null;
   }
 
-  static String processTranscriptList(List list) {
+  static Future<String?> transcriptSubtitles(String subtitleUrl) async {
+    final res = await Request().get("https:$subtitleUrl");
+    if (res.data?['body'] case List list) {
+      return compute<List, String>(_processTranscriptList, list);
+    }
+    return null;
+  }
+
+  static String _processTranscriptList(List list) {
     final StringBuffer sb = StringBuffer();
     String? previousContent;
     for (final item in list) {
-      if (item is! Map) {
-        continue;
-      }
+      if (item is! Map) continue;
       final String content = item['content']?.toString().trim() ?? '';
-      if (content.isEmpty || content == previousContent) {
-        continue;
-      }
+      if (content.isEmpty || content == previousContent) continue;
       previousContent = content;
-      final String timecode = _subtitleTimecode(_subtitleSeconds(item['from']));
+      final num seconds = item['from'] is num
+          ? item['from'] as num
+          : num.tryParse(item['from'].toString()) ?? 0;
+      final int h = seconds ~/ 3600;
+      final int m = (seconds % 3600) ~/ 60;
+      final int s = (seconds % 60).toInt();
+      final timecode =
+          '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
       if (sb.length > 0) {
         sb.writeln();
       }
       sb.write('[$timecode] $content');
     }
     return sb.toString();
-  }
-
-  static String _normalizeSubtitleUrl(String subtitleUrl) {
-    final String trimmed = subtitleUrl.trim();
-    if (trimmed.startsWith('//')) {
-      return 'https:$trimmed';
-    }
-    return trimmed.http2https;
-  }
-
-  static Future<List?> subtitleBody(String subtitleUrl) async {
-    final res = await Request().get(_normalizeSubtitleUrl(subtitleUrl));
-    if (res.data?['body'] case List list) {
-      return list;
-    }
-    return null;
-  }
-
-  static Future<String?> vttSubtitles(String subtitleUrl) async {
-    final list = await subtitleBody(subtitleUrl);
-    if (list != null) {
-      return compute<List, String>(processList, list);
-    }
-    return null;
-  }
-
-  static Future<String?> transcriptSubtitles(String subtitleUrl) async {
-    final list = await subtitleBody(subtitleUrl);
-    if (list != null) {
-      return compute<List, String>(processTranscriptList, list);
-    }
-    return null;
   }
 
   static bool _canAddRank(Map i) {

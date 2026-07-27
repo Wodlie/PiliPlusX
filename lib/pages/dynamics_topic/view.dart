@@ -5,10 +5,12 @@ import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
 import 'package:PiliPlus/common/widgets/pair.dart';
+import 'package:PiliPlus/common/widgets/selection_text.dart';
 import 'package:PiliPlus/common/widgets/sliver/sliver_pinned_header.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/image_type.dart';
+import 'package:PiliPlus/models_new/dynamic/dyn_topic_feed/fold_card_item.dart';
 import 'package:PiliPlus/models_new/dynamic/dyn_topic_feed/item.dart';
 import 'package:PiliPlus/models_new/dynamic/dyn_topic_top/top_details.dart';
 import 'package:PiliPlus/pages/common/fab_mixin.dart';
@@ -41,31 +43,29 @@ class DynTopicPage extends StatefulWidget {
 
 class _DynTopicPageState extends State<DynTopicPage>
     with DynMixin, SingleTickerProviderStateMixin, BaseFabMixin, FabMixin {
+  late EdgeInsets padding;
+  late ColorScheme colorScheme;
   final DynTopicController _controller = Get.put(
     DynTopicController(),
     tag: Utils.generateRandomString(8),
   );
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    colorScheme = ColorScheme.of(context);
+    padding = MediaQuery.viewPaddingOf(context);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final colorScheme = ColorScheme.of(context);
-    final padding = MediaQuery.viewPaddingOf(context);
     return Material(
       child: Stack(
         clipBehavior: .none,
         children: [
           refreshIndicator(
             onRefresh: _controller.onRefresh,
-            child: NotificationListener<UserScrollNotification>(
-              onNotification: (notification) {
-                final direction = notification.direction;
-                if (direction == .forward) {
-                  showFab();
-                } else if (direction == .reverse) {
-                  hideFab();
-                }
-                return false;
-              },
+            child: fabAnimWrapper(
               child: CustomScrollView(
                 controller: _controller.scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -250,7 +250,7 @@ class _DynTopicPageState extends State<DynTopicPage>
                 ),
               ),
               const SizedBox(height: 6),
-              SelectableText(
+              SelectionText(
                 response.topicItem!.description!,
                 style: TextStyle(color: colorScheme.onSurfaceVariant),
               ),
@@ -372,33 +372,13 @@ class _DynTopicPageState extends State<DynTopicPage>
                   ? SliverWaterfallFlow(
                       gridDelegate: dynGridDelegate,
                       delegate: SliverChildBuilderDelegate(
-                        (_, index) {
-                          if (index == response.length - 1) {
-                            _controller.onLoadMore();
-                          }
-
-                          final item = response[index];
-                          if (item.dynamicCardItem != null) {
-                            return DynamicPanel(item: item.dynamicCardItem!);
-                          }
-
-                          return Text(item.topicType ?? 'err');
-                        },
+                        (_, index) => _itemBuilder(response, index),
                         childCount: response.length,
                       ),
                     )
                   : SliverList.builder(
-                      itemBuilder: (context, index) {
-                        if (index == response.length - 1) {
-                          _controller.onLoadMore();
-                        }
-                        final item = response[index];
-                        if (item.dynamicCardItem != null) {
-                          return DynamicPanel(item: item.dynamicCardItem!);
-                        } else {
-                          return Text(item.topicType ?? 'err');
-                        }
-                      },
+                      itemBuilder: (context, index) =>
+                          _itemBuilder(response, index),
                       itemCount: response.length,
                     )
             : HttpError(onReload: _controller.onReload),
@@ -407,5 +387,46 @@ class _DynTopicPageState extends State<DynTopicPage>
         onReload: _controller.onReload,
       ),
     };
+  }
+
+  Widget _itemBuilder(List<TopicCardItem> list, int index) {
+    if (index == list.length - 1) {
+      _controller.onLoadMore();
+    }
+
+    final item = list[index];
+
+    if (item.dynamicCardItem case final dynamicCardItem?) {
+      return DynamicPanel(item: dynamicCardItem);
+    }
+
+    if (item.foldCardItem case final foldCardItem?) {
+      return _buildFoldItem(foldCardItem);
+    }
+
+    return Text(item.topicType ?? 'err');
+  }
+
+  Widget _buildFoldItem(FoldCardItem item) {
+    return Padding(
+      padding: const .only(top: 12),
+      child: Material(
+        color: colorScheme.outline.withValues(alpha: .05),
+        child: InkWell(
+          onTap: _controller.topicFold,
+          child: Padding(
+            padding: const .symmetric(vertical: 10),
+            child: Row(
+              mainAxisSize: .min,
+              mainAxisAlignment: .center,
+              children: [
+                Text(item.foldDesc!),
+                const Icon(Icons.keyboard_arrow_right, size: 22),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

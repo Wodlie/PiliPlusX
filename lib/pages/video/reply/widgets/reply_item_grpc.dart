@@ -6,19 +6,20 @@ import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
 import 'package:PiliPlus/utils/image_block_service.dart';
 import 'package:PiliPlus/common/widgets/dialog/report.dart';
-import 'package:PiliPlus/common/widgets/extra_hit_test_widget.dart';
+import 'package:PiliPlus/common/widgets/emote_span.dart';
 import 'package:PiliPlus/common/widgets/flutter/text/text.dart' as custom_text;
 import 'package:PiliPlus/common/widgets/gesture/tap_gesture_recognizer.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/image_grid/image_grid_view.dart';
 import 'package:PiliPlus/common/widgets/pendant_avatar.dart';
+import 'package:PiliPlus/common/widgets/selection_text.dart';
+import 'package:PiliPlus/common/widgets/translucent_row.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
-    show ReplyInfo, ReplyControl, Content, Url, ReplyControl_VoteOption;
+    show ReplyInfo, ReplyControl, Content, Url, ReplyControl_VoteOption, Emote;
 import 'package:PiliPlus/grpc/reply.dart';
 import 'package:PiliPlus/utils/bili_utils.dart';
 import 'package:PiliPlus/http/reply.dart';
 import 'package:PiliPlus/http/video.dart';
-import 'package:PiliPlus/models/common/badge_type.dart';
 import 'package:PiliPlus/models/common/image_type.dart';
 import 'package:PiliPlus/pages/dynamics/widgets/vote.dart';
 import 'package:PiliPlus/pages/member/widget/medal_widget.dart';
@@ -31,7 +32,9 @@ import 'package:PiliPlus/utils/danmaku_utils.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
+import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
+import 'package:PiliPlus/utils/extension/selectable_region_ext.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/global_data.dart';
@@ -229,105 +232,98 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         feedBack();
         Get.toNamed('/member?mid=${widget.replyItem.mid}');
       },
-      child: ExtraHitTestWidget(
-        width: 46,
-        child: Row(
-          crossAxisAlignment: .center,
-          spacing: 12,
-          children: [
-            PendantAvatar(
-              member.face,
-              size: 34,
-              badgeSize: 14,
-              vipStatus: member.vipStatus.toInt(),
-              officialType: member.officialVerifyType.toInt(),
-              pendantImage: member.hasGarbPendantImage()
-                  ? member.garbPendantImage
-                  : null,
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    spacing: 6,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          member.name,
-                          maxLines: 1,
-                          overflow: .ellipsis,
-                          style: TextStyle(
-                            color: (member.vipStatus > 0 && member.vipType == 2)
-                                ? colorScheme.vipColor
-                                : colorScheme.outline,
-                            fontSize: 13,
-                          ),
+      child: TranslucentRow(
+        spacing: 12,
+        extraWidth: 46,
+        children: [
+          PendantAvatar(
+            member.face,
+            size: 34,
+            badgeSize: 14,
+            vipStatus: member.vipStatus.toInt(),
+            officialType: member.officialVerifyType.toInt(),
+            pendantImage: member.hasGarbPendantImage()
+                ? member.garbPendantImage
+                : null,
+          ),
+          Flexible(
+            child: Column(
+              mainAxisSize: .min,
+              crossAxisAlignment: .start,
+              children: [
+                Row(
+                  spacing: 6,
+                  mainAxisSize: .min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        member.name,
+                        maxLines: 1,
+                        overflow: .ellipsis,
+                        style: TextStyle(
+                          color: (member.vipStatus > 0 && member.vipType == 2)
+                              ? colorScheme.vipColor
+                              : colorScheme.outline,
+                          fontSize: 13,
                         ),
                       ),
-                      BiliUtils.levelPicture(
-                        member.level.toInt(),
-                        isSeniorMember: member.isSeniorMember == 1,
-                        height: 11,
-                      ),
-                      if (widget.replyItem.mid == widget.upMid)
-                        const PBadge(
-                          text: 'UP',
-                          size: PBadgeSize.small,
-                          isStack: false,
-                          fontSize: 9,
-                        )
-                      else if (GlobalData().showMedal &&
-                          member.hasFansMedalLevel())
-                        MedalWidget(
-                          medalName: member.fansMedalName,
-                          level: member.fansMedalLevel.toInt(),
-                          backgroundColor: DmUtils.decimalToColor(
-                            member.fansMedalColor.toInt(),
-                          ),
-                          nameColor: DmUtils.decimalToColor(
-                            member.fansMedalColorName.toInt(),
-                          ),
-                          padding: const .symmetric(
-                            horizontal: 6,
-                            vertical: 1.5,
-                          ),
+                    ),
+                    BiliUtils.levelPicture(
+                      member.level.toInt(),
+                      isSeniorMember: member.isSeniorMember == 1,
+                      height: 11,
+                    ),
+                    if (widget.replyItem.mid == widget.upMid)
+                      const PBadge(
+                        text: 'UP',
+                        size: .small,
+                        isStack: false,
+                        fontSize: 9,
+                      )
+                    else if (GlobalData().showMedal &&
+                        member.hasFansMedalLevel())
+                      MedalWidget(
+                        medalName: member.fansMedalName,
+                        level: member.fansMedalLevel.toInt(),
+                        backgroundColor: DmUtils.decimalToColor(
+                          member.fansMedalColor.toInt(),
                         ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                        nameColor: DmUtils.decimalToColor(
+                          member.fansMedalColorName.toInt(),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                      ),
+                  ],
+                ),
+                Row(
+                  mainAxisSize: .min,
+                  children: [
+                    Text(
+                      widget.replyLevel == 0
+                          ? DateFormatUtils.format(
+                              widget.replyItem.ctime.toInt(),
+                              format: DateFormatUtils.longFormatDs,
+                            )
+                          : DateFormatUtils.dateFormat(widget.replyItem.ctime.toInt()),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colorScheme.outline,
+                      ),
+                    ),
+                    if (widget.replyItem.replyControl.hasLocation())
                       Text(
-                        widget.replyLevel == 0
-                            ? DateFormatUtils.format(
-                                widget.replyItem.ctime.toInt(),
-                                format: DateFormatUtils.longFormatDs,
-                              )
-                            : DateFormatUtils.dateFormat(
-                                widget.replyItem.ctime.toInt(),
-                              ),
+                        ' • ${widget.replyItem.replyControl.location}',
                         style: TextStyle(
                           fontSize: 11,
                           color: colorScheme.outline,
                         ),
                       ),
-                      if (widget.replyItem.replyControl.hasLocation())
-                        Text(
-                          ' • ${widget.replyItem.replyControl.location}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: colorScheme.outline,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
     if (PendantAvatar.showDecorate) {
@@ -513,9 +509,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                         alignment: PlaceholderAlignment.middle,
                         child: PBadge(
                           text: 'TOP',
-                          size: PBadgeSize.small,
+                          size: .small,
                           isStack: false,
-                          type: PBadgeType.line_primary,
+                          type: .line_primary,
                           fontSize: 9,
                           textScaleFactor: 1,
                         ),
@@ -843,10 +839,10 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                           if (childReply.mid == widget.upMid) ...[
                             const TextSpan(text: ' '),
                             const WidgetSpan(
-                              alignment: PlaceholderAlignment.middle,
+                              alignment: .middle,
                               child: PBadge(
                                 text: 'UP',
-                                size: PBadgeSize.small,
+                                size: .small,
                                 isStack: false,
                                 fontSize: 9,
                                 textScaleFactor: 1,
@@ -1502,7 +1498,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                 context: context,
                 builder: (context) => Dialog(
                   child: Padding(
-                    padding: const .symmetric(horizontal: 20, vertical: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     child: SelectableText(
                       message,
                       style: const TextStyle(fontSize: 15, height: 1.7),
