@@ -73,7 +73,10 @@ class _QrScannerPageState extends State<QrScannerPage> {
                 width: 260,
                 height: 260,
                 decoration: BoxDecoration(
-                  border: Border.all(color: theme.colorScheme.primary, width: 3),
+                  border: Border.all(
+                    color: theme.colorScheme.primary,
+                    width: 3,
+                  ),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: const [
                     BoxShadow(
@@ -102,7 +105,7 @@ class _QrScannerPageState extends State<QrScannerPage> {
                 const SizedBox(height: 12),
                 IconButton.filledTonal(
                   tooltip: '切换手电筒',
-                  onPressed: () => _controller.toggleTorch(),
+                  onPressed: _controller.toggleTorch,
                   icon: const Icon(Icons.flashlight_on_outlined),
                 ),
               ],
