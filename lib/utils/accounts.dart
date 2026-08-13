@@ -47,6 +47,16 @@ abstract final class Accounts {
     }
     return blacklist;
   }
+
+  /// 举报操作所使用的账号。
+  /// 若未单独指定，则回退到主账号。
+  static Account get report {
+    final report = accountMode[AccountType.report.index];
+    if (report is AnonymousAccount) {
+      return Accounts.main;
+    }
+    return report;
+  }
   // static set main(Account account) => set(AccountType.main, account);
 
   static OwnerScopedIdentitySnapshot snapshot(AccountType key) {

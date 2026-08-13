@@ -223,6 +223,8 @@ class _WhisperDetailPageState
                         ? reasonDesc!
                         : ReportOptions.imMsgReport['']![reasonType]!,
                   ),
+              targetMid: item.senderUid,
+              scene: 5,
             ),
             child: const Text('举报', style: TextStyle(fontSize: 14)),
           ),
@@ -266,6 +268,8 @@ class _WhisperDetailPageState
                               ? reasonDesc!
                               : ReportOptions.imMsgReport['']![reasonType]!,
                         ),
+                    targetMid: item.senderUid,
+                    scene: 5,
                   );
                 },
                 dense: true,

@@ -105,12 +105,21 @@ abstract final class ApiType {
       Api.likeReply,
       Api.hateReply,
       Api.replyTop,
-      Api.replyReport,
       Api.replySubjectModify,
     },
     AccountType.blacklist: {
       Api.blackLst,
       Api.relationMod,
+    },
+    // 举报
+    AccountType.report: {
+      Api.replyReport,
+      Api.reportMember,
+      Api.dynamicReport,
+      Api.danmakuReport,
+      Api.liveDmReport,
+      Api.superChatReport,
+      Api.imMsgReport,
     },
   };
 

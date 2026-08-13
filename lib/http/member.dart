@@ -30,8 +30,10 @@ import 'package:PiliPlus/models_new/space/space_cheese/data.dart';
 import 'package:PiliPlus/models_new/space/space_opus/data.dart';
 import 'package:PiliPlus/models_new/space/space_season_series/item.dart';
 import 'package:PiliPlus/models_new/space/space_shop/data.dart';
+import 'package:PiliPlus/models_new/report/report_options_v2.dart';
 import 'package:PiliPlus/models_new/upower_rank/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
 import 'package:PiliPlus/utils/wbi_sign.dart';
@@ -50,14 +52,95 @@ abstract final class MemberHttp {
         'mid': mid,
         'reason': reason,
         'reason_v2': ?reasonV2,
-        'csrf': Accounts.main.csrf,
+        'csrf': Accounts.report.csrf,
       },
-      options: Options(contentType: Headers.formUrlEncodedContentType),
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        extra: {'account': Accounts.report},
+      ),
     );
     if (res.data['status'] == true) {
       SmartDialog.showToast('举报成功');
     } else {
       SmartDialog.showToast('举报失败');
+    }
+  }
+
+  /// Fetch report options from API, cache in Hive localCache.
+  /// Falls back to hardcoded options on failure.
+  static Future<LoadingState<List<ReportReasonV2>>> getReportOptions({
+    bool forceRefresh = false,
+  }) async {
+    // Check cache first (unless forceRefresh)
+    if (!forceRefresh) {
+      final cached = GStorage.localCache.get('report_options_v2');
+      if (cached != null && cached is List) {
+        try {
+          final reasons = cached
+              .map((e) => ReportReasonV2.fromJson(e as Map<String, dynamic>))
+              .toList();
+          return Success(reasons);
+        } catch (_) {
+          // cached data corrupted, refetch
+        }
+      }
+    }
+    try {
+      final res = await Request().get(
+        Api.reportOptionsV2,
+        options: Options(extra: {'account': Accounts.report}),
+      );
+      if (res.data['code'] == 0 && res.data['data'] != null) {
+        final rawList = res.data['data']['reason_list'] as List<dynamic>;
+        final reasons = rawList
+            .map((e) => ReportReasonV2.fromJson(e as Map<String, dynamic>))
+            .toList();
+        // Store parsed JSON in Hive localCache
+        GStorage.localCache.put(
+          'report_options_v2',
+          reasons.map((e) => e.toJson()).toList(),
+        );
+        return Success(reasons);
+      } else {
+        // API returned non-success; use hardcoded fallback
+        return const Success(ReportOptionsV2Hardcoded.kFallbackReasons);
+      }
+    } catch (_) {
+      // Network error; use hardcoded fallback
+      return const Success(ReportOptionsV2Hardcoded.kFallbackReasons);
+    }
+  }
+
+  /// Submit a report using the new v2 API.
+  /// POST /x/space/report with mid, reason, scene, specific_reason, csrf.
+  static Future<LoadingState<dynamic>> reportV2({
+    required Object? mid,
+    required int reason,
+    required int scene,
+    String? specificReason,
+  }) async {
+    try {
+      final res = await Request().post(
+        Api.reportV2,
+        data: {
+          'mid': mid,
+          'reason': reason,
+          'scene': scene,
+          'specific_reason': specificReason ?? '',
+          'csrf': Accounts.report.csrf,
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          extra: {'account': Accounts.report},
+        ),
+      );
+      if (res.data['code'] == 0) {
+        return Success(res.data);
+      } else {
+        return Error(res.data['message'] ?? '提交失败');
+      }
+    } catch (e) {
+      return Error('提交失败：$e');
     }
   }
 

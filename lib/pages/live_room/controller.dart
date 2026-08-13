@@ -727,6 +727,8 @@ class LiveRoomController extends GetxController {
           token: item.token,
         );
       },
+      targetMid: item.uid,
+      scene: 7,
     );
   }
 }

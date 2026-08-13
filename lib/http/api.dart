@@ -692,6 +692,9 @@ abstract final class Api {
 
   static const String reportMember =
       '${HttpString.spaceBaseUrl}/ajax/report/add';
+  static const String reportOptionsV2 =
+      '${HttpString.apiBaseUrl}/x/space/report/options';
+  static const String reportV2 = '${HttpString.apiBaseUrl}/x/space/report';
 
   static const String removeMsg = '/session_svr/v1/session_svr/remove_session';
 

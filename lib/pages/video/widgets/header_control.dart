@@ -276,6 +276,8 @@ class HeaderControl extends StatefulWidget {
             content: reasonType == 0 ? reasonDesc : null,
           );
         },
+        targetMid: extra.mid,
+        scene: 7,
       );
     } else {
       return SmartDialog.showToast('请先登录');
@@ -320,6 +322,8 @@ class HeaderControl extends StatefulWidget {
             sign: extra.ct,
           );
         },
+        targetMid: extra.mid,
+        scene: 7,
       );
     } else {
       return SmartDialog.showToast('请先登录');

@@ -2,6 +2,8 @@ import 'package:PiliPlus/common/widgets/radio_widget.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/utils.dart';
+import 'package:PiliPlus/common/widgets/dialog/report_v2.dart';
+import 'package:PiliPlus/utils/accounts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -15,6 +17,8 @@ Future<void> autoWrapReportDialog(
   bool showImageBlock = false,
   List<String>? imageUrls,
   Future<void> Function(List<String> imageUrls)? onBlockImages,
+  Object? targetMid,
+  int? scene,
 }) {
   int? reasonType;
   String? reasonDesc;
@@ -107,6 +111,23 @@ Future<void> autoWrapReportDialog(
         ],
       ),
       actions: [
+        if (targetMid != null && scene != null)
+          TextButton(
+            onPressed: () {
+              final ctx = context;
+              Get.back();
+              if (!Accounts.report.isLogin) {
+                SmartDialog.showToast('举报账号未登录');
+                return;
+              }
+              showNewReportDialog(
+                ctx,
+                targetMid: targetMid,
+                scene: scene,
+              );
+            },
+            child: const Text('使用新版举报方式'),
+          ),
         TextButton(
           onPressed: Get.back,
           child: Text(

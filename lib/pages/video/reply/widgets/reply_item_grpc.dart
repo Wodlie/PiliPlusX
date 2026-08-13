@@ -1385,6 +1385,8 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                       );
                     }
                   },
+                  targetMid: item.member.mid.toInt(),
+                  scene: 3,
                 );
               },
               minLeadingWidth: 0,
