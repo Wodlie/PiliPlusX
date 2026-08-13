@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/http/api.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/custom_host_interceptor.dart';
@@ -12,10 +13,12 @@ import 'package:PiliPlus/http/user.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/account_manager/account_mgr.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
+import 'package:PiliPlus/utils/accounts/gaia_report.dart';
+import 'package:PiliPlus/utils/app_sign.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:PiliPlus/utils/utils.dart';
 import 'package:archive/archive.dart';
 import 'package:brotli/brotli.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -64,31 +67,20 @@ class Request {
   static Future<void> buvidActive(Account account) async {
     if (account.activated) return;
     try {
-      // final html = await Request().get(Api.dynamicSpmPrefix,
-      //     options: Options(extra: {'account': account}));
-      // final String spmPrefix = _spmPrefixExp.firstMatch(html.data)!.group(1)!;
-      final randomPngBytes = Utils.generateSecureRandomBytes(36);
-      final String randPngEnd = base64.encode([
-        ...randomPngBytes.take(32),
-        0,
-        0,
-        0,
-        0,
-        73,
-        69,
-        78,
-        68,
-        ...randomPngBytes.skip(32),
-      ]);
-
-      final jsonData = json.encode({
-        '3064': 1,
-        '39c8': '333.1387.fp.risk',
-        '3c43': {
-          'adca': 'Linux',
-          'bfe9': randPngEnd.substring(randPngEnd.length - 50),
-        },
-      });
+      // ExClimbCongLing(自发上报):body 为 GaiaRiskReport 构造的
+      // {"header":{...},"encrypt_payload":<AES-CBC密文>};query 按官方旧栈
+      // 注入公共参数并做 APP 签名。
+      final query = <String, dynamic>{
+        'platform': AppDeviceProfiles.androidHd.platform,
+        'mobi_app': AppDeviceProfiles.androidHd.mobiApp,
+        'appkey': Constants.appKey,
+        'build': AppDeviceProfiles.androidHd.build.toString(),
+        'channel': AppDeviceProfiles.androidHd.channel,
+        if (account is LoginAccount) 'access_key': account.accessKey ?? '',
+        'c_locale': 'zh_CN',
+        's_locale': 'zh_CN',
+      };
+      AppSign.appSign(query);
 
       // Use dio.post directly so that DioException (non-2xx, network
       // error) propagates out of the try block and keeps activated=false.
@@ -96,7 +88,8 @@ class Request {
       // which would prevent the catch from ever firing for common errors.
       await dio.post(
         Api.activateBuvidApi,
-        data: {'payload': jsonData},
+        queryParameters: query,
+        data: GaiaRiskReport.buildBody(account),
         options: Options(
           extra: {'account': account},
           contentType: Headers.jsonContentType,

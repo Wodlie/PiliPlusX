@@ -666,7 +666,7 @@ abstract final class Api {
   static const dynamicSpmPrefix = '${HttpString.spaceBaseUrl}/1/dynamic';
 
   /// 激活buvid3
-  static const activateBuvidApi = '/x/internal/gaia-gateway/ExClimbWuzhi';
+  static const activateBuvidApi = '/x/internal/gaia-gateway/ExClimbCongLing';
 
   /// 我的订阅
   static const userSubFolder = '/x/v3/fav/folder/collected/list';
