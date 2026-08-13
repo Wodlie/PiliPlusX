@@ -16,6 +16,17 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 
 abstract final class LoginUtils {
+  /// 由 Cookie 的 Domain 构造 `CookieManager.setCookie` 的合法 URL。
+  ///
+  /// WebView 的 setCookie 要求 http(s) URL：host 不能带前导点、必须带 scheme。
+  /// `cookie.domain` 形如 `.bilibili.com`（也可能为空），返回
+  /// `https://bilibili.com`；空 domain 回退到 `.bilibili.com`。
+  static String webCookieUrlFor(String? domain) {
+    final rawDomain = (domain?.isNotEmpty ?? false) ? domain! : '.bilibili.com';
+    final host = rawDomain.startsWith('.') ? rawDomain.substring(1) : rawDomain;
+    return 'https://$host';
+  }
+
   static FutureOr setWebCookie([Account? account]) {
     if (Platform.isLinux) {
       return null;
@@ -24,20 +35,27 @@ abstract final class LoginUtils {
     final webManager = web.CookieManager.instance(
       webViewEnvironment: webViewEnvironment,
     );
-    final isWindows = Platform.isWindows;
     return Future.wait(
       cookies.map(
-        (cookie) => webManager.setCookie(
-          url: web.WebUri(
-            '${isWindows ? 'https://' : ''} ${cookie.domain}',
-          ),
-          name: cookie.name,
-          value: cookie.value,
-          path: cookie.path ?? '/',
-          domain: cookie.domain,
-          isSecure: cookie.secure,
-          isHttpOnly: cookie.httpOnly,
-        ),
+        (cookie) {
+          // Cookie 的 Domain 形如 `.bilibili.com`（可能为空）。WebView 的
+          // setCookie 要求合法 http(s) URL：host 不能带前导点、必须带 scheme，
+          // 否则 Android/iOS 直接失败、Windows 返回 false，Cookie 无法注入，
+          // 导致 H5 页面（如举报列表）拿不到登录态。统一构造为
+          // `https://bilibili.com`，Domain 属性仍用原始值（覆盖所有子域）。
+          final rawDomain = (cookie.domain?.isNotEmpty ?? false)
+              ? cookie.domain!
+              : '.bilibili.com';
+          return webManager.setCookie(
+            url: web.WebUri(webCookieUrlFor(cookie.domain)),
+            name: cookie.name,
+            value: cookie.value,
+            path: cookie.path ?? '/',
+            domain: rawDomain,
+            isSecure: cookie.secure,
+            isHttpOnly: cookie.httpOnly,
+          );
+        },
       ),
     );
   }

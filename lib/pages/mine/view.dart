@@ -153,6 +153,14 @@ class _MediaPageState extends CommonPageState<MinePage>
               ),
             ),
           ),
+        IconButton(
+          iconSize: iconSize,
+          padding: padding,
+          style: style,
+          tooltip: '网页浏览',
+          onPressed: () => Get.toNamed('/webviewEntry'),
+          icon: const Icon(Icons.public_outlined),
+        ),
         if (!_mainController.hasHome) ...[
           IconButton(
             iconSize: iconSize,

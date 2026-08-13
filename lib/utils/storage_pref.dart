@@ -1326,4 +1326,15 @@ abstract final class Pref {
   static set imageBlockHashList(List<Map<String, dynamic>> value) =>
       _setting.put(SettingBoxKey.imageBlockHashList, value);
 
+  /// 网页浏览-常用功能列表（[{title, url}, ...]）
+  static List<Map<String, String>> get commonFuncs {
+    final raw = _setting.get(SettingBoxKey.commonFuncs, defaultValue: <Map>[]);
+    return raw is List
+        ? raw.map((e) => Map<String, String>.from(e as Map)).toList()
+        : [];
+  }
+
+  static set commonFuncs(List<Map<String, String>> value) =>
+      _setting.put(SettingBoxKey.commonFuncs, value);
+
 }

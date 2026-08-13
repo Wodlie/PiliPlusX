@@ -294,6 +294,58 @@ abstract final class AppDeviceProfiles {
   static AppRequestProfile fromUserAgent(String userAgent) =>
       resolve(userAgent: userAgent);
 
+  /// 生成官方 App 内 WebView 风格 UA（对应真实抓包格式，非 API 的
+  /// `BiliDroid/...` 格式）：标准 WebView 内核 UA + 附加 B 站字段。
+  ///
+  /// 结构（字段序列与官方 WebView UA 一致）：
+  /// ```text
+  /// Mozilla/5.0 (Linux; Android <osver>; <model> Build/<brand><model>; wv)
+  /// AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/<ver>
+  /// [Mobile ]Safari/537.36 os/android model/<model> build/<versionCode>
+  /// osVer/<osver> sdkInt/<sdkInt> network/1 BiliApp/<versionCode>
+  /// mobi_app/<mobiApp> channel/master [Buvid/<buvid>] innerVer/<versionCode>
+  /// ```
+  ///
+  /// [profile.brand] / [profile.model] / [profile.osver] 取自账号伪装档案，
+  /// `sdkInt` 由 [profile.osver] 推导，`BiliApp/<versionCode>` 与 API 版本
+  /// 一致（android 8430300 / android_hd 2001100），可选 [buvid] 写入
+  /// `Buvid/` 字段。全程不暴露第三方标识。
+  static String buildUserAgent(
+    AppDeviceProfile profile, {
+    bool hd = false,
+    String? buvid,
+  }) {
+    final versionCode = hd ? '2001100' : '8430300';
+    final mobiApp = hd ? 'android_hd' : 'android';
+    final osver = profile.osver;
+    final sdkInt = _sdkIntForOsver(osver);
+    final mobilePart = hd ? '' : ' Mobile';
+    return 'Mozilla/5.0 (Linux; Android $osver; ${profile.model} '
+        'Build/${profile.brand}${profile.model}; wv) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 '
+        'Chrome/114.0.5735.196$mobilePart Safari/537.36 '
+        'os/android model/${profile.model} build/$versionCode osVer/$osver '
+        'sdkInt/$sdkInt network/1 BiliApp/$versionCode mobi_app/$mobiApp '
+        'channel/master${buvid == null ? '' : ' Buvid/$buvid'} '
+        'innerVer/$versionCode';
+  }
+
+  /// Android 版本号（主版本）→ SDK int 映射，用于 UA 中 `sdkInt/` 字段。
+  static const Map<int, int> _sdkIntByOsver = {
+    10: 29,
+    11: 30,
+    12: 31,
+    13: 33,
+    14: 34,
+    15: 35,
+    16: 36,
+  };
+
+  static int _sdkIntForOsver(String osver) {
+    final major = int.tryParse(osver.split('.').first);
+    return major == null ? 31 : (_sdkIntByOsver[major] ?? 31);
+  }
+
   static int _stableIndex(String seed) {
     var hash = 0x811c9dc5;
     for (final value in utf8.encode(seed)) {

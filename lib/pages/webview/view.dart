@@ -1,13 +1,17 @@
-import 'dart:io' show Platform;
+import 'dart:collection';
+import 'dart:io';
 
-import 'package:PiliPlus/common/widgets/selection_text.dart';
-import 'package:PiliPlus/http/browser_ua.dart';
 import 'package:PiliPlus/main.dart';
 import 'package:PiliPlus/models/common/webview_menu_type.dart';
+import 'package:PiliPlus/pages/webview/webview_js_bridge.dart';
+import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
+import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
@@ -53,17 +57,31 @@ class _WebviewPageState extends State<WebviewPage> {
   @override
   void initState() {
     super.initState();
-    userAgent =
-        widget.userAgent ??
-        switch (Get.parameters['uaType']) {
-          'pc' => BrowserUa.pc,
-          'mob' => BrowserUa.mob,
-          _ => BrowserUa.platform,
-        };
+    userAgent = widget.userAgent ?? _buildFakeUa();
     if (Get.arguments case final Map map) {
       _inApp = map['inApp'] ?? false;
       _off = map['off'] ?? false;
     }
+  }
+
+  /// 伪装官方客户端 UA：基于当前账号伪装设备档案生成 BiliDroid UA，
+  /// 追加 `BiliApp/<versionCode>` 后缀；桌面端伪装为 android_hd 平板客户端。
+  String _buildFakeUa() {
+    final uaType = Get.parameters['uaType'] ?? 'platform';
+    final hd = switch (uaType) {
+      'pc' => true,
+      'mob' => false,
+      _ => !PlatformUtils.isMobile,
+    };
+    final account = Accounts.main;
+    final profile = account is LoginAccount && account.deviceProfile != null
+        ? account.deviceProfile!
+        : AppDeviceProfiles.defaultDeviceProfileForOwner('guest');
+    return AppDeviceProfiles.buildUserAgent(
+      profile,
+      hd: hd,
+      buvid: account.buvid,
+    );
   }
 
   @override
@@ -180,13 +198,22 @@ class _WebviewPageState extends State<WebviewPage> {
             algorithmicDarkeningAllowed: true,
             useShouldOverrideUrlLoading: true,
             userAgent: userAgent,
-            mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+            mixedContentMode: MixedContentMode.MIXED_CONTENT_NEVER_ALLOW,
+            // 安全收紧：禁用文件/内容访问与 file:// URL 互通（对应官方第 9 章）
+            allowFileAccess: false,
+            allowContentAccess: false,
+            allowFileAccessFromFileURLs: false,
+            allowUniversalAccessFromFileURLs: false,
           ),
           initialUrlRequest: URLRequest(
             url: WebUri.uri(Uri.tryParse(_url) ?? Uri()),
           ),
+          initialUserScripts: UnmodifiableListView(
+            [WebviewJsBridge.polyfillUserScript],
+          ),
           onWebViewCreated: (InAppWebViewController controller) {
             _webViewController = controller;
+            WebviewJsBridge.attach(controller);
             controller
               ..addJavaScriptHandler(
                 handlerName: 'finishButtonClicked',
@@ -269,7 +296,7 @@ class _WebviewPageState extends State<WebviewPage> {
                           '下载文件: $suggestedFilename ?',
                           style: const TextStyle(fontSize: 18),
                         ),
-                        content: SelectionText(request.url.toString()),
+                        content: SelectableText(request.url.toString()),
                         actions: [
                           TextButton(
                             onPressed: Get.back,
@@ -317,25 +344,31 @@ class _WebviewPageState extends State<WebviewPage> {
             return null;
           },
           shouldOverrideUrlLoading: (controller, navigationAction) async {
-            if (!_inApp) {
-              final hasMatch = await PiliScheme.routePush(
-                navigationAction.request.url?.uriValue ?? Uri(),
-                selfHandle: true,
-                off: _off,
-              );
-              // if (kDebugMode) debugPrint('webview: [$url], [$hasMatch]');
-              if (hasMatch) {
-                progress.value = 1;
-                return .CANCEL;
-              }
+            if (_inApp) {
+              return NavigationActionPolicy.ALLOW;
             }
-            final url = navigationAction.request.url.toString();
-            if (_prefixRegex.hasMatch(url)) {
+            late String url = navigationAction.request.url.toString();
+            // tel:/mailto: 交给系统处理（对应官方 6.1 深链分流）
+            final scheme = navigationAction.request.url?.scheme;
+            if (scheme == 'tel' || scheme == 'mailto') {
+              PageUtils.launchURL(url);
+              return NavigationActionPolicy.CANCEL;
+            }
+            bool hasMatch = await PiliScheme.routePush(
+              navigationAction.request.url?.uriValue ?? Uri(),
+              selfHandle: true,
+              off: _off,
+            );
+            // if (kDebugMode) debugPrint('webview: [$url], [$hasMatch]');
+            if (hasMatch) {
+              progress.value = 1;
+              return NavigationActionPolicy.CANCEL;
+            } else if (_prefixRegex.hasMatch(url)) {
               if (context.mounted) {
-                final snackBar = SnackBar(
-                  persist: false,
-                  showCloseIcon: true,
+                SnackBar snackBar = SnackBar(
                   content: const Text('当前网页将要打开外部链接，是否打开'),
+                  showCloseIcon: true,
+                  persist: false,
                   action: SnackBarAction(
                     label: '打开',
                     onPressed: () => PageUtils.launchURL(url),
@@ -344,10 +377,10 @@ class _WebviewPageState extends State<WebviewPage> {
                 ScaffoldMessenger.of(context).showSnackBar(snackBar);
               }
               progress.value = 1;
-              return .CANCEL;
+              return NavigationActionPolicy.CANCEL;
             }
 
-            return .ALLOW;
+            return NavigationActionPolicy.ALLOW;
           },
         ),
       ),

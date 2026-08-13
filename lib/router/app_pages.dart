@@ -3,6 +3,7 @@ import 'package:PiliPlus/pages/article_list/view.dart';
 import 'package:PiliPlus/pages/audio/view.dart';
 import 'package:PiliPlus/pages/blacklist/view.dart';
 import 'package:PiliPlus/pages/bubble/view.dart';
+import 'package:PiliPlus/pages/common_funcs/view.dart';
 import 'package:PiliPlus/pages/danmaku_block/view.dart';
 import 'package:PiliPlus/pages/dlna/view.dart';
 import 'package:PiliPlus/pages/download/view.dart';
@@ -49,6 +50,7 @@ import 'package:PiliPlus/pages/music/view.dart';
 import 'package:PiliPlus/pages/my_reply/view.dart';
 import 'package:PiliPlus/pages/popular_precious/view.dart';
 import 'package:PiliPlus/pages/popular_series/view.dart';
+import 'package:PiliPlus/pages/qr_scanner/view.dart';
 import 'package:PiliPlus/pages/search/view.dart';
 import 'package:PiliPlus/pages/search_result/view.dart';
 import 'package:PiliPlus/pages/search_trending/view.dart';
@@ -68,6 +70,7 @@ import 'package:PiliPlus/pages/subscription/view.dart';
 import 'package:PiliPlus/pages/subscription_detail/view.dart';
 import 'package:PiliPlus/pages/video/view.dart';
 import 'package:PiliPlus/pages/webview/view.dart';
+import 'package:PiliPlus/pages/webview_entry/view.dart';
 import 'package:PiliPlus/pages/whisper/view.dart';
 import 'package:PiliPlus/pages/whisper_detail/view.dart';
 import 'package:get/get.dart';
@@ -83,6 +86,12 @@ class Routes {
     GetPage(name: '/videoV', page: () => const VideoDetailPageV()),
     //
     GetPage(name: '/webview', page: () => const WebviewPage()),
+    // 网页浏览（输入网址/扫码）
+    GetPage(name: '/webviewEntry', page: () => const WebviewEntryPage()),
+    // 常用功能（网页收藏夹）
+    GetPage(name: '/commonFuncs', page: () => const CommonFuncsPage()),
+    // 扫码
+    GetPage(name: '/qrScanner', page: () => const QrScannerPage()),
     // 设置
     GetPage(name: '/setting', page: () => const SettingPage()),
     //

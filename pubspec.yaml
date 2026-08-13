@@ -154,6 +154,7 @@ dependencies:
   permission_handler_android: ^13.0.1
   permission_handler_apple: ^9.4.7
   permission_handler_platform_interface: ^4.3.0
+  mobile_scanner: ^7.4.0
   pretty_qr_code: ^3.3.0
   protobuf: ^6.0.0
   re_highlight: ^0.0.3
