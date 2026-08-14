@@ -1,6 +1,9 @@
 import 'dart:collection';
 import 'dart:io';
 
+import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
+import 'package:PiliPlus/common/widgets/selection_text.dart';
+import 'package:PiliPlus/http/browser_ua.dart';
 import 'package:PiliPlus/main.dart';
 import 'package:PiliPlus/models/common/webview_menu_type.dart';
 import 'package:PiliPlus/pages/webview/webview_js_bridge.dart';
@@ -93,9 +96,8 @@ class _WebviewPageState extends State<WebviewPage> {
   @override
   Widget build(BuildContext context) {
     if (Platform.isLinux) {
-      return Scaffold(
+      return SimpleScaffold(
         appBar: AppBar(),
-        resizeToAvoidBottomInset: false,
         body: Center(
           child: TextButton(
             onPressed: () => PageUtils.launchURL(_url),

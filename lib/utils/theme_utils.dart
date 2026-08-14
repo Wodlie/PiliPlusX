@@ -42,9 +42,9 @@ abstract final class ThemeUtils {
     // 根据设置决定使用系统字体还是 HarmonyOS_Sans
     final fontFamilyFallback = Pref.useSystemFont ? null : ['HarmonyOS_Sans'];
     late final textStyle = TextStyle(fontWeight: fontWeight);
-    ThemeData themeData = ThemeData(
-      colorScheme: colorScheme,
+    ThemeData theme = ThemeData(
       useMaterial3: true,
+      colorScheme: colorScheme,
       textTheme: fontWeight == null
           ? TextTheme(
               bodyLarge: TextStyle(fontFamilyFallback: fontFamilyFallback),
@@ -126,38 +126,37 @@ abstract final class ThemeUtils {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        surfaceTintColor: isDynamic ? colorScheme.onSurfaceVariant : null,
+        surfaceTintColor: isDark ? colorScheme.surfaceContainerHighest : null,
       ),
       snackBarTheme: SnackBarThemeData(
-        actionTextColor: colorScheme.primary,
-        backgroundColor: colorScheme.secondaryContainer,
-        closeIconColor: colorScheme.secondary,
-        contentTextStyle: TextStyle(color: colorScheme.onSecondaryContainer),
         elevation: 20,
+        actionTextColor: colorScheme.primary,
+        closeIconColor: colorScheme.secondary,
+        backgroundColor: colorScheme.secondaryContainer,
+        contentTextStyle: TextStyle(color: colorScheme.onSecondaryContainer),
       ),
       popupMenuTheme: PopupMenuThemeData(
-        surfaceTintColor: isDynamic ? colorScheme.onSurfaceVariant : null,
+        surfaceTintColor: isDark ? colorScheme.surfaceContainerHighest : null,
       ),
       cardTheme: CardThemeData(
         elevation: 1,
         margin: EdgeInsets.zero,
-        surfaceTintColor: isDynamic
-            ? colorScheme.onSurfaceVariant
-            : isDark
-            ? colorScheme.onSurfaceVariant
-            : null,
         shadowColor: Colors.transparent,
+        surfaceTintColor: isDark ? colorScheme.onSurfaceVariant : null,
       ),
-      progressIndicatorTheme: ProgressIndicatorThemeData(
-        // ignore: deprecated_member_use
-        year2023: false,
-        refreshBackgroundColor: colorScheme.onSecondary,
-      ),
+      progressIndicatorTheme: isDark
+          ? ProgressIndicatorThemeData(
+              // ignore: deprecated_member_use
+              year2023: false,
+              refreshBackgroundColor: colorScheme.onInverseSurface,
+            )
+          // ignore: deprecated_member_use
+          : const ProgressIndicatorThemeData(year2023: false),
       dialogTheme: DialogThemeData(
         titleTextStyle: TextStyle(
           fontSize: 18,
-          color: colorScheme.onSurface,
           fontWeight: fontWeight,
+          color: colorScheme.onSurface,
         ),
         backgroundColor: colorScheme.surface,
         constraints: const BoxConstraints(minWidth: 280, maxWidth: 420),
@@ -171,10 +170,7 @@ abstract final class ThemeUtils {
       // ignore: deprecated_member_use
       sliderTheme: const SliderThemeData(year2023: false),
       tooltipTheme: TooltipThemeData(
-        textStyle: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-        ),
+        textStyle: const TextStyle(color: Colors.white, fontSize: 14),
         decoration: BoxDecoration(
           color: Colors.grey[700]!.withValues(alpha: 0.9),
           borderRadius: const BorderRadius.all(Radius.circular(4)),
@@ -193,108 +189,116 @@ abstract final class ThemeUtils {
           },
         ),
       ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        shape: Border(),
+        collapsedShape: Border(),
+      ),
+      listTileTheme: const ListTileThemeData(controlAffinity: .leading),
+      filledButtonTheme: const FilledButtonThemeData(
+        style: ButtonStyle(
+          shadowColor: WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: ZoomPageTransitionsBuilder(),
         },
       ),
     );
-    if (isDark) {
-      if (Pref.isPureBlackTheme) {
-        themeData = darkenTheme(themeData);
-      }
+    if (isDark && Pref.isPureBlackTheme) {
+      return darkenTheme(theme);
     }
-    return themeData;
+    return theme;
   }
 
-  static ThemeData darkenTheme(ThemeData themeData) {
-    final colorScheme = themeData.colorScheme;
+  static ThemeData darkenTheme(ThemeData theme) {
+    final colorScheme = theme.colorScheme;
     final color = colorScheme.surfaceContainerHighest.darken(0.7);
 
     // 获取字体回退设置
     final fontFamilyFallback = Pref.useSystemFont ? null : ['HarmonyOS_Sans'];
 
-    return themeData.copyWith(
+    return theme.copyWith(
+      canvasColor: Colors.black,
       scaffoldBackgroundColor: Colors.black,
-      textTheme: themeData.textTheme.copyWith(
-        bodyLarge: themeData.textTheme.bodyLarge?.copyWith(
+      textTheme: theme.textTheme.copyWith(
+        bodyLarge: theme.textTheme.bodyLarge?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        bodyMedium: themeData.textTheme.bodyMedium?.copyWith(
+        bodyMedium: theme.textTheme.bodyMedium?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        bodySmall: themeData.textTheme.bodySmall?.copyWith(
+        bodySmall: theme.textTheme.bodySmall?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        displayLarge: themeData.textTheme.displayLarge?.copyWith(
+        displayLarge: theme.textTheme.displayLarge?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        displayMedium: themeData.textTheme.displayMedium?.copyWith(
+        displayMedium: theme.textTheme.displayMedium?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        displaySmall: themeData.textTheme.displaySmall?.copyWith(
+        displaySmall: theme.textTheme.displaySmall?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        headlineLarge: themeData.textTheme.headlineLarge?.copyWith(
+        headlineLarge: theme.textTheme.headlineLarge?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        headlineMedium: themeData.textTheme.headlineMedium?.copyWith(
+        headlineMedium: theme.textTheme.headlineMedium?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        headlineSmall: themeData.textTheme.headlineSmall?.copyWith(
+        headlineSmall: theme.textTheme.headlineSmall?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        titleLarge: themeData.textTheme.titleLarge?.copyWith(
+        titleLarge: theme.textTheme.titleLarge?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        titleMedium: themeData.textTheme.titleMedium?.copyWith(
+        titleMedium: theme.textTheme.titleMedium?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        titleSmall: themeData.textTheme.titleSmall?.copyWith(
+        titleSmall: theme.textTheme.titleSmall?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        labelLarge: themeData.textTheme.labelLarge?.copyWith(
+        labelLarge: theme.textTheme.labelLarge?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        labelMedium: themeData.textTheme.labelMedium?.copyWith(
+        labelMedium: theme.textTheme.labelMedium?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
-        labelSmall: themeData.textTheme.labelSmall?.copyWith(
+        labelSmall: theme.textTheme.labelSmall?.copyWith(
           fontFamilyFallback: fontFamilyFallback,
         ),
       ),
-      appBarTheme: themeData.appBarTheme.copyWith(
+      appBarTheme: theme.appBarTheme.copyWith(
         backgroundColor: Colors.black,
       ),
-      cardTheme: themeData.cardTheme.copyWith(
-        color: Colors.black,
+      cardTheme: theme.cardTheme.copyWith(
+        color: colorScheme.surfaceContainer.darken(0.75),
       ),
-      dialogTheme: themeData.dialogTheme.copyWith(
+      dialogTheme: theme.dialogTheme.copyWith(backgroundColor: color),
+      bottomSheetTheme: theme.bottomSheetTheme.copyWith(
         backgroundColor: color,
       ),
-      bottomSheetTheme: themeData.bottomSheetTheme.copyWith(
+      bottomNavigationBarTheme: theme.bottomNavigationBarTheme.copyWith(
         backgroundColor: color,
       ),
-      bottomNavigationBarTheme: themeData.bottomNavigationBarTheme.copyWith(
+      navigationBarTheme: theme.navigationBarTheme.copyWith(
         backgroundColor: color,
       ),
-      navigationBarTheme: themeData.navigationBarTheme.copyWith(
-        backgroundColor: color,
-      ),
-      navigationRailTheme: themeData.navigationRailTheme.copyWith(
+      navigationRailTheme: theme.navigationRailTheme.copyWith(
         backgroundColor: Colors.black,
       ),
+      popupMenuTheme: theme.popupMenuTheme.copyWith(color: color),
       colorScheme: colorScheme.copyWith(
         primary: colorScheme.primary.darken(0.1),
         onPrimary: colorScheme.onPrimary.darken(0.1),
         primaryContainer: colorScheme.primaryContainer.darken(0.1),
         onPrimaryContainer: colorScheme.onPrimaryContainer.darken(0.1),
         inversePrimary: colorScheme.inversePrimary.darken(0.1),
-        secondary: colorScheme.secondary.darken(0.1),
-        onSecondary: colorScheme.onSecondary.darken(0.1),
-        secondaryContainer: colorScheme.secondaryContainer.darken(0.1),
-        onSecondaryContainer: colorScheme.onSecondaryContainer.darken(0.1),
-        error: colorScheme.error.darken(0.1),
+        secondary: colorScheme.secondary.darken(0.05),
+        onSecondary: colorScheme.onSecondary.darken(0.05),
+        secondaryContainer: colorScheme.secondaryContainer.darken(0.05),
+        onSecondaryContainer: colorScheme.onSecondaryContainer.darken(0.05),
+        error: colorScheme.error.darken(0.05),
         surface: Colors.black,
         onSurface: colorScheme.onSurface.darken(0.15),
         surfaceTint: colorScheme.surfaceTint.darken(),

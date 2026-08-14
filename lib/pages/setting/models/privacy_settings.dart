@@ -25,7 +25,11 @@ List<SettingsModel> get privacySettings => [
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('账号模式详情'),
-          content: SingleChildScrollView(child: _getAccountDetail(context)),
+          content: SelectionArea(
+            child: SingleChildScrollView(
+              child: _getAccountDetail(context),
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: Get.back,
@@ -59,12 +63,10 @@ Widget _getAccountDetail(BuildContext context) {
       )
       ..add(SelectableText(url.join('\n')));
   }
-  return SelectionArea(
-    child: Column(
-      mainAxisSize: .min,
-      crossAxisAlignment: .start,
-      spacing: 8,
-      children: children,
-    ),
+  return Column(
+    spacing: 8,
+    mainAxisSize: .min,
+    crossAxisAlignment: .start,
+    children: children,
   );
 }

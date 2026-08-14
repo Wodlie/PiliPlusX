@@ -7,6 +7,7 @@ import 'package:PiliPlus/models/common/search/search_type.dart';
 import 'package:PiliPlus/models/search/result.dart';
 import 'package:PiliPlus/models/search/suggest.dart';
 import 'package:PiliPlus/models_new/dynamic/dyn_topic_pub_search/data.dart';
+import 'package:PiliPlus/models_new/pagelist/page_item.dart';
 import 'package:PiliPlus/models_new/pgc/pgc_info_model/result.dart';
 import 'package:PiliPlus/models_new/search/search_rcmd/data.dart';
 import 'package:PiliPlus/models_new/search/search_trending/data.dart';
@@ -194,7 +195,7 @@ abstract final class SearchHttp {
     return (await ab2cWithDimension(aid: aid, bvid: bvid, part: part))?.cid;
   }
 
-  static Future<({int? cid, Dimension? dimension})?> ab2cWithDimension({
+  static Future<PageItem?> ab2cWithDimension({
     dynamic aid,
     dynamic bvid,
     int? part,
@@ -212,12 +213,7 @@ abstract final class SearchHttp {
             ? (list.getOrNull(part - 1) ?? list.firstOrNull)
             : list.firstOrNull;
         if (target != null) {
-          return (
-            cid: target['cid'] as int?,
-            dimension: target['dimension'] == null
-                ? null
-                : Dimension.fromJson(target['dimension']),
-          );
+          return PageItem.fromJson(target);
         }
       }
       return null;

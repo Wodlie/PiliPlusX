@@ -21,7 +21,7 @@ version: 1.2.1+5468
 
 environment:
   sdk: ">=3.12.0"
-  flutter: 3.44.4
+  flutter: 3.47.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -94,10 +94,7 @@ dependencies:
     git:
       url: https://github.com/bggRGjQaUbCoE/extended_nested_scroll_view.git
       ref: dev
-  file_picker:
-    git:
-      url: https://github.com/bggRGjQaUbCoE/flutter_file_picker.git
-      ref: dev
+  file_picker: ^12.0.0-beta.7
   fixnum: ^1.1.1
   fl_chart: ^1.0.0
   flex_seed_scheme: ^4.0.1
@@ -151,7 +148,7 @@ dependencies:
   package_info_plus: ^10.1.0
   path: ^1.9.1
   path_provider: ^2.1.5
-  permission_handler_android: ^13.0.1
+  permission_handler_android: ^14.0.0
   permission_handler_apple: ^9.4.7
   permission_handler_platform_interface: ^4.3.0
   mobile_scanner: ^7.4.0
@@ -246,11 +243,7 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_lints: ^6.0.0
   flutter_native_splash: ^2.4.6
-  jnigen:
-    git:
-      url: https://github.com/dart-lang/native.git
-      path: pkgs/jnigen
-      ref: 55520836d363aac7f1ebae47387d03a30302be7b
+  jnigen: ^0.17.0
 
 flutter_launcher_icons:
   android: true
