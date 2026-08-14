@@ -29,6 +29,7 @@ import 'package:PiliPlus/models_new/dynamic/dyn_topic_top/topic_item.dart';
 import 'package:PiliPlus/models_new/followee_votes/vote.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
+import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:PiliPlus/utils/wbi_sign.dart';
 import 'package:dio/dio.dart';
@@ -50,17 +51,20 @@ abstract final class DynamicsHttp {
     final code = res.data['code'];
     if (code == 0) {
       try {
+        final effectiveBannedList = Accounts.blacklistIsLocal
+            ? <int>{...?tempBannedList, ...GlobalData().blackMids}
+            : tempBannedList;
         DynamicsDataModel data = DynamicsDataModel.fromJson(
           res.data['data'],
           type: type,
-          tempBannedList: tempBannedList,
+          tempBannedList: effectiveBannedList,
         );
         if (data.loadNext == true) {
           return await followDynamic(
             type: type,
             offset: data.offset,
             hostMid: hostMid,
-            tempBannedList: tempBannedList,
+            tempBannedList: effectiveBannedList,
           );
         }
         return Success(data);

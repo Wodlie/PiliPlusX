@@ -1393,7 +1393,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               leading: Icon(Icons.error_outline, color: errorColor, size: 19),
               title: Text('举报', style: style.copyWith(color: errorColor)),
             ),
-          if (ownerMid != Int64.ZERO)
+          if (ownerMid != Int64.ZERO || Accounts.blacklistIsLocal)
             ListTile(
               onTap: () async {
                 Get.back();

@@ -3,13 +3,22 @@ import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:dio/dio.dart';
 import 'package:PiliPlus/models_new/blacklist/data.dart';
+import 'package:PiliPlus/models_new/blacklist/list.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/global_data.dart';
 
 abstract final class BlackHttp {
   static Future<LoadingState<BlackListData>> blackList({
     required int pn,
     int ps = 50,
   }) async {
+    if (Accounts.blacklistIsLocal) {
+      final mids = GlobalData().blackMids;
+      final list = pn == 1
+          ? mids.map((mid) => BlackListItem(mid: mid)).toList()
+          : <BlackListItem>[];
+      return Success(BlackListData(list: list, total: mids.length));
+    }
     final res = await Request().get(
       Api.blackLst,
       queryParameters: {

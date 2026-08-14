@@ -57,6 +57,13 @@ abstract final class Accounts {
     }
     return report;
   }
+
+  /// Whether the blacklist operation is in local mode.
+  ///
+  /// When the account assigned to [AccountType.blacklist] resolves to a mid of
+  /// 0 (anonymous / no real account), blacklist add/remove operations are
+  /// performed locally instead of calling the Bilibili API.
+  static bool get blacklistIsLocal => Accounts.blacklist.mid == 0;
   // static set main(Account account) => set(AccountType.main, account);
 
   static OwnerScopedIdentitySnapshot snapshot(AccountType key) {

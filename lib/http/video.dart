@@ -713,6 +713,14 @@ abstract final class VideoHttp {
     required int act,
     required int reSrc,
   }) async {
+    if (Accounts.blacklistIsLocal && (act == 5 || act == 6)) {
+      if (act == 5) {
+        Pref.setBlackMid(mid);
+      } else {
+        Pref.removeBlackMid(mid);
+      }
+      return const Success(null);
+    }
     final accountType = _accountTypeForRelationAct(act);
     final account = Accounts.get(accountType);
     final identity = RequestIdentityAdapter.fromAccount(

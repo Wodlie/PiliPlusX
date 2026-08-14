@@ -89,17 +89,19 @@ class _BlackListPageState extends State<BlackListPage> {
                       src: item.face,
                     ),
                     title: Text(
-                      item.uname!,
+                      item.uname ?? 'mid: ${item.mid}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 14),
                     ),
-                    subtitle: Text(
-                      '添加时间: ${DateFormatUtils.format(item.mtime, format: DateFormatUtils.longFormatDs)}',
-                      maxLines: 1,
-                      style: style,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    subtitle: item.mtime != null
+                        ? Text(
+                            '添加时间: ${DateFormatUtils.format(item.mtime, format: DateFormatUtils.longFormatDs)}',
+                            maxLines: 1,
+                            style: style,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        : null,
                     dense: true,
                     trailing: TextButton(
                       onPressed: () => _blackListController.onRemove(
