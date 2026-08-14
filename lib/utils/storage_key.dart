@@ -292,7 +292,7 @@ abstract final class SettingBoxKey {
       imageBlockFlipEnabled = 'imageBlockFlipEnabled',
       imageBlockRotateEnabled = 'imageBlockRotateEnabled',
       imageBlockDisplayMode = 'imageBlockDisplayMode',
-       imageBlockHashList = 'imageBlockHashList',
+      imageBlockHashList = 'imageBlockHashList',
       commonFuncs = 'commonFuncs';
 }
 

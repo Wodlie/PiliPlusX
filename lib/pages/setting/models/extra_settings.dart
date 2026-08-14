@@ -53,23 +53,28 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 List<SettingsModel> get extraSettings => [
-  if (PlatformUtils.isDesktop) ...[
-    SwitchModel(
-      title: '退出时最小化',
-      leading: const Icon(Icons.exit_to_app),
-      setKey: SettingBoxKey.minimizeOnExit,
-      defaultVal: true,
-      onChanged: (value) {
-        try {
-          Get.find<MainController>().minimizeOnExit = value;
-        } catch (_) {}
-      },
-    ),
+  if (PlatformUtils.isDesktop || Platform.isAndroid) ...[
+    if (PlatformUtils.isDesktop)
+      SwitchModel(
+        title: '退出时最小化',
+        leading: const Icon(Icons.exit_to_app),
+        setKey: SettingBoxKey.minimizeOnExit,
+        defaultVal: true,
+        onChanged: (value) {
+          try {
+            Get.find<MainController>().minimizeOnExit = value;
+          } catch (_) {}
+        },
+      ),
     NormalModel(
       title: '缓存路径',
-      getSubtitle: () => downloadPath,
+      getSubtitle: () => Platform.isAndroid
+          ? _androidVideoCacheCodename(downloadPath)
+          : downloadPath,
       leading: const Icon(Icons.storage),
       onTap: _showDownPathDialog,
     ),
@@ -1132,6 +1137,10 @@ Future<void> _showAiSummaryTimeoutDialog(
 }
 
 void _showDownPathDialog(BuildContext context, VoidCallback setState) {
+  if (Platform.isAndroid) {
+    _showAndroidDownPathDialog(context, setState);
+    return;
+  }
   showDialog(
     context: context,
     builder: (context) => SimpleDialog(
@@ -1172,6 +1181,161 @@ void _showDownPathDialog(BuildContext context, VoidCallback setState) {
       ],
     ),
   );
+}
+
+Future<void> _showAndroidDownPathDialog(
+  BuildContext context,
+  VoidCallback setState,
+) async {
+  SmartDialog.showLoading();
+  final values = await _getAndroidVideoCachePathOptions();
+  SmartDialog.dismiss();
+  if (!context.mounted) return;
+
+  final selected = await showDialog<String>(
+    context: context,
+    builder: (context) => SelectDialog<String>(
+      value: downloadPath,
+      values: values,
+      title: '选择缓存路径存储位置',
+      subtitleBuilder: (_, index) => _VideoCachePathSubtitle(
+        dirPath: values[index].$1,
+      ),
+    ),
+  );
+  if (selected == null || selected == downloadPath) return;
+  await _applyDownloadPath(selected, setState: setState, persist: true);
+}
+
+class _VideoCachePathSubtitle extends StatefulWidget {
+  final String dirPath;
+
+  const _VideoCachePathSubtitle({required this.dirPath});
+
+  @override
+  State<_VideoCachePathSubtitle> createState() =>
+      _VideoCachePathSubtitleState();
+}
+
+class _VideoCachePathSubtitleState extends State<_VideoCachePathSubtitle> {
+  late final Future<int> _futureCount =
+      _countVideoCacheEntries(widget.dirPath);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<int>(
+      future: _futureCount,
+      builder: (context, snapshot) {
+        final countText = snapshot.connectionState == ConnectionState.done
+            ? '视频数量：${snapshot.data ?? 0}'
+            : '视频数量：计算中...';
+        return Text(
+          countText,
+          style: const TextStyle(fontSize: 13),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        );
+      },
+    );
+  }
+}
+
+Future<int> _countVideoCacheEntries(String downloadDirPath) async {
+  try {
+    final root = Directory(downloadDirPath);
+    if (!root.existsSync()) return 0;
+
+    var count = 0;
+    await for (final pageDir in root.list(followLinks: false)) {
+      if (pageDir is! Directory) continue;
+      await for (final entryDir in pageDir.list(followLinks: false)) {
+        if (entryDir is! Directory) continue;
+        final entryFile = File(
+          path.join(entryDir.path, PathUtils.videoNameType2),
+        );
+        if (entryFile.existsSync()) {
+          count++;
+        }
+      }
+    }
+    return count;
+  } catch (_) {
+    return 0;
+  }
+}
+
+Future<String> _getAndroidDefaultVideoCachePath() async {
+  final externalStorageDirPath =
+      (await getExternalStorageDirectory())?.path;
+  return externalStorageDirPath != null
+      ? path.join(externalStorageDirPath, PathUtils.downloadDir)
+      : defDownloadPath;
+}
+
+Future<List<(String, String)>> _getAndroidVideoCachePathOptions() async {
+  final results = <(String, String)>[];
+  final seen = <String>{};
+
+  void add(String downloadDir, String label) {
+    if (seen.add(downloadDir)) {
+      results.add((downloadDir, label));
+    }
+  }
+
+  final defaultPath = await _getAndroidDefaultVideoCachePath();
+  add(defaultPath, '外部存储（默认位置）');
+
+  final dirs = await getExternalStorageDirectories();
+  if (dirs != null && dirs.isNotEmpty) {
+    for (final dir in dirs) {
+      final downloadDir = path.join(dir.path, PathUtils.downloadDir);
+      add(downloadDir, '外部存储');
+    }
+  } else {
+    final dir = await getExternalStorageDirectory();
+    if (dir != null) {
+      add(
+        path.join(dir.path, PathUtils.downloadDir),
+        '外部存储',
+      );
+    }
+  }
+  return results;
+}
+
+String _androidVideoCacheCodename(String downloadDirPath) {
+  if (!downloadDirPath.startsWith('/storage/')) {
+    return '应用内部';
+  }
+  final isPrimary = downloadDirPath.contains('/storage/emulated/0/') ||
+      downloadDirPath.contains('/storage/self/primary/');
+  return isPrimary ? '内部存储' : '外部存储';
+}
+
+Future<void> _applyDownloadPath(
+  String newPath, {
+  required VoidCallback setState,
+  required bool persist,
+}) async {
+  try {
+    final dir = Directory(newPath);
+    if (!dir.existsSync()) {
+      await dir.create(recursive: true);
+    }
+
+    downloadPath = dir.path;
+    setState();
+    Get.find<DownloadService>().initDownloadList();
+
+    if (persist) {
+      await GStorage.setting.put(SettingBoxKey.downloadPath, downloadPath);
+    } else {
+      await GStorage.setting.delete(SettingBoxKey.downloadPath);
+    }
+  } catch (e) {
+    if (kDebugMode) debugPrint('download path error: $e');
+    SmartDialog.showToast('设置失败：$e');
+  }
 }
 
 void _showDynDialog(BuildContext context) {

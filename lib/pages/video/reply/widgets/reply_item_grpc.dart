@@ -121,6 +121,7 @@ class ReplyItemGrpc extends StatefulWidget {
     this.translatedText,
     this.isTranslating = false,
     this.onTranslate,
+    this.forceShowOriginalContent = false,
   });
   final ReplyInfo replyItem;
   final int replyLevel;
@@ -145,6 +146,10 @@ class ReplyItemGrpc extends StatefulWidget {
   /// Called when the translate button is tapped.
   final VoidCallback? onTranslate;
 
+  /// When true, always show the original comment content,
+  /// skipping blocked/expanded-blocked banners.
+  final bool forceShowOriginalContent;
+
   static final _voteRegExp = RegExp(r"^\{vote:\d+?\}$");
   static final _timeRegExp = RegExp(r'^(?:\d+[:：])?\d+[:：]\d+$');
   static bool enableWordRe = Pref.enableWordRe;
@@ -165,7 +170,8 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     final colorScheme = ColorScheme.of(context);
 
     // 折叠横幅：独立返回值，不需要 InkWell 包装
-    if (ReplyGrpc.isClientBlocked(widget.replyItem) &&
+    if (!widget.forceShowOriginalContent &&
+        ReplyGrpc.isClientBlocked(widget.replyItem) &&
         Pref.showBlockedReplyBanner &&
         !_expanded) {
       return BlockedReplyBanner(
@@ -194,7 +200,8 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     Widget child = Padding(
       padding: const .fromLTRB(12, 14, 8, 5),
       child:
-          (ReplyGrpc.isClientBlocked(widget.replyItem) &&
+          (!widget.forceShowOriginalContent &&
+              ReplyGrpc.isClientBlocked(widget.replyItem) &&
               Pref.showBlockedReplyBanner &&
               _expanded)
           ? _buildExpandedBlocked(context, Theme.of(context))
@@ -1482,9 +1489,12 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               Get.back();
               final int type = item.type.toInt();
               final String url = switch (type) {
-                1 => 'https://www.bilibili.com/video/${IdUtils.av2bv(item.oid.toInt())}/#reply${item.id}',
-                12 => 'https://www.bilibili.com/read/cv${item.oid.toInt()}/#reply${item.id}',
-                11 || 17 => 'https://www.bilibili.com/opus/${item.oid.toInt()}/#reply${item.id}',
+                1 =>
+                  'https://www.bilibili.com/video/${IdUtils.av2bv(item.oid.toInt())}/#reply${item.id}',
+                12 =>
+                  'https://www.bilibili.com/read/cv${item.oid.toInt()}/#reply${item.id}',
+                11 || 17 =>
+                  'https://www.bilibili.com/opus/${item.oid.toInt()}/#reply${item.id}',
                 _ => '${item.oid.toInt()}#reply${item.id}',
               };
               ShareUtils.shareText(url);

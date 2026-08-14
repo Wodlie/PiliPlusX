@@ -76,7 +76,9 @@ class VideoPopupMenu extends StatelessWidget {
                             context: context,
                             builder: (context) => Dialog(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                                 child: AiConclusionPanel.buildContent(
                                   context,
                                   Theme.of(context),

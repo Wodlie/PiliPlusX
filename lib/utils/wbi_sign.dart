@@ -84,8 +84,7 @@ abstract final class WbiSign {
   static void appendRiskFingerprintParams(Map<String, Object> params) {
     // 已存在则不覆盖（允许调用方自定义）
     params['dm_img_list'] ??= '[]';
-    params['dm_img_str'] ??=
-        'V2ViR0wgMS4wIChPcGVuR0wgRVMgMi4wIENocm9taXVtKQ';
+    params['dm_img_str'] ??= 'V2ViR0wgMS4wIChPcGVuR0wgRVMgMi4wIENocm9taXVtKQ';
     params['dm_cover_img_str'] ??=
         'QU5HTEUgKE5WSURJQSwgTlZJRElBIEdlRm9yY2UgR1RYIDEwNjAgNkdCIERpcmVjdDNEMTEgdnNfNV8wIHBzXzVfMCwgRDNEMTEp';
     params['dm_img_inter'] ??= '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}';

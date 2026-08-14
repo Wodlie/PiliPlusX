@@ -10,7 +10,6 @@ import 'package:PiliPlus/models/common/reply/reply_sort_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/android/android_helper.dart';
-import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
@@ -28,6 +27,9 @@ abstract final class ReplyUtils {
   static const String replyStateUnderReview = 'underReview';
   static const String replyStateSuspectedNoProblem = 'suspectedNoProblem';
   static const String replyStateUnknown = 'unknown';
+
+  /// 该楼回复过多，游客视角无法完整扫描，无法确认评论是否被吞
+  static const String replyStateScanLimited = 'scanLimited';
   // sensitive 状态仅定义，不在此实现检测
 
   static String replyStateDesc(String state, String message) {
@@ -44,6 +46,8 @@ abstract final class ReplyUtils {
         return '你的评论疑似审核中（不在列表中但可通过回复列表获取）！\n\n你的评论: $message';
       case replyStateSuspectedNoProblem:
         return '你的评论疑似正常（申诉提示无可申诉评论）！\n\n你的评论: $message';
+      case replyStateScanLimited:
+        return '无法确认评论状态（该楼回复过多，游客视角无法完整扫描）！\n\n你的评论: $message';
       case replyStateUnknown:
         return '你的评论状态未知！\n\n你的评论: $message';
       default:
@@ -183,7 +187,7 @@ abstract final class ReplyUtils {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Get.back(),
+                  onPressed: Get.back,
                   child: Text(
                     '取消',
                     style: TextStyle(
@@ -351,65 +355,166 @@ abstract final class ReplyUtils {
         }
       }
     } else {
-      // sub-reply: no cookie paginate
-      bool foundNoCookie = false;
-      for (int i = 1; ; i++) {
-        final res3 = await ReplyHttp.replyReplyList(
+      // 楼中楼：先带 Cookie 爬楼定位目标评论所在页及它上方相邻的评论（锚点），
+      // 再以游客视角（无 Cookie）扫描该页 ±3 页的小窗口：
+      // · 游客能看到目标 → 正常
+      // · 游客能看到锚点评论、唯独没有目标 → shadowban（目标被单独隐藏）
+      // · 该区域游客完全不可见（回复过多被接口截断）→ 无法确认
+      final locate = await _locateSubReply(
+        oid: oid,
+        root: root,
+        type: type,
+        targetId: id,
+        account: Accounts.reply,
+      );
+      if (locate.deleted) {
+        showReplyCheckResult(replyStateDeleted);
+        return;
+      }
+      if (locate.targetPage == null) {
+        // 带 Cookie 爬楼失败或未翻到底，无法定位
+        showReplyCheckResult(replyStateScanLimited);
+        return;
+      }
+      final check = await _checkGuestWindow(
+        oid: oid,
+        root: root,
+        type: type,
+        targetId: id,
+        anchorRpid: locate.anchorRpid,
+        targetPage: locate.targetPage!,
+      );
+      if (check.found) {
+        showReplyCheckResult(replyStateNormal);
+      } else if (check.anchorFound) {
+        // 目标附近的评论游客可见，唯独目标缺失 → shadowban
+        showReplyCheckResult(replyStateShadowBan);
+      } else {
+        // 该区域游客不可见（截断区），或锚点同样缺失，无法确认
+        showReplyCheckResult(replyStateScanLimited);
+      }
+    }
+  }
+
+  /// 带 Cookie 爬楼定位楼中楼目标评论。
+  ///
+  /// 返回目标所在页号、页内目标上方紧邻评论的 rpid（锚点，作为游客视角
+  /// 扫描的参照物），以及是否确认“已删除”（完整翻完且未找到）。
+  /// 返回 `targetPage == null` 且 `deleted == false` 表示无法定位。
+  static Future<({int? targetPage, int? anchorRpid, bool deleted})>
+  _locateSubReply({
+    required int oid,
+    required int root,
+    required int type,
+    required int targetId,
+    required Account account,
+    int maxPages = 60,
+  }) async {
+    int? lastRpidOfPrevPage;
+    int scanned = 0;
+    int? total;
+    for (int page = 1; page <= maxPages; page++) {
+      final res = await ReplyHttp.replyReplyList(
+        isLogin: true,
+        oid: oid,
+        root: root,
+        pageNum: page,
+        type: type,
+        isCheck: true,
+        account: account,
+      );
+      if (res is Error) {
+        return (targetPage: null, anchorRpid: null, deleted: false);
+      }
+      final data = res.data;
+      // 第一页响应带根评论，其 count 为该楼真实总回复数，用于判断列表是否被截断
+      total ??= data.root?.count;
+      final replies = data.replies ?? const [];
+      if (replies.isEmpty) {
+        // 空页 = 列表已结束；若已扫描数小于总回复数，说明被接口截断，无法确认
+        return (
+          targetPage: null,
+          anchorRpid: null,
+          deleted: total == null || scanned >= total,
+        );
+      }
+      final index = replies.indexWhere((item) => item.rpid == targetId);
+      if (index != -1) {
+        final int? anchorRpid;
+        if (index > 0) {
+          // 目标上方紧邻的评论
+          anchorRpid = replies[index - 1].rpid;
+        } else if (lastRpidOfPrevPage != null) {
+          // 目标位于页首：锚点为上一页最后一条评论
+          anchorRpid = lastRpidOfPrevPage;
+        } else if (replies.length > 1) {
+          // 目标位于第 1 页第 1 位：锚点取其下方的一条评论
+          anchorRpid = replies[1].rpid;
+        } else {
+          anchorRpid = null;
+        }
+        return (targetPage: page, anchorRpid: anchorRpid, deleted: false);
+      }
+      lastRpidOfPrevPage = replies.last.rpid;
+      scanned += replies.length;
+    }
+    // 达到页数上限仍未找到：扫描不完整
+    return (targetPage: null, anchorRpid: null, deleted: false);
+  }
+
+  /// 游客视角（无 Cookie）扫描目标页 ±3 页的小窗口。
+  ///
+  /// 返回目标评论是否可见、锚点评论是否可见。
+  static Future<({bool found, bool anchorFound})> _checkGuestWindow({
+    required int oid,
+    required int root,
+    required int type,
+    required int targetId,
+    required int targetPage,
+    required int? anchorRpid,
+  }) async {
+    bool found = false;
+    bool anchorFound = false;
+    for (int page = targetPage - 3; page <= targetPage + 3; page++) {
+      if (page < 1) continue;
+      var res = await ReplyHttp.replyReplyList(
+        isLogin: false,
+        oid: oid,
+        root: root,
+        pageNum: page,
+        type: type,
+        isCheck: true,
+      );
+      // 单页出错（如风控限流）时重试一次
+      if (res is Error) {
+        await Future.delayed(const Duration(seconds: 1));
+        res = await ReplyHttp.replyReplyList(
           isLogin: false,
           oid: oid,
           root: root,
-          pageNum: i,
+          pageNum: page,
           type: type,
           isCheck: true,
         );
-        if (res3 is Error) {
-          break;
-        } else {
-          final data = res3.data;
-          if (data.replies.isNullOrEmpty) {
-            break;
-          }
-          int index = data.replies?.indexWhere((item) => item.rpid == id) ?? -1;
-          if (index != -1) {
-            showReplyCheckResult(replyStateNormal);
-            foundNoCookie = true;
-            break;
-          }
-        }
       }
-      if (foundNoCookie) return;
-
-      // sub-reply: has cookie paginate
-      bool foundHasCookie = false;
-      for (int i = 1; ; i++) {
-        final res4 = await ReplyHttp.replyReplyList(
-          isLogin: true,
-          oid: oid,
-          root: root,
-          pageNum: i,
-          type: type,
-          isCheck: true,
-          account: Accounts.reply,
-        );
-        if (res4 is Error) {
-          break;
-        } else {
-          final data = res4.data;
-          if (data.replies.isNullOrEmpty) {
-            break;
-          }
-          int index = data.replies?.indexWhere((item) => item.rpid == id) ?? -1;
-          if (index != -1) {
-            showReplyCheckResult(replyStateShadowBan);
-            foundHasCookie = true;
-            break;
-          }
-        }
+      if (res is Error) {
+        continue;
       }
-      if (foundHasCookie) return;
-
-      // not found in either
-      showReplyCheckResult(replyStateDeleted);
+      final replies = res.data.replies ?? const [];
+      if (replies.isEmpty) {
+        continue;
+      }
+      if (!found && replies.any((item) => item.rpid == targetId)) {
+        found = true;
+      }
+      if (anchorRpid != null &&
+          !anchorFound &&
+          replies.any((item) => item.rpid == anchorRpid)) {
+        anchorFound = true;
+      }
+      // 降低连续请求触发风控的概率
+      await Future.delayed(const Duration(milliseconds: 300));
     }
+    return (found: found, anchorFound: anchorFound);
   }
 }

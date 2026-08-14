@@ -416,7 +416,6 @@ class _ImageGridViewState extends State<ImageGridView> {
                   return LayoutId(id: index, child: placeHolder);
                 }
               }
-
             }
 
             // ── Normal: show preview image ──

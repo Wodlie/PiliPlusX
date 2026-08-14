@@ -1333,5 +1333,4 @@ abstract final class Pref {
 
   static set commonFuncs(List<Map<String, String>> value) =>
       _setting.put(SettingBoxKey.commonFuncs, value);
-
 }
