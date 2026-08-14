@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:PiliPlus/http/api.dart';
+import 'package:PiliPlus/http/api_hosts.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
@@ -12,6 +13,7 @@ import 'package:PiliPlus/utils/accounts/identity_core/identity_snapshot.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
+import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
@@ -59,7 +61,10 @@ class AccountManager extends Interceptor {
       );
     }
 
-    final isApp = path.startsWith(HttpString.appBaseUrl);
+    // 自定义主机还原为官方视角：app/gRPC 身份判定与 cookie 注入不因
+    // 自定义主机而失效（cookieJar 按官方域名匹配）。
+    final officialUri = officializeUri(options.uri);
+    final isApp = officialUri.toString().startsWith(HttpString.appBaseUrl);
 
     if (isApp && options.responseType == ResponseType.bytes) {
       options.headers.addAll(account.grpcHeaders);
@@ -86,7 +91,7 @@ class AccountManager extends Interceptor {
       return handler.next(options);
     } else {
       account.cookieJar
-          .loadForRequest(options.uri)
+          .loadForRequest(officialUri)
           .then((cookies) {
             final previousCookies =
                 options.headers[HttpHeaders.cookieHeader] as String?;
@@ -118,7 +123,9 @@ class AccountManager extends Interceptor {
     final options = response.requestOptions;
     final path = options.path;
     if (options.extra['account'] is NoAccount ||
-        path.startsWith(HttpString.appBaseUrl) ||
+        officializeUri(
+          options.uri,
+        ).toString().startsWith(HttpString.appBaseUrl) ||
         _skipCookie(path)) {
       return handler.next(response);
     } else {
@@ -149,7 +156,9 @@ class AccountManager extends Interceptor {
       toast(err);
     }
     if (err.response != null &&
-        !err.response!.requestOptions.path.startsWith(HttpString.appBaseUrl)) {
+        !officializeUri(
+          err.response!.requestOptions.uri,
+        ).toString().startsWith(HttpString.appBaseUrl)) {
       _saveCookies(
         err.response!,
       ).whenComplete(() => handler.next(err)).catchError(
@@ -211,7 +220,8 @@ class AccountManager extends Interceptor {
     final statusCode = response.statusCode ?? 0;
     final locations = response.headers[HttpHeaders.locationHeader] ?? const [];
     final isRedirectRequest = statusCode >= 300 && statusCode < 400;
-    final originalUri = response.requestOptions.uri;
+    // 按官方域名保存 cookie，避免自定义主机导致 cookie 分裂
+    final originalUri = officializeUri(response.requestOptions.uri);
     final realUri = originalUri.resolveUri(response.realUri);
     await account.cookieJar.saveFromResponse(realUri, cookies);
     if (isRedirectRequest && locations.isNotEmpty) {
@@ -259,17 +269,14 @@ class AccountManager extends Interceptor {
         account: anonymous,
       );
     }
-    if (ApiType.loginApi.contains(path)) {
+    if (_isLoginApi(path)) {
       final anonymous = AnonymousAccount();
       return (
         identity: OwnerScopedIdentitySnapshot.fromAccount(anonymous),
         account: anonymous,
       );
     }
-    final type = AccountType.values.firstWhere(
-      (i) => ApiType.apiTypeSet[i]?.contains(path) == true,
-      orElse: () => AccountType.main,
-    );
+    final type = _accountTypeFor(path);
     final identity = Accounts.snapshot(type);
     return (
       identity: identity,
@@ -277,14 +284,60 @@ class AccountManager extends Interceptor {
     );
   }
 
-  Account _findAccount(String path) => ApiType.loginApi.contains(path)
+  Account _findAccount(String path) => _isLoginApi(path)
       ? AnonymousAccount()
-      : Accounts.get(
-          AccountType.values.firstWhere(
-            (i) => ApiType.apiTypeSet[i]?.contains(path) == true,
-            orElse: () => AccountType.main,
-          ),
-        );
+      : Accounts.get(_accountTypeFor(path));
+
+  /// 将请求 URL 中的自定义 API 主机还原为官方主机，用于账号身份判定、
+  /// cookie 注入与保存。自定义主机未配置/未启用/非法时原样返回。
+  ///
+  /// 同时还原自定义主机的路径前缀（如 https://mirror.example.com/bili/...），
+  /// 使 [ApiType.loginApi]/[ApiType.apiTypeSet] 的官方路径匹配恢复生效。
+  static Uri officializeUri(Uri uri) {
+    for (final entry in apiHostEntries) {
+      final custom =
+          GStorage.setting.get(entry.settingKey, defaultValue: '') as String;
+      if (custom.isEmpty || !isValidCustomHost(custom)) continue;
+      final customUri = Uri.parse(custom);
+      if (customUri.host != uri.host) continue;
+      final official = Uri.parse(entry.defaultHost);
+      var path = uri.path;
+      final prefix = customUri.path.endsWith('/')
+          ? customUri.path.substring(0, customUri.path.length - 1)
+          : customUri.path;
+      if (prefix.isNotEmpty && prefix != '/' && path.startsWith(prefix)) {
+        path = path.substring(prefix.length);
+        if (!path.startsWith('/')) path = '/$path';
+      }
+      return uri.replace(
+        scheme: official.scheme,
+        host: official.host,
+        port: official.port,
+        path: path,
+      );
+    }
+    return uri;
+  }
+
+  /// path 官方化：全 URL 还原官方 host；相对路径原样返回。
+  static String _officializePath(String path) {
+    if (!path.startsWith('http')) return path;
+    return officializeUri(Uri.parse(path)).toString();
+  }
+
+  /// 登录/匿名接口判定：同时支持相对路径与官方化后的全 URL。
+  static bool _isLoginApi(String path) =>
+      ApiType.loginApi.contains(path) ||
+      ApiType.loginApi.contains(_officializePath(path));
+
+  /// 账号类型判定：同时支持相对路径与官方化后的全 URL。
+  static AccountType _accountTypeFor(String path) =>
+      AccountType.values.firstWhere(
+        (i) =>
+            ApiType.apiTypeSet[i]?.contains(path) == true ||
+            ApiType.apiTypeSet[i]?.contains(_officializePath(path)) == true,
+        orElse: () => AccountType.main,
+      );
 
   static Future<String> dioError(DioException error) async {
     switch (error.type) {

@@ -15,11 +15,11 @@ import 'package:dio/dio.dart';
 ///
 /// 1. Cookie Injection:
 ///    Cookie handling uses manual interceptor injection (AccountManager),
-///    NOT Dio CookieManager. AccountManager is added via setCookie()
-///    (init.dart:40-42) and reads cookies from the account store,
-///    injecting them regardless of target host. This means cookies will
-///    be sent to custom API hosts without any special handling —
-///    authentication will not break.
+///    NOT Dio CookieManager. The account cookie jar is keyed by the
+///    OFFICIAL bilibili domains, so AccountManager maps custom API hosts
+///    back to their official host first (officializeUri in account_mgr.dart)
+///    before loading/injecting cookies. Cookies are therefore still sent
+///    to custom API hosts — authentication does not break.
 ///
 /// 2. Interceptor chain order (init.dart:236-255):
 ///    - RetryInterceptor (line 238-240) — request retries
@@ -58,7 +58,9 @@ class CustomHostInterceptor extends Interceptor {
     for (final entry in apiHostEntries) {
       final customHost =
           GStorage.setting.get(entry.settingKey, defaultValue: '') as String;
-      if (customHost.isNotEmpty) {
+      // Skip malformed stored values defensively (they would otherwise
+      // break Uri.parse below / the Dio URL construction).
+      if (customHost.isNotEmpty && isValidCustomHost(customHost)) {
         hostMap[entry.defaultHost] = customHost;
       }
     }
@@ -74,13 +76,23 @@ class CustomHostInterceptor extends Interceptor {
 
       if (hostMap.containsKey(origin)) {
         final customUri = Uri.parse(hostMap[origin]!);
-        options.path = uri
-            .replace(
-              scheme: customUri.scheme,
-              host: customUri.host,
-              port: customUri.port,
-            )
+        // Replace the origin while keeping the custom host's own path
+        // prefix (mirror / reverse-proxy setups, e.g.
+        // https://mirror.example.com/bili) — Uri.replace alone would
+        // drop the prefix. The request's path/query/fragment are kept.
+        final prefix = customUri.path.endsWith('/')
+            ? customUri.path.substring(0, customUri.path.length - 1)
+            : customUri.path;
+        var rewritten = customUri
+            .replace(path: '$prefix${uri.path}')
             .toString();
+        if (uri.hasQuery) {
+          rewritten += (rewritten.contains('?') ? '&' : '?') + uri.query;
+        }
+        if (uri.hasFragment) {
+          rewritten += '#${uri.fragment}';
+        }
+        options.path = rewritten;
       }
     } else {
       // 5. Handle relative paths: check options.baseUrl

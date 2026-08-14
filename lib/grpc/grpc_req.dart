@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:PiliPlus/grpc/bilibili/rpc.pb.dart';
+import 'package:PiliPlus/http/api_hosts.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
@@ -60,7 +61,9 @@ abstract final class GrpcReq {
     bool isolate = false,
   }) async {
     final baseUrl =
-        (Pref.enableCustomApiHost && Pref.customAppBaseUrl.isNotEmpty)
+        (Pref.enableCustomApiHost &&
+            Pref.customAppBaseUrl.isNotEmpty &&
+            isValidCustomHost(Pref.customAppBaseUrl))
         ? Pref.customAppBaseUrl
         : HttpString.appBaseUrl;
     final response = await Request().post<Uint8List>(

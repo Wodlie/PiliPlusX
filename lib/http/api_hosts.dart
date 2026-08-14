@@ -12,6 +12,20 @@ class ApiHostEntry {
   });
 }
 
+/// Returns whether [value] is a valid http(s) URL with a non-empty host.
+///
+/// Used both by the config page (reject invalid input on save) and by
+/// [CustomHostInterceptor] (skip malformed stored values defensively).
+bool isValidCustomHost(String value) {
+  try {
+    final uri = Uri.parse(value);
+    return (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
+  } catch (_) {
+    return false;
+  }
+}
+
 /// All configurable bilibili API hosts.
 /// label: Chinese label shown in config page.
 /// settingKey: SettingBoxKey constant name (without the value prefix).

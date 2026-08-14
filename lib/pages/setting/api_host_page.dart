@@ -91,6 +91,10 @@ class _ApiHostPageState extends State<ApiHostPage> {
                       SmartDialog.showToast('${entry.label}：不能以 / 结尾');
                       return;
                     }
+                    if (!isValidCustomHost(value)) {
+                      SmartDialog.showToast('${entry.label}：URL 格式不合法');
+                      return;
+                    }
                   }
                 }
                 final map = <String, String>{};
