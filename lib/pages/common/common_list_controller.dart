@@ -13,6 +13,10 @@ abstract class CommonListController<R, T> extends CommonController<R, T> {
 
   void handleListResponse(List<T> dataList) {}
 
+  /// 翻页追加前的回调：仅在加载更多（非刷新）时调用，
+  /// 可用于过滤即将追加的数据（如按 id 去重）。
+  void handleLoadMore(List<T> dataList) {}
+
   List<T>? getDataList(R response) {
     return response as List<T>?;
   }
@@ -42,6 +46,7 @@ abstract class CommonListController<R, T> extends CommonController<R, T> {
           checkIsEnd(dataList.length);
           loadingState.value = Success(dataList);
         } else if (loadingState.value case Success(:final response)) {
+          handleLoadMore(dataList);
           response!.addAll(dataList);
           checkIsEnd(response.length);
           loadingState.refresh();

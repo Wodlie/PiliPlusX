@@ -86,6 +86,17 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
   }
 
   @override
+  void handleLoadMore(List<ReplyInfo> dataList) {
+    // 分页去重：服务端 offset 分页在热门排序漂移或新评论插入时，
+    // 相邻页可能返回已加载过的评论，追加前按 rpid 过滤重复条目。
+    if (dataList.isEmpty) return;
+    final existing = loadingState.value.dataOrNull;
+    if (existing == null || existing.isEmpty) return;
+    final seen = existing.map((e) => e.id).toSet();
+    dataList.removeWhere((e) => !seen.add(e.id));
+  }
+
+  @override
   Future<void> onRefresh() {
     cursorNext = null;
     subjectControl = null;
