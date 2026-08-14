@@ -350,7 +350,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
         context,
         child: videoDetailController.plPlayerController.darkVideoPage
             ? Theme(
-                data: themeData,
+                data: theme,
                 child: Builder(
                   builder: (ctx) => Material(
                     color: Colors.transparent,
@@ -367,7 +367,6 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       );
     } else {
       videoDetailController.childKey.currentState?.showBottomSheet(
-        backgroundColor: Colors.transparent,
         constraints: const BoxConstraints(),
         (ctx) => Padding(
           padding: EdgeInsets.only(top: MediaQuery.paddingOf(ctx).top),
@@ -1447,7 +1446,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                                               Radius.circular(6),
                                             ),
                                           ),
-                                          backgroundColor: themeData
+                                          backgroundColor: theme
                                               .colorScheme
                                               .secondaryContainer
                                               .withValues(alpha: 0.8),
@@ -1481,10 +1480,10 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                                   padding: const EdgeInsets.only(top: 6),
                                   child: TextButton.icon(
                                     style: TextButton.styleFrom(
-                                      foregroundColor: themeData
+                                      foregroundColor: theme
                                           .colorScheme
                                           .onSecondaryContainer,
-                                      backgroundColor: themeData
+                                      backgroundColor: theme
                                           .colorScheme
                                           .secondaryContainer
                                           .withValues(alpha: 0.7),

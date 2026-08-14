@@ -18,6 +18,7 @@ import 'package:PiliPlus/models_new/member_card_info/data.dart';
 import 'package:PiliPlus/models_new/relation/data.dart';
 import 'package:PiliPlus/models_new/video/video_ai_conclusion/model_result.dart';
 import 'package:PiliPlus/models_new/video/video_ai_conclusion/service_result.dart';
+import 'package:PiliPlus/pages/video/ai_conclusion/view.dart';
 import 'package:PiliPlus/models_new/video/video_detail/dimension.dart';
 import 'package:PiliPlus/models_new/video/video_detail/episode.dart';
 import 'package:PiliPlus/models_new/video/video_detail/page.dart';
@@ -813,5 +814,25 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
       _aiConclusionFuture = null;
     }
     return result;
+  }
+
+  /// 供全局菜单调用的静态入口（与上游签名一致），走本地 AI 服务路由。
+  static Future<AiConclusionResult?> getAiConclusion(
+    String bvid,
+    int cid,
+    int? mid,
+  ) async {
+    SmartDialog.showLoading(msg: '正在获取AI总结');
+    final result = await AiSummaryServiceRouter.summarizeUgcVideo(
+      bvid: bvid,
+      cid: cid,
+      upMid: mid,
+    );
+    SmartDialog.dismiss();
+    final data = result.dataOrNull;
+    if (data == null) {
+      AiConclusionPanel.showResultMessage(result);
+    }
+    return data;
   }
 }

@@ -134,7 +134,7 @@ class _HomePageState extends CommonPageState<HomePage>
         const SizedBox(width: 4),
         msgBadge(_mainController),
         const SizedBox(width: 8),
-        userAvatar(theme: theme, mainController: _mainController),
+        userAvatar(colorScheme: theme.colorScheme, mainController: _mainController),
       ],
     );
     if (_homeController.hideTopBar) {
@@ -267,7 +267,7 @@ class _HomePageState extends CommonPageState<HomePage>
 }
 
 Widget userAvatar({
-  required ThemeData theme,
+  required ColorScheme colorScheme,
   required MainController mainController,
 }) {
   return Semantics(
@@ -289,7 +289,7 @@ Widget userAvatar({
                   type: .transparency,
                   child: InkWell(
                     onTap: mainController.toMinePage,
-                    splashColor: theme.colorScheme.primaryContainer.withValues(
+                    splashColor: colorScheme.primaryContainer.withValues(
                       alpha: 0.3,
                     ),
                     customBorder: const CircleBorder(),
@@ -306,12 +306,12 @@ Widget userAvatar({
                             padding: const .all(2),
                             decoration: BoxDecoration(
                               shape: .circle,
-                              color: theme.colorScheme.secondaryContainer,
+                              color: colorScheme.secondaryContainer,
                             ),
                             child: Icon(
                               size: 14,
                               MdiIcons.incognito,
-                              color: theme.colorScheme.onSecondaryContainer,
+                              color: colorScheme.onSecondaryContainer,
                             ),
                           ),
                         )
@@ -328,13 +328,13 @@ Widget userAvatar({
             tooltip: '点击登录',
             style: IconButton.styleFrom(
               padding: .zero,
-              backgroundColor: theme.colorScheme.onInverseSurface,
+              backgroundColor: colorScheme.onInverseSurface,
             ),
             onPressed: mainController.toMinePage,
             icon: Icon(
               Icons.person_rounded,
               size: 22,
-              color: theme.colorScheme.primary,
+              color: colorScheme.primary,
             ),
           ),
         );

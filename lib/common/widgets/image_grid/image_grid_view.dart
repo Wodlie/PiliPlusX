@@ -211,7 +211,7 @@ class _ImageGridViewState extends State<ImageGridView> {
         !context.mediaQuerySize.isPortrait) {
       final scaffoldState = MiniScaffold.maybeOf(context);
       if (scaffoldState != null) {
-        onViewImage?.call();
+        widget.onViewImage?.call();
         scaffoldState.showBottomSheet(
           constraints: const BoxConstraints(),
           (context) => GalleryViewer(
