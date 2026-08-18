@@ -1,5 +1,5 @@
 import 'package:PiliPlus/common/style.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A placeholder widget that replaces a preview image when it is blocked.
 ///
