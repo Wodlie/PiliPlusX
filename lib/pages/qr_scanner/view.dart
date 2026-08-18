@@ -1,10 +1,13 @@
+import 'package:PiliPlus/http/login.dart';
+import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-/// 扫码页：识别二维码内容，若为网址则调用内置 webview 打开。
+/// 扫码页：识别二维码内容——bilibili TV 登录码直接走原生确认登录（官方客户端
+/// 角色，使 firstLogin.py 等外部轮询方成功）；网址则调用内置 webview 打开。
 class QrScannerPage extends StatefulWidget {
   const QrScannerPage({super.key});
 
@@ -36,6 +39,15 @@ class _QrScannerPageState extends State<QrScannerPage> {
       return;
     }
     final uri = Uri.tryParse(value);
+    // bilibili TV 登录二维码（firstLogin.py 等外部工具生成的 auth_code 链接）：
+    // 以当前账号确认登录（appkey 签名），使外部轮询方成功，不交给内置 webview
+    final tvAuthCode = _tvLoginAuthCode(value);
+    if (tvAuthCode != null) {
+      _handled = true;
+      await _controller.stop();
+      await _confirmTvLogin(tvAuthCode);
+      return;
+    }
     if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
       _handled = true;
       await _controller.stop();
@@ -52,6 +64,39 @@ class _QrScannerPageState extends State<QrScannerPage> {
     } else {
       SmartDialog.showToast('未识别到网址：$value');
     }
+  }
+
+  /// 识别 bilibili TV 登录确认页二维码（`/x/passport-tv-login/h5/qrcode/auth`），
+  /// 返回其中的 auth_code；非 TV 登录码返回 null。
+  static String? _tvLoginAuthCode(String raw) {
+    final uri = Uri.tryParse(raw);
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        uri.host != 'passport.bilibili.com' ||
+        uri.path != '/x/passport-tv-login/h5/qrcode/auth') {
+      return null;
+    }
+    final code = uri.queryParameters['auth_code'];
+    return (code == null || code.isEmpty) ? null : code;
+  }
+
+  /// 以当前账号确认 TV 端扫码登录（官方客户端角色）：firstLogin.py 等外部
+  /// 工具生成 TV 登录二维码后由其自身轮询，本方法确认后其即可换取 token。
+  Future<void> _confirmTvLogin(String authCode) async {
+    if (!Accounts.main.isLogin) {
+      SmartDialog.showToast('请先登录后再扫码确认');
+      Get.toNamed('/loginPage');
+      return;
+    }
+    SmartDialog.showLoading(msg: '正在确认登录');
+    final res = await LoginHttp.confirmTvLogin(authCode);
+    SmartDialog.dismiss();
+    if (res['status'] == true) {
+      SmartDialog.showToast('已确认登录，等待 TV 端完成');
+    } else {
+      SmartDialog.showToast('确认失败：(${res['code']}) ${res['msg']}');
+    }
+    Get.back();
   }
 
   @override
