@@ -100,40 +100,6 @@ abstract final class LoginHttp {
     };
   }
 
-  /// 确认 TV 端扫码登录（官方客户端角色）。
-  ///
-  /// 外部工具（如 firstLogin.py）生成 TV 登录二维码后由其自身轮询
-  /// `qrcode/poll`；本方法以**当前账号的 access_key**（appkey 签名）确认该
-  /// auth_code，确认后外部轮询方即可成功换取 token 与 cookie。
-  ///
-  /// 实测：`h5/qrcode/confirm` 支持 appkey 签名认证，签名只需覆盖
-  /// `{access_key, appkey, local_id, ts}`，`auth_code` 需置于签名区外
-  /// （将 auth_code 计入签名反而会 663 鉴权失败），无需 cookie/csrf。
-  static Future<Map<String, dynamic>> confirmTvLogin(String authCode) async {
-    final account = Accounts.main;
-    final accessKey = account is LoginAccount ? account.accessKey : null;
-    if (accessKey == null || accessKey.isEmpty) {
-      return {'status': false, 'code': -101, 'msg': '账号未登录', 'data': null};
-    }
-    final params = <String, dynamic>{
-      'access_key': accessKey,
-      'local_id': '0',
-    };
-    AppSign.appSign(params); // 追加 ts/appkey/sign（签名仅覆盖上述参数）
-    params['auth_code'] = authCode; // 置于签名区外
-    final res = await Request().post(
-      Api.qrcodeConfirm,
-      queryParameters: params,
-      options: Options(extra: {'account': account}),
-    );
-    return {
-      'status': res.data['code'] == 0,
-      'code': res.data['code'],
-      'msg': res.data['message'],
-      'data': res.data['data'],
-    };
-  }
-
   static Future queryCaptcha() async {
     final res = await Request().get(Api.getCaptcha);
     if (res.data['code'] == 0) {
