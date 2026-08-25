@@ -208,7 +208,7 @@ abstract final class ReplyHttp {
         'rpid': rpid,
         'scene': 'main',
         'type': 1,
-        if (reasonType == 0) 'content': reasonDesc!,
+        'content': ?reasonDesc,
       },
       options: Options(
         contentType: Headers.formUrlEncodedContentType,

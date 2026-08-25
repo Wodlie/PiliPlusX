@@ -4,9 +4,9 @@ import 'package:PiliPlus/models_new/video/video_ai_conclusion/service_result.dar
 import 'package:PiliPlus/pages/common/slide/common_slide_page.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
+import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import 'package:get/get.dart';
 
 class AiConclusionPanel extends CommonSlidePage {
   final AiConclusionResult item;

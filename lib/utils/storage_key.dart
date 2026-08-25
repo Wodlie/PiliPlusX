@@ -9,6 +9,7 @@ abstract final class SettingBoxKey {
       autoPlayEnable = 'autoPlayEnable',
       fullScreenMode = 'fullScreenMode',
       preferCodecs = 'preferCodecs',
+      preferCodecsCellular = 'preferCodecsCellular',
       defaultToastOp = 'defaultToastOp',
       defaultPicQa = 'defaultPicQa',
       enableHA = 'enableHA',
@@ -62,6 +63,7 @@ abstract final class SettingBoxKey {
       defaultShowWatchLater = 'defaultShowWatchLater',
       defaultAddWatchLater = 'defaultAddWatchLater',
       replySortType = 'replySortType',
+      reply2SortType = 'reply2SortType',
       defaultDynamicType = 'defaultDynamicType',
       showDynInteraction = 'showDynInteraction',
       enableHotKey = 'enableHotKey',
@@ -142,7 +144,6 @@ abstract final class SettingBoxKey {
       retryDelay = 'retryDelay',
       liveQuality = 'liveQuality',
       liveQualityCellular = 'liveQualityCellular',
-      appFontWeight = 'appFontWeight',
       fastForBackwardDuration = 'fastForBackwardDuration',
       fastForBackwardDuration_ = 'fastForBackwardDuration_',
       recordSearchHistory = 'recordSearchHistory',
@@ -178,7 +179,8 @@ abstract final class SettingBoxKey {
       removeSafeArea = 'removeSafeArea',
       accountDisplayName = 'accountDisplayName',
       angleDegrees = 'angleDegrees',
-      liveStream = 'liveStream';
+      liveStream = 'liveStream',
+      enableDocProvider = 'enableDocProvider';
 
   static const String minimizeOnExit = 'minimizeOnExit',
       windowSize = 'windowSize',
@@ -248,6 +250,7 @@ abstract final class SettingBoxKey {
 
   static const String themeMode = 'themeMode',
       defaultTextScale = 'textScale',
+      appFontWeight = 'appFontWeight',
       dynamicColor = 'dynamicColor',
       customColor = 'customColor',
       displayMode = 'displayMode',
@@ -293,7 +296,8 @@ abstract final class SettingBoxKey {
       imageBlockRotateEnabled = 'imageBlockRotateEnabled',
       imageBlockDisplayMode = 'imageBlockDisplayMode',
       imageBlockHashList = 'imageBlockHashList',
-      commonFuncs = 'commonFuncs';
+      commonFuncs = 'commonFuncs',
+      appFont = 'appFont';
 }
 
 abstract final class LocalCacheKey {

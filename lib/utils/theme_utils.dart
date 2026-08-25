@@ -38,31 +38,17 @@ abstract final class ThemeUtils {
     final fontWeight = appFontWeight == -1
         ? null
         : FontWeight.values[appFontWeight];
-
+    final font = Pref.appFont;
     // 根据设置决定使用系统字体还是 HarmonyOS_Sans
     final fontFamilyFallback = Pref.useSystemFont ? null : ['HarmonyOS_Sans'];
-    late final textStyle = TextStyle(fontWeight: fontWeight);
+    final changeStyle =
+        font == null && fontWeight == null && fontFamilyFallback == null;
+    late final textStyle = TextStyle(fontWeight: fontWeight, fontFamily: font);
     ThemeData theme = ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      textTheme: fontWeight == null
-          ? TextTheme(
-              bodyLarge: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              bodyMedium: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              bodySmall: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              displayLarge: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              displayMedium: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              displaySmall: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              headlineLarge: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              headlineMedium: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              headlineSmall: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              titleLarge: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              titleMedium: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              titleSmall: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              labelLarge: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              labelMedium: TextStyle(fontFamilyFallback: fontFamilyFallback),
-              labelSmall: TextStyle(fontFamilyFallback: fontFamilyFallback),
-            )
+      textTheme: changeStyle
+          ? null
           : TextTheme(
               displayLarge: textStyle.copyWith(
                 fontFamilyFallback: fontFamilyFallback,
@@ -110,9 +96,7 @@ abstract final class ThemeUtils {
                 fontFamilyFallback: fontFamilyFallback,
               ),
             ),
-      tabBarTheme: fontWeight == null
-          ? null
-          : TabBarThemeData(labelStyle: textStyle),
+      tabBarTheme: changeStyle ? null : TabBarThemeData(labelStyle: textStyle),
       appBarTheme: AppBarTheme(
         elevation: 0,
         titleSpacing: 0,
@@ -122,6 +106,7 @@ abstract final class ThemeUtils {
         titleTextStyle: TextStyle(
           fontSize: 16,
           color: colorScheme.onSurface,
+          fontFamily: font,
           fontWeight: fontWeight,
         ),
       ),
@@ -155,6 +140,7 @@ abstract final class ThemeUtils {
       dialogTheme: DialogThemeData(
         titleTextStyle: TextStyle(
           fontSize: 18,
+          fontFamily: font,
           fontWeight: fontWeight,
           color: colorScheme.onSurface,
         ),

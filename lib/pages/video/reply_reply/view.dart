@@ -17,12 +17,13 @@ import 'package:PiliPlus/pages/video/reply_reply/controller.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/extension/widget_ext.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
+import 'package:PiliPlus/utils/parse_string.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:fixnum/fixnum.dart' show Int64;
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
 
 class VideoReplyReplyPanel extends CommonSlidePage {
@@ -59,7 +60,7 @@ class VideoReplyReplyPanel extends CommonSlidePage {
     required int type,
     Uri? uri,
   }) {
-    final rpId = rpIdStr == null ? null : int.tryParse(rpIdStr);
+    final rpId = parseIntOrNull(rpIdStr);
     return Get.to(
       arguments: {
         'oid': oid,
@@ -290,7 +291,7 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
               label: Obx(
                 () => Text(
                   _controller.canSort.value
-                      ? _controller.sortType.value.text!
+                      ? _controller.sortType.value.label
                       : '排序不可用',
                   style: TextStyle(
                     fontSize: 13,

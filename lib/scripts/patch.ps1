@@ -249,15 +249,28 @@ switch ($platform.ToLower()) {
     default {}
 }
 
+try {
+    $MaterialUiDir = Get-ChildItem "$PubCacheDir/hosted/pub.dev" -Directory |
+        Where-Object { $_.Name -like "material_ui-*" } |
+        Select-Object -Last 1
+
+    if ($MaterialUiDir) {
+        Remove-Item -Path $MaterialUiDir.FullName -Recurse -Force
+    }
+} catch {
+}
+
 flutter pub get
 
 $MaterialUiDir = Get-ChildItem "$PubCacheDir/hosted/pub.dev" -Directory |
     Where-Object { $_.Name -like "material_ui-*" } |
-    Select-Object -First 1
+    Select-Object -Last 1
 
 if (-not $MaterialUiDir) {
     throw "material_ui package not found in pub cache"
 }
+
+Write-Host "material_ui dir: $($MaterialUiDir.FullName)"
 
 Get-ChildItem -Path "$env:GITHUB_WORKSPACE/lib/scripts/material" -Filter *.patch | ForEach-Object {
     (Get-Content $_.FullName -Raw) -replace "`r`n", "`n" | 
@@ -268,4 +281,49 @@ cd $MaterialUiDir.FullName
 
 foreach ($patch in $patches_material) {
     Apply-GitPatch "$env:GITHUB_WORKSPACE/$patch"
+}
+
+$BottomSheetIOSFlutterPatchCupertino = "lib/scripts/cupertino/bottom_sheet_ios_flutter.patch"
+
+$patches_cupertino = @()
+
+switch ($platform.ToLower()) {
+    "android" {
+    }
+    "ios" {
+        $patches_cupertino += $BottomSheetIOSFlutterPatchCupertino
+    }
+    "linux" {
+    }
+    "macos" {
+    }
+    "windows" {
+    }
+    default {}
+}
+
+$CupertinoUiDir = Get-ChildItem "$PubCacheDir/hosted/pub.dev" -Directory |
+    Where-Object { $_.Name -like "cupertino_ui-*" } |
+    Select-Object -Last 1
+
+if (-not $CupertinoUiDir) {
+    throw "cupertino_ui package not found in pub cache"
+}
+
+Write-Host "cupertino_ui dir: $($CupertinoUiDir.FullName)"
+
+Get-ChildItem -Path "$env:GITHUB_WORKSPACE/lib/scripts/cupertino" -Filter *.patch | ForEach-Object {
+    (Get-Content $_.FullName -Raw) -replace "`r`n", "`n" | 
+        Set-Content -NoNewline $_.FullName
+}
+
+cd $CupertinoUiDir.FullName
+
+foreach ($patch in $patches_cupertino) {
+    git apply "$env:GITHUB_WORKSPACE/$patch"
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "$patch applied"
+    } else {
+        throw "$LASTEXITCODE"
+    }
 }
