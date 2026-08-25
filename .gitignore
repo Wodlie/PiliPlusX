@@ -157,3 +157,5 @@ test*
 !test/
 !test/**
 AGENTS.md
+
+reverse-output/
