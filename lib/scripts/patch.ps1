@@ -101,22 +101,50 @@ $MouseCursorPatch = "lib/scripts/mouse_cursor.patch"
 
 $GeetestIOSPatch = "lib/scripts/geetest_ios.patch"
 
-if ($platform.ToLower() -eq "ios") {
-    git apply $BottomSheetIOSPiliPlusPatch
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "$BottomSheetIOSPiliPlusPatch applied"
-    } else {
-        throw "$LASTEXITCODE"
+# `git apply` fails when the target files are already patched. That happens when
+# the Flutter SDK comes from the GitHub Actions cache: subosito/flutter-action
+# saves its cache in the post step — i.e. AFTER the job ran this script and
+# patched the SDK — so a cache hit restores an already-patched SDK and plain
+# `git apply` fails. Make every patch application idempotent: skip patches that
+# are already applied (detected via `git apply --reverse --check`).
+function Apply-GitPatch {
+    param(
+        [string]$PatchPath
+    )
+    if (git apply --reverse --check $PatchPath 2>$null) {
+        Write-Host "SKIP (already applied): $PatchPath"
+        return
     }
-    git apply $GeetestIOSPatch
+    git apply $PatchPath
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "$GeetestIOSPatch applied"
+        Write-Host "APPLIED: $PatchPath"
     } else {
-        throw "$LASTEXITCODE"
+        throw "FAILED to apply $PatchPath (git apply exit code $LASTEXITCODE)"
     }
 }
 
+if ($platform.ToLower() -eq "ios") {
+    Apply-GitPatch "$env:GITHUB_WORKSPACE/$BottomSheetIOSPiliPlusPatch"
+    Apply-GitPatch "$env:GITHUB_WORKSPACE/$GeetestIOSPatch"
+}
+
 Set-Location $env:FLUTTER_ROOT
+
+# The SDK may have been restored from the actions cache in an already-patched
+# state (the cache is saved after the previous run patched the SDK). Restore the
+# pristine checkout so the patches below apply cleanly. `git clean -fd` also
+# removes untracked files added by previous patch runs (the geetest patch adds
+# whole files). Skipped when the cache does not carry the git metadata.
+if (Test-Path ".git") {
+    git reset --hard HEAD
+    if ($LASTEXITCODE -ne 0) {
+        throw "git reset --hard failed in $env:FLUTTER_ROOT (exit code $LASTEXITCODE)"
+    }
+    git clean -fd
+    if ($LASTEXITCODE -ne 0) {
+        throw "git clean failed in $env:FLUTTER_ROOT (exit code $LASTEXITCODE)"
+    }
+}
 
 $picks   = @()
 $reverts = @()
@@ -133,8 +161,6 @@ switch ($platform.ToLower()) {
         $patches += $BottomSheetAndroidPatch
         $patches += $ScrollViewPatch
         $patches += $NavigatorPatch
-
-        git reset --hard HEAD
     }
     "ios" {
         $patches += $ScrollViewPatch
@@ -142,7 +168,6 @@ switch ($platform.ToLower()) {
         $patches += $NavigatorPatch
     }
     "linux" {
-        git reset --hard HEAD
     }
     "macos" {
     }
@@ -176,12 +201,7 @@ foreach ($revert in $reverts) {
 }
 
 foreach ($patch in $patches) {
-    git apply "$env:GITHUB_WORKSPACE/$patch"
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "$patch applied"
-    } else {
-        throw "$LASTEXITCODE"
-    }
+    Apply-GitPatch "$env:GITHUB_WORKSPACE/$patch"
 }
 
 Set-Location $env:GITHUB_WORKSPACE
@@ -247,10 +267,5 @@ Get-ChildItem -Path "$env:GITHUB_WORKSPACE/lib/scripts/material" -Filter *.patch
 cd $MaterialUiDir.FullName
 
 foreach ($patch in $patches_material) {
-    git apply "$env:GITHUB_WORKSPACE/$patch"
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "$patch applied"
-    } else {
-        throw "$LASTEXITCODE"
-    }
+    Apply-GitPatch "$env:GITHUB_WORKSPACE/$patch"
 }
