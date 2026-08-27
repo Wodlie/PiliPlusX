@@ -9,6 +9,8 @@ import 'package:PiliPlus/models_new/reply2reply/data.dart';
 import 'package:PiliPlus/models_new/reply_interaction/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
+import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
@@ -217,29 +219,39 @@ abstract final class ReplyHttp {
     String? reasonDesc,
     int type = 1,
     String scene = 'main',
-    String platform = 'android',
-    int build = 8430300,
+    String? platform,
+    int? build,
     String? buvid,
     String? ordering,
     String? spmid,
     String? fromSpmid,
     bool delete = false,
   }) async {
-    final effectiveBuvid = buvid ?? Accounts.reply.buvid;
+    final account = Accounts.reply;
+    // 账号 profile 派生：复用项目内 RequestIdentityAdapter 的解析逻辑，
+    // build/platform 等字段与 grpc_headers / init.dart 等处保持一致，
+    // 避免硬编码 8430300 导致与账号伪装档案不一致。
+    final adapter = RequestIdentityAdapter.fromAccount(
+      account: account,
+      userAgent: AppDeviceProfiles.androidApp.userAgent,
+    );
+    final effectivePlatform = platform ?? adapter.profile.platform;
+    final effectiveBuild = build ?? adapter.profile.build;
+    final effectiveBuvid = buvid ?? account.buvid;
     final buvidVal = effectiveBuvid.isEmpty ? null : effectiveBuvid;
     final res = await Request().post(
       Api.replyReport,
       data: {
         'add_blacklist': banUid,
-        'csrf': Accounts.reply.csrf,
+        'csrf': account.csrf,
         'gaia_source': 'main_h5',
         'oid': oid,
-        'platform': platform,
+        'platform': effectivePlatform,
         'reason': reasonType,
         'rpid': rpid,
         'scene': scene,
         'type': type,
-        'build': build,
+        'build': effectiveBuild,
         'buvid': ?buvidVal,
         'ordering': ?ordering,
         'spmid': ?spmid,
@@ -249,7 +261,7 @@ abstract final class ReplyHttp {
       },
       options: Options(
         contentType: Headers.formUrlEncodedContentType,
-        extra: {'account': Accounts.reply},
+        extra: {'account': account},
       ),
     );
 

@@ -26,6 +26,8 @@ import 'package:PiliPlus/pages/save_panel/view.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/zan_grpc.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
+import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/danmaku_utils.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
@@ -1350,6 +1352,10 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
 
                 final oid = item.oid;
                 final rpid = item.id;
+                final _reportProfile = RequestIdentityAdapter.fromAccount(
+                  account: Accounts.reply,
+                  userAgent: AppDeviceProfiles.androidApp.userAgent,
+                ).profile;
 
                 autoWrapReportDialog(
                   context,
@@ -1357,7 +1363,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                   withContent: ReportOptions.withContentReply,
                   contentRequired: ReportOptions.contentRequiredReply,
                   reportUrl:
-                      'https://www.bilibili.com/h5/comment/report?oid=$oid&pageType=${item.type}&rpid=$rpid&platform=android&build=8430300&${ThemeUtils.themeUrl(colorScheme.isDark)}',
+                      'https://www.bilibili.com/h5/comment/report?oid=$oid&pageType=${item.type}&rpid=$rpid&platform=${_reportProfile.platform}&build=${_reportProfile.build}&${ThemeUtils.themeUrl(colorScheme.isDark)}',
                   oid: oid,
                   replyType: item.type.toInt(),
                   (reasonType, reasonDesc, banUid, deleteComment) async {
