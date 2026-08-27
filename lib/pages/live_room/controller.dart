@@ -204,9 +204,7 @@ class LiveRoomController extends GetxController {
   }
 
   Future<void> queryLiveUrl({bool autoFullScreenFlag = false}) async {
-    currentQn ??= await ConnectivityUtils.isWiFi
-        ? Pref.liveQuality
-        : Pref.liveQualityCellular;
+    currentQn ??= await ConnectivityUtils.isWiFi ? Pref.liveQuality : Pref.liveQualityCellular;
     final res = await LiveHttp.liveRoomInfo(
       roomId: roomId,
       qn: currentQn,
@@ -301,8 +299,7 @@ class LiveRoomController extends GetxController {
         desc: LiveQuality.fromCode(e)?.desc ?? e.toString(),
       );
     }).toList();
-    currentQnDesc.value =
-        LiveQuality.fromCode(currentQn)?.desc ?? currentQn.toString();
+    currentQnDesc.value = LiveQuality.fromCode(currentQn)?.desc ?? currentQn.toString();
     videoUrl = VideoUtils.getLiveCdnUrl(item, index: liveUrlIndex);
     return playerInit()?.whenComplete(_startSizeSub);
   }
@@ -484,8 +481,7 @@ class LiveRoomController extends GetxController {
       return null;
     }
     currentQn = qn;
-    currentQnDesc.value =
-        LiveQuality.fromCode(currentQn)?.desc ?? currentQn.toString();
+    currentQnDesc.value = LiveQuality.fromCode(currentQn)?.desc ?? currentQn.toString();
     return queryLiveUrl();
   }
 
@@ -498,9 +494,7 @@ class LiveRoomController extends GetxController {
             streamToken: info.token,
             roomId: roomId,
             uid: Accounts.heartbeat.mid,
-            servers: info.hostList
-                .map((host) => 'wss://${host.host}:${host.wssPort}/sub')
-                .toList(),
+            servers: info.hostList.map((host) => 'wss://${host.host}:${host.wssPort}/sub').toList(),
           )
           ..addEventListener(_danmakuListener)
           ..init();
@@ -585,8 +579,7 @@ class LiveRoomController extends GetxController {
         case 'SUPER_CHAT_MESSAGE' when showSuperChat:
           final item = SuperChatItem.fromJson(obj['data']);
           superChatMsg.insert(0, item);
-          if (plPlayerController.showDanmaku &&
-              (isFullScreen || plPlayerController.isDesktopPip)) {
+          if (plPlayerController.showDanmaku && (isFullScreen || plPlayerController.isDesktopPip)) {
             fsSC.value = item.copyWith(
               endTime: math.min(
                 item.endTime,
@@ -720,7 +713,7 @@ class LiveRoomController extends GetxController {
       ReportOptions.liveDanmakuReport,
       withContent: ReportOptions.liveDanmakuReportCheck,
       contentRequired: ReportOptions.liveDanmakuReportCheck,
-      (reasonType, reasonDesc, banUid) {
+      (reasonType, reasonDesc, banUid, deleteComment) {
         return LiveHttp.superChatReport(
           id: item.id,
           roomId: roomId,

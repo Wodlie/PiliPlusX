@@ -32,8 +32,7 @@ abstract final class ReplyHttp {
             queryParameters: {
               'oid': oid,
               'type': type,
-              'pagination_str':
-                  '{"offset":"${nextOffset.replaceAll('"', '\\"')}"}',
+              'pagination_str': '{"offset":"${nextOffset.replaceAll('"', '\\"')}"}',
               'mode': sort + 2, //2:按时间排序；3：按热度排序
             },
             options: !isLogin ? options : null,
@@ -83,9 +82,7 @@ abstract final class ReplyHttp {
       return Success(replyData);
     } else {
       return Error(
-        isCheck
-            ? '${res.data['code']}${res.data['message']}'
-            : res.data['message'],
+        isCheck ? '${res.data['code']}${res.data['message']}' : res.data['message'],
       );
     }
   }
@@ -189,13 +186,47 @@ abstract final class ReplyHttp {
     }
   }
 
+  static Future<LoadingState<Map<String, dynamic>>> getReportMetadata({
+    required Object oid,
+    required Object type,
+  }) async {
+    final res = await Request().get(
+      Api.replyReportMetadata,
+      queryParameters: {
+        'oid': oid,
+        'type': type,
+      },
+      options: Options(extra: {'account': Accounts.reply}),
+    );
+    if (res.data['code'] == 0) {
+      final data = res.data['data'];
+      if (data is Map<String, dynamic>) {
+        return Success(data);
+      }
+      return Success(Map<String, dynamic>.from(data as Map));
+    } else {
+      return Error(res.data['message']);
+    }
+  }
+
   static Future<LoadingState<void>> report({
     required Object rpid,
     required Object oid,
     required int reasonType,
     bool banUid = true,
     String? reasonDesc,
+    int type = 1,
+    String scene = 'main',
+    String platform = 'android',
+    int build = 8430300,
+    String? buvid,
+    String? ordering,
+    String? spmid,
+    String? fromSpmid,
+    bool delete = false,
   }) async {
+    final effectiveBuvid = buvid ?? Accounts.reply.buvid;
+    final buvidVal = effectiveBuvid.isEmpty ? null : effectiveBuvid;
     final res = await Request().post(
       Api.replyReport,
       data: {
@@ -203,11 +234,17 @@ abstract final class ReplyHttp {
         'csrf': Accounts.reply.csrf,
         'gaia_source': 'main_h5',
         'oid': oid,
-        'platform': 'android',
+        'platform': platform,
         'reason': reasonType,
         'rpid': rpid,
-        'scene': 'main',
-        'type': 1,
+        'scene': scene,
+        'type': type,
+        'build': build,
+        'buvid': ?buvidVal,
+        'ordering': ?ordering,
+        'spmid': ?spmid,
+        'from_spmid': ?fromSpmid,
+        'delete': delete,
         'content': ?reasonDesc,
       },
       options: Options(

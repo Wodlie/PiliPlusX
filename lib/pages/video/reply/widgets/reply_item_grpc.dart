@@ -47,8 +47,7 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:PiliPlus/utils/url_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
-import 'package:cached_network_image_ce/cached_network_image.dart'
-    hide CacheManager;
+import 'package:cached_network_image_ce/cached_network_image.dart' hide CacheManager;
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -249,9 +248,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             badgeSize: 14,
             vipStatus: member.vipStatus.toInt(),
             officialType: member.officialVerifyType.toInt(),
-            pendantImage: member.hasGarbPendantImage()
-                ? member.garbPendantImage
-                : null,
+            pendantImage: member.hasGarbPendantImage() ? member.garbPendantImage : null,
           ),
           Flexible(
             child: Column(
@@ -287,8 +284,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                         isStack: false,
                         fontSize: 9,
                       )
-                    else if (GlobalData().showMedal &&
-                        member.hasFansMedalLevel())
+                    else if (GlobalData().showMedal && member.hasFansMedalLevel())
                       MedalWidget(
                         medalName: member.fansMedalName,
                         level: member.fansMedalLevel.toInt(),
@@ -506,9 +502,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               TextMore.rich(
                 primary: colorScheme.primary,
                 style: const TextStyle(height: 1.75, fontSize: 14),
-                maxLines: widget.replyLevel == 1
-                    ? ReplyItemGrpc.replyLengthLimit
-                    : null,
+                maxLines: widget.replyLevel == 1 ? ReplyItemGrpc.replyLengthLimit : null,
                 TextSpan(
                   children: [
                     if (widget.replyItem.replyControl.isUpTop) ...[
@@ -766,9 +760,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     ColorScheme colorScheme,
     List<ReplyInfo> replies,
   ) {
-    final visibleReplies = replies
-        .where((r) => !ReplyGrpc.isClientBlocked(r))
-        .toList();
+    final visibleReplies = replies.where((r) => !ReplyGrpc.isClientBlocked(r)).toList();
     final extraRow = visibleReplies.length < widget.replyItem.count.toInt();
     late final length = visibleReplies.length + (extraRow ? 1 : 0);
     return Padding(
@@ -807,8 +799,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     return morePanel(
                       context: context,
                       item: childReply,
-                      onDelete: () =>
-                          widget.onDelete?.call(widget.replyItem, index),
+                      onDelete: () => widget.onDelete?.call(widget.replyItem, index),
                       isSubReply: true,
                     );
                   },
@@ -982,8 +973,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     r'^cv(\d+)$|/read/cv(\d+)|note-app/view\?cvid=(\d+)',
                     caseSensitive: false,
                   ).firstMatch(matchStr);
-                  String? cvid =
-                      match?.group(1) ?? match?.group(2) ?? match?.group(3);
+                  String? cvid = match?.group(1) ?? match?.group(2) ?? match?.group(3);
                   if (cvid != null) {
                     Get.toNamed(
                       '/articlePage',
@@ -1041,16 +1031,14 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               ),
             ),
           );
-        } else if (matchStr.startsWith("@") &&
-            content.atNameToMid.containsKey(name)) {
+        } else if (matchStr.startsWith("@") && content.atNameToMid.containsKey(name)) {
           // 处理@用户
           spanChildren.add(
             TextSpan(
               text: matchStr,
               style: TextStyle(color: colorScheme.primary),
               recognizer: NoDeadlineTapGestureRecognizer()
-                ..onTap = () =>
-                    Get.toNamed('/member?mid=${content.atNameToMid[name]}'),
+                ..onTap = () => Get.toNamed('/member?mid=${content.atNameToMid[name]}'),
             ),
           );
         } else if (ReplyItemGrpc._voteRegExp.hasMatch(matchStr)) {
@@ -1059,8 +1047,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               text: '投票: ${content.vote.title}',
               style: TextStyle(color: colorScheme.primary),
               recognizer: NoDeadlineTapGestureRecognizer()
-                ..onTap = () =>
-                    showVoteDialog(context, content.vote.id.toInt()),
+                ..onTap = () => showVoteDialog(context, content.vote.id.toInt()),
             ),
           );
         } else if (ReplyItemGrpc._timeRegExp.hasMatch(matchStr)) {
@@ -1070,9 +1057,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             final ctr = Get.find<VideoDetailController>(
               tag: widget.getTag?.call() ?? Get.arguments['heroTag'],
             );
-            isValid =
-                DurationUtils.parseDuration(matchStr) * 1000 <=
-                ctr.data.timeLength!;
+            isValid = DurationUtils.parseDuration(matchStr) * 1000 <= ctr.data.timeLength!;
           } catch (e) {
             if (kDebugMode) debugPrint('failed to validate: $e');
           }
@@ -1373,13 +1358,17 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                   contentRequired: ReportOptions.contentRequiredReply,
                   reportUrl:
                       'https://www.bilibili.com/h5/comment/report?oid=$oid&pageType=${item.type}&rpid=$rpid&platform=android&build=8430300&${ThemeUtils.themeUrl(colorScheme.isDark)}',
-                  (reasonType, reasonDesc, banUid) async {
+                  oid: oid,
+                  replyType: item.type.toInt(),
+                  (reasonType, reasonDesc, banUid, deleteComment) async {
                     final res = await ReplyHttp.report(
                       rpid: rpid,
                       oid: oid,
                       reasonType: reasonType,
                       reasonDesc: reasonDesc,
                       banUid: banUid,
+                      type: item.type.toInt(),
+                      delete: deleteComment,
                     );
                     if (res.isSuccess) {
                       onDelete();
@@ -1388,9 +1377,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                   },
                   ban: ownerMid != Int64.ZERO,
                   showImageBlock: item.content.pictures.isNotEmpty,
-                  imageUrls: item.content.pictures
-                      .map((p) => p.imgSrc)
-                      .toList(),
+                  imageUrls: item.content.pictures.map((p) => p.imgSrc).toList(),
                   onBlockImages: (urls) async {
                     for (final url in urls) {
                       await ImageBlockService.addBlockedImage(
@@ -1499,10 +1486,8 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               final String url = switch (type) {
                 1 =>
                   'https://www.bilibili.com/video/${IdUtils.av2bv(item.oid.toInt())}/#reply${item.id}',
-                12 =>
-                  'https://www.bilibili.com/read/cv${item.oid.toInt()}/#reply${item.id}',
-                11 || 17 =>
-                  'https://www.bilibili.com/opus/${item.oid.toInt()}/#reply${item.id}',
+                12 => 'https://www.bilibili.com/read/cv${item.oid.toInt()}/#reply${item.id}',
+                11 || 17 => 'https://www.bilibili.com/opus/${item.oid.toInt()}/#reply${item.id}',
                 _ => '${item.oid.toInt()}#reply${item.id}',
               };
               ShareUtils.shareText(url);
@@ -1573,11 +1558,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                                   onChanged: (v) {
                                     setDialogState(() {
                                       if (v == true) {
-                                        for (
-                                          int i = 0;
-                                          i < pictures.length;
-                                          i++
-                                        ) {
+                                        for (int i = 0; i < pictures.length; i++) {
                                           selected.add(i);
                                         }
                                       } else {

@@ -38,8 +38,7 @@ class AuthorPanel extends StatelessWidget {
   final ValueChanged<Object>? onRemove;
   final void Function(bool isTop, Object dynId)? onSetTop;
   final VoidCallback? onBlock;
-  final Future<LoadingState> Function(bool isPrivate, Object dynId)?
-  onSetPubSetting;
+  final Future<LoadingState> Function(bool isPrivate, Object dynId)? onSetPubSetting;
   final VoidCallback? onEdit;
   final ValueChanged<int>? onSetReplySubject;
 
@@ -328,8 +327,7 @@ class AuthorPanel extends StatelessWidget {
                 },
                 minLeadingWidth: 0,
               ),
-              if ((item.basic!.commentType == 17 ||
-                      item.basic!.commentType == 11) &&
+              if ((item.basic!.commentType == 17 || item.basic!.commentType == 11) &&
                   item.modules.moduleDynamic?.major?.blocked == null)
                 ListTile(
                   title: Text(
@@ -604,7 +602,7 @@ class AuthorPanel extends StatelessWidget {
                     autoWrapReportDialog(
                       context,
                       ReportOptions.dynamicReport,
-                      (reasonType, reasonDesc, banUid) {
+                      (reasonType, reasonDesc, banUid, deleteComment) {
                         if (banUid) {
                           VideoHttp.relationMod(
                             mid: moduleAuthor.mid!,

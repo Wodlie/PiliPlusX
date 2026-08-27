@@ -2,15 +2,12 @@ import 'package:PiliPlus/http/constants.dart';
 
 abstract final class Api {
   // 推荐视频
-  static const String recommendListApp =
-      '${HttpString.appBaseUrl}/x/v2/feed/index';
-  static const String recommendListWeb =
-      '/x/web-interface/wbi/index/top/feed/rcmd';
+  static const String recommendListApp = '${HttpString.appBaseUrl}/x/v2/feed/index';
+  static const String recommendListWeb = '/x/web-interface/wbi/index/top/feed/rcmd';
 
   // APP端不感兴趣、取消不感兴趣
   static const String feedDislike = '${HttpString.appBaseUrl}/x/feed/dislike';
-  static const String feedDislikeCancel =
-      '${HttpString.appBaseUrl}/x/feed/dislike/cancel';
+  static const String feedDislikeCancel = '${HttpString.appBaseUrl}/x/feed/dislike/cancel';
 
   // 热门视频
   static const String hotList = '/x/web-interface/popular';
@@ -64,8 +61,7 @@ abstract final class Api {
   /// access_key str	APP登录Token 必要
   /// aid num	稿件avid	必要
   ///
-  static const String dislikeVideo =
-      '${HttpString.appBaseUrl}/x/v2/view/dislike';
+  static const String dislikeVideo = '${HttpString.appBaseUrl}/x/v2/view/dislike';
 
   // 投币视频（web端）POST
   /// aid	num	稿件avid	必要（可选）	avid与bvid任选一个
@@ -187,6 +183,7 @@ abstract final class Api {
 
   // 举报评论
   static const String replyReport = '/x/v2/reply/report';
+  static const String replyReportMetadata = '/x/v2/reply/report/metadata';
 
   // 删除评论
   // https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/comment/action.md
@@ -260,15 +257,13 @@ abstract final class Api {
   static const String searchHistory = '/x/web-interface/history/search';
 
   // 热搜
-  static const String hotSearchList =
-      'https://s.search.bilibili.com/main/hotword';
+  static const String hotSearchList = 'https://s.search.bilibili.com/main/hotword';
 
   // 默认搜索词
   static const String searchDefault = '/x/web-interface/wbi/search/default';
 
   // 搜索关键词
-  static const String searchSuggest =
-      'https://s.search.bilibili.com/main/suggest';
+  static const String searchSuggest = 'https://s.search.bilibili.com/main/suggest';
 
   // 分类搜索
   static const String searchByType = '/x/web-interface/wbi/search/type';
@@ -342,26 +337,19 @@ abstract final class Api {
 
   static const String space = '${HttpString.appBaseUrl}/x/v2/space';
 
-  static const String spaceArchive =
-      '${HttpString.appBaseUrl}/x/v2/space/archive/cursor';
+  static const String spaceArchive = '${HttpString.appBaseUrl}/x/v2/space/archive/cursor';
 
-  static const String spaceStory =
-      '${HttpString.appBaseUrl}/x/v2/feed/index/space/story/cursor';
+  static const String spaceStory = '${HttpString.appBaseUrl}/x/v2/feed/index/space/story/cursor';
 
-  static const String spaceChargingArchive =
-      '${HttpString.appBaseUrl}/x/v2/space/archive/charging';
+  static const String spaceChargingArchive = '${HttpString.appBaseUrl}/x/v2/space/archive/charging';
 
-  static const String spaceSeason =
-      '${HttpString.appBaseUrl}/x/v2/space/season/videos';
+  static const String spaceSeason = '${HttpString.appBaseUrl}/x/v2/space/season/videos';
 
-  static const String spaceSeries =
-      '${HttpString.appBaseUrl}/x/v2/space/series';
+  static const String spaceSeries = '${HttpString.appBaseUrl}/x/v2/space/series';
 
-  static const String spaceBangumi =
-      '${HttpString.appBaseUrl}/x/v2/space/bangumi';
+  static const String spaceBangumi = '${HttpString.appBaseUrl}/x/v2/space/bangumi';
 
-  static const String spaceArticle =
-      '${HttpString.appBaseUrl}/x/v2/space/article';
+  static const String spaceArticle = '${HttpString.appBaseUrl}/x/v2/space/article';
 
   static const String spaceFav = '/x/v3/fav/folder/space';
 
@@ -416,8 +404,7 @@ abstract final class Api {
   static const String blackLst = '/x/relation/blacks';
 
   // github 获取最新版
-  static const String latestApp =
-      'https://api.github.com/repos/Wodlie/PiliPlusX/releases';
+  static const String latestApp = 'https://api.github.com/repos/Wodlie/PiliPlusX/releases';
 
   // 多少人在看
   // https://api.bilibili.com/x/player/online/total?aid=913663681&cid=1203559746&bvid=BV1MM4y1s7NZ&ts=56427838
@@ -467,8 +454,7 @@ abstract final class Api {
 
   // 获取未读私信数
   // https://api.vc.bilibili.com/session_svr/v1/session_svr/single_unread
-  static const String msgUnread =
-      '${HttpString.tUrl}/session_svr/v1/session_svr/single_unread';
+  static const String msgUnread = '${HttpString.tUrl}/session_svr/v1/session_svr/single_unread';
 
   // 获取消息中心未读信息
   static const String msgFeedUnread = '/x/msgfeed/unread';
@@ -479,13 +465,11 @@ abstract final class Api {
   //https://api.bilibili.com/x/msgfeed/like?platform=web&build=0&mobi_app=web
   static const String msgFeedLike = '/x/msgfeed/like';
   //https://message.bilibili.com/x/sys-msg/query_notify_list?page_size=20&cursor=xxx
-  static const String msgSysNotify =
-      '${HttpString.messageBaseUrl}/x/sys-msg/query_notify_list';
+  static const String msgSysNotify = '${HttpString.messageBaseUrl}/x/sys-msg/query_notify_list';
 
   // 系统信息光标更新（已读标记）
   //https://message.bilibili.com/x/sys-msg/update_cursor?csrf=xxxx&csrf=xxxx&cursor=1705288500000000000&has_up=0&build=0&mobi_app=web
-  static const String msgSysUpdateCursor =
-      '${HttpString.messageBaseUrl}/x/sys-msg/update_cursor';
+  static const String msgSysUpdateCursor = '${HttpString.messageBaseUrl}/x/sys-msg/update_cursor';
 
   /// 私聊
   ///  'https://api.vc.bilibili.com/session_svr/v1/session_svr/get_sessions?
@@ -498,14 +482,12 @@ abstract final class Api {
   /// w_rid=8641d157fb9a9255eb2159f316ee39e2&
   /// wts=1697305010
 
-  static const String sessionList =
-      '${HttpString.tUrl}/session_svr/v1/session_svr/get_sessions';
+  static const String sessionList = '${HttpString.tUrl}/session_svr/v1/session_svr/get_sessions';
 
   /// 私聊用户信息
   /// uids
   /// build=0&mobi_app=web
-  static const String sessionAccountList =
-      '${HttpString.tUrl}/account/v1/user/cards';
+  static const String sessionAccountList = '${HttpString.tUrl}/account/v1/user/cards';
 
   /// https://api.vc.bilibili.com/svr_sync/v1/svr_sync/fetch_session_msgs?
   /// talker_id=400787461&
@@ -518,8 +500,7 @@ abstract final class Api {
   /// w_rid=cfe3bf58c9fe181bbf4dd6c75175e6b0&
   /// wts=1697350697
 
-  static const String sessionMsg =
-      '${HttpString.tUrl}/svr_sync/v1/svr_sync/fetch_session_msgs';
+  static const String sessionMsg = '${HttpString.tUrl}/svr_sync/v1/svr_sync/fetch_session_msgs';
 
   /// 标记已读 POST
   /// talker_id:
@@ -529,8 +510,7 @@ abstract final class Api {
   /// mobi_app: web
   /// csrf_token:
   /// csrf:
-  static const String ackSessionMsg =
-      '${HttpString.tUrl}/session_svr/v1/session_svr/update_ack';
+  static const String ackSessionMsg = '${HttpString.tUrl}/session_svr/v1/session_svr/update_ack';
 
   // 获取某个动态详情
   // timezone_offset=-480
@@ -552,25 +532,21 @@ abstract final class Api {
       '${HttpString.passBaseUrl}/x/passport-login/captcha?source=main_web';
 
   // web端短信验证码
-  static const String smsCode =
-      '${HttpString.passBaseUrl}/x/passport-login/web/sms/send';
+  static const String smsCode = '${HttpString.passBaseUrl}/x/passport-login/web/sms/send';
 
   // web端验证码登录
 
   // web端密码登录
-  static const String logInByWebPwd =
-      '${HttpString.passBaseUrl}/x/passport-login/web/login';
+  static const String logInByWebPwd = '${HttpString.passBaseUrl}/x/passport-login/web/login';
 
   // 获取guestID
   // static const String getGuestId = '/x/passport-user/guest/reg';
 
   // app端短信验证码
-  static const String appSmsCode =
-      '${HttpString.passBaseUrl}/x/passport-login/sms/send';
+  static const String appSmsCode = '${HttpString.passBaseUrl}/x/passport-login/sms/send';
 
   // app端验证码登录
-  static const String logInByAppSms =
-      '${HttpString.passBaseUrl}/x/passport-login/login/sms';
+  static const String logInByAppSms = '${HttpString.passBaseUrl}/x/passport-login/login/sms';
 
   // 获取短信验证码
   // static const String appSafeSmsCode =
@@ -581,18 +557,15 @@ abstract final class Api {
   /// password
   /// key
   /// salt
-  static const String loginByPwdApi =
-      '${HttpString.passBaseUrl}/x/passport-login/oauth2/login';
+  static const String loginByPwdApi = '${HttpString.passBaseUrl}/x/passport-login/oauth2/login';
 
   /// 密码登录时，提示“本次登录环境存在风险, 需使用手机号进行验证或绑定”
   /// 根据https://ivan.hanloth.cn/archives/530/流程进行手机号验证
   /// tmp_code
-  static const String safeCenterGetInfo =
-      '${HttpString.passBaseUrl}/x/safecenter/user/info';
+  static const String safeCenterGetInfo = '${HttpString.passBaseUrl}/x/safecenter/user/info';
 
   /// 验证绑定手机号前的人机验证
-  static const String preCapture =
-      '${HttpString.passBaseUrl}/x/safecenter/captcha/pre';
+  static const String preCapture = '${HttpString.passBaseUrl}/x/safecenter/captcha/pre';
 
   /// 密码登录时风控发送手机验证码
   ///sms_type	str	loginTelCheck
@@ -601,8 +574,7 @@ abstract final class Api {
   /// gee_seccode	str	极验key	人机验证后得到(result->geetest_seccode)
   /// gee_validate	str	极验result	人机验证后得到(result->geetest_validate)
   /// recaptcha_token	str	验证token	申请人机验证时得到(data->recaptcha_token)
-  static const String safeCenterSmsCode =
-      '${HttpString.passBaseUrl}/x/safecenter/common/sms/send';
+  static const String safeCenterSmsCode = '${HttpString.passBaseUrl}/x/safecenter/common/sms/send';
 
   /// type	str	loginTelCheck
   /// code	int	验证码内容
@@ -621,16 +593,13 @@ abstract final class Api {
   static const getWebKey = '${HttpString.passBaseUrl}/x/passport-login/web/key';
 
   /// cookie转access_key
-  static const qrcodeConfirm =
-      '${HttpString.passBaseUrl}/x/passport-tv-login/h5/qrcode/confirm';
+  static const qrcodeConfirm = '${HttpString.passBaseUrl}/x/passport-tv-login/h5/qrcode/confirm';
 
   /// 申请二维码(TV端)
-  static const getTVCode =
-      '${HttpString.passBaseUrl}/x/passport-tv-login/qrcode/auth_code';
+  static const getTVCode = '${HttpString.passBaseUrl}/x/passport-tv-login/qrcode/auth_code';
 
   ///扫码登录（TV端）
-  static const qrcodePoll =
-      '${HttpString.passBaseUrl}/x/passport-tv-login/qrcode/poll';
+  static const qrcodePoll = '${HttpString.passBaseUrl}/x/passport-tv-login/qrcode/poll';
 
   static const logout = '${HttpString.passBaseUrl}/login/exit/v2';
 
@@ -690,10 +659,8 @@ abstract final class Api {
   // static const String videoTags = '/x/tag/archive/tags';
   static const String videoTags = '/x/web-interface/view/detail/tag';
 
-  static const String reportMember =
-      '${HttpString.spaceBaseUrl}/ajax/report/add';
-  static const String reportOptionsV2 =
-      '${HttpString.apiBaseUrl}/x/space/report/options';
+  static const String reportMember = '${HttpString.spaceBaseUrl}/ajax/report/add';
+  static const String reportOptionsV2 = '${HttpString.apiBaseUrl}/x/space/report/options';
   static const String reportV2 = '${HttpString.apiBaseUrl}/x/space/report';
 
   static const String removeMsg = '/session_svr/v1/session_svr/remove_session';
@@ -746,8 +713,7 @@ abstract final class Api {
 
   static const String favArticle = '/x/polymer/web-dynamic/v1/opus/feed/fav';
 
-  static const String communityAction =
-      '/x/community/cosmo/interface/simple_action';
+  static const String communityAction = '/x/community/cosmo/interface/simple_action';
 
   static const String delFavArticle = '/x/article/favorites/del';
 
@@ -768,8 +734,7 @@ abstract final class Api {
 
   static const String rmTopDyn = '/x/dynamic/feed/space/rm_top';
 
-  static const String searchRecommend =
-      '${HttpString.appBaseUrl}/x/v2/search/recommend';
+  static const String searchRecommend = '${HttpString.appBaseUrl}/x/v2/search/recommend';
 
   static const String articleInfo = '/x/article/viewinfo';
 
@@ -788,11 +753,9 @@ abstract final class Api {
 
   static const String doVote = '/x/vote/do_vote';
 
-  static const String liveFeedIndex =
-      '${HttpString.liveBaseUrl}/xlive/app-interface/v2/index/feed';
+  static const String liveFeedIndex = '${HttpString.liveBaseUrl}/xlive/app-interface/v2/index/feed';
 
-  static const String liveFollow =
-      '${HttpString.liveBaseUrl}/xlive/web-ucenter/user/following';
+  static const String liveFollow = '${HttpString.liveBaseUrl}/xlive/web-ucenter/user/following';
 
   static const String liveSecondList =
       '${HttpString.liveBaseUrl}/xlive/app-interface/v2/second/getList';
@@ -802,8 +765,7 @@ abstract final class Api {
   static const String liveAreaList =
       '${HttpString.liveBaseUrl}/xlive/app-interface/v2/index/getAreaList';
 
-  static const String liveRoomAreaList =
-      '${HttpString.liveBaseUrl}/room/v1/Area/getList';
+  static const String liveRoomAreaList = '${HttpString.liveBaseUrl}/room/v1/Area/getList';
 
   static const String getLiveFavTag =
       '${HttpString.liveBaseUrl}/xlive/app-interface/v2/second/get_fav_tag';
@@ -811,11 +773,9 @@ abstract final class Api {
   static const String setLiveFavTag =
       '${HttpString.liveBaseUrl}/xlive/app-interface/v2/second/set_fav_tag';
 
-  static const String liveSearch =
-      '${HttpString.liveBaseUrl}/xlive/app-interface/v2/search_live';
+  static const String liveSearch = '${HttpString.liveBaseUrl}/xlive/app-interface/v2/search_live';
 
-  static const String topicTop =
-      '${HttpString.appBaseUrl}/x/topic/web/details/top';
+  static const String topicTop = '${HttpString.appBaseUrl}/x/topic/web/details/top';
 
   static const String topicFeed = '/x/polymer/web-dynamic/v1/feed/topic';
 
@@ -825,19 +785,16 @@ abstract final class Api {
 
   static const String articleList = '/x/article/list/web/articles';
 
-  static const String setMsgDnd =
-      '${HttpString.tUrl}/link_setting/v1/link_setting/set_msg_dnd';
+  static const String setMsgDnd = '${HttpString.tUrl}/link_setting/v1/link_setting/set_msg_dnd';
 
   static const String imUserInfos = '${HttpString.tUrl}/x/im/user_infos';
 
   static const String getSessionSs =
       '${HttpString.tUrl}/link_setting/v1/link_setting/get_session_ss';
 
-  static const String getMsgDnd =
-      '${HttpString.tUrl}/link_setting/v1/link_setting/get_msg_dnd';
+  static const String getMsgDnd = '${HttpString.tUrl}/link_setting/v1/link_setting/get_msg_dnd';
 
-  static const String setPushSs =
-      '${HttpString.tUrl}/link_setting/v1/link_setting/set_push_ss';
+  static const String setPushSs = '${HttpString.tUrl}/link_setting/v1/link_setting/set_push_ss';
 
   static const String dynReserve = '/x/dynamic/feed/reserve/click';
 
@@ -873,8 +830,7 @@ abstract final class Api {
 
   static const String pgcReviewDel = '/pgc/review/short/del';
 
-  static const String topicPubSearch =
-      '${HttpString.appBaseUrl}/x/topic/pub/search';
+  static const String topicPubSearch = '${HttpString.appBaseUrl}/x/topic/pub/search';
 
   static const String upowerRank = '/x/upower/up/member/rank/v2';
 
@@ -905,8 +861,7 @@ abstract final class Api {
   static const String getLiveInfoByUser =
       '${HttpString.liveBaseUrl}/xlive/web-room/v1/index/getInfoByUser';
 
-  static const String liveSetSilent =
-      '${HttpString.liveBaseUrl}/liveact/user_silent';
+  static const String liveSetSilent = '${HttpString.liveBaseUrl}/liveact/user_silent';
 
   static const String addShieldKeyword =
       '${HttpString.liveBaseUrl}/xlive/web-ucenter/v1/banned/AddShieldKeyword';
@@ -914,8 +869,7 @@ abstract final class Api {
   static const String delShieldKeyword =
       '${HttpString.liveBaseUrl}/xlive/web-ucenter/v1/banned/DelShieldKeyword';
 
-  static const String liveShieldUser =
-      '${HttpString.liveBaseUrl}/liveact/shield_user';
+  static const String liveShieldUser = '${HttpString.liveBaseUrl}/liveact/shield_user';
 
   static const String spaceComic = '${HttpString.appBaseUrl}/x/v2/space/comic';
 
@@ -944,27 +898,22 @@ abstract final class Api {
   static const String liveLikeReport =
       '${HttpString.liveBaseUrl}/xlive/app-ucenter/v1/like_info_v3/like/likeReportV3';
 
-  static const String loginDevices =
-      '${HttpString.passBaseUrl}/x/safecenter/user_login_devices';
+  static const String loginDevices = '${HttpString.passBaseUrl}/x/safecenter/user_login_devices';
 
   static const String bgmDetail = '/x/copyright-music-publicity/bgm/detail';
 
-  static const String wishUpdate =
-      '/x/copyright-music-publicity/bgm/wish/update';
+  static const String wishUpdate = '/x/copyright-music-publicity/bgm/wish/update';
 
-  static const String bgmRecommend =
-      '/x/copyright-music-publicity/bgm/recommend_list';
+  static const String bgmRecommend = '/x/copyright-music-publicity/bgm/recommend_list';
 
   static const String spaceShop =
       '${HttpString.mallBaseUrl}/community-hub/small_shop/feed/tab/item';
 
-  static const String superChatMsg =
-      '${HttpString.liveBaseUrl}/av/v1/SuperChat/getMessageList';
+  static const String superChatMsg = '${HttpString.liveBaseUrl}/av/v1/SuperChat/getMessageList';
 
   static const String popularSeriesOne = '/x/web-interface/popular/series/one';
 
-  static const String popularSeriesList =
-      '/x/web-interface/popular/series/list';
+  static const String popularSeriesList = '/x/web-interface/popular/series/list';
 
   static const String popularPrecious = '/x/web-interface/popular/precious';
 
@@ -987,31 +936,26 @@ abstract final class Api {
 
   static const String seasonStatus = '/pgc/view/web/season/user/status';
 
-  static const String followeeVotes =
-      '${HttpString.tUrl}/vote_svr/v1/vote_svr/followee_votes';
+  static const String followeeVotes = '${HttpString.tUrl}/vote_svr/v1/vote_svr/followee_votes';
 
   static const String liveContributionRank =
       '${HttpString.liveBaseUrl}/xlive/general-interface/v1/rank/queryContributionRank';
 
-  static const String superChatReport =
-      '${HttpString.liveBaseUrl}/av/v1/SuperChat/report';
+  static const String superChatReport = '${HttpString.liveBaseUrl}/av/v1/SuperChat/report';
 
   static const String imMsgReport = '${HttpString.tUrl}/x/bplus/im/report/add';
 
-  static const String dynPrivatePubSetting =
-      '/x/dynamic/feed/dyn/private_pub_setting';
+  static const String dynPrivatePubSetting = '/x/dynamic/feed/dyn/private_pub_setting';
 
   static const String editDyn = '/x/dynamic/feed/edit/dyn';
 
-  static const String replyInteraction =
-      '/x/v2/reply/subject/interaction-status';
+  static const String replyInteraction = '/x/v2/reply/subject/interaction-status';
 
   static const String replySubjectModify = '/x/v2/reply/subject/modify';
 
   static const String videoshot = '/x/player/videoshot';
 
-  static const String liveMedalWall =
-      '${HttpString.liveBaseUrl}/xlive/web-ucenter/user/MedalWall';
+  static const String liveMedalWall = '${HttpString.liveBaseUrl}/xlive/web-ucenter/user/MedalWall';
 
   static const String memberGuard =
       '${HttpString.liveBaseUrl}/xlive/app-ucenter/v1/guard/MainGuardCardAll';

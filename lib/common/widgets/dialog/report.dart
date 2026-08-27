@@ -1,6 +1,7 @@
 import 'package:PiliPlus/common/widgets/button/icon_button.dart';
 import 'package:PiliPlus/common/widgets/radio_widget.dart';
 import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/http/reply.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:PiliPlus/common/widgets/dialog/report_v2.dart';
@@ -14,11 +15,13 @@ typedef ReasonCheck = bool Function(int? reasonType);
 
 bool _kReportCheck(int? reasonType) => reasonType == 0;
 
-typedef OnReport = Future<LoadingState> Function(
-  int reasonType,
-  String? reasonDesc,
-  bool banUid,
-);
+typedef OnReport =
+    Future<LoadingState> Function(
+      int reasonType,
+      String? reasonDesc,
+      bool banUid,
+      bool deleteComment,
+    );
 
 Future<void> autoWrapReportDialog(
   BuildContext context,
@@ -33,23 +36,38 @@ Future<void> autoWrapReportDialog(
   String? reportUrl,
   ReasonCheck withContent = _kReportCheck,
   ReasonCheck contentRequired = _kReportCheck,
+  Object? oid,
+  Object? replyType,
 }) {
   int? reasonType;
   String? reasonDesc;
   bool banUid = false;
+  bool deleteComment = false;
   bool blockImages = true;
   late final key = GlobalKey<FormFieldState<String>>();
 
-  bool isWithContent = withContent(reasonType);
-  bool isContentRequired = contentRequired(reasonType);
+  // H5-ported dynamic state
+  Map<String, Map<int, String>> effectiveOptions = options;
+  Map<int, bool> dynamicContentRequired = {};
+  bool canDelete = false;
+  bool metadataInited = false;
+  Future<LoadingState<Map<String, dynamic>>>? metadataFuture;
+  if (oid != null && replyType != null) {
+    metadataFuture = ReplyHttp.getReportMetadata(oid: oid, type: replyType);
+  }
 
-  void updateReasonType(int? value) {
-    reasonType = value;
-    isWithContent = withContent(reasonType);
-    isContentRequired = contentRequired(reasonType);
-    if (isWithContent) {
-      key.currentState?.clearError();
+  bool isWithContent(int? rt) {
+    if (dynamicContentRequired.containsKey(rt)) {
+      return true;
     }
+    return withContent(rt);
+  }
+
+  bool isContentRequired(int? rt) {
+    if (dynamicContentRequired.containsKey(rt)) {
+      return dynamicContentRequired[rt]!;
+    }
+    return contentRequired(rt);
   }
 
   Widget title = const Text('举报');
@@ -61,8 +79,7 @@ Future<void> autoWrapReportDialog(
         iconButton(
           iconSize: 21,
           tooltip: '网页举报',
-          onPressed: () =>
-              Get.toNamed('/webview', parameters: {'url': reportUrl}),
+          onPressed: () => Get.toNamed('/webview', parameters: {'url': reportUrl}),
           icon: const Icon(MdiIcons.web, size: 22),
         ),
       ],
@@ -71,151 +88,288 @@ Future<void> autoWrapReportDialog(
 
   return showDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: title,
-      titlePadding: const .only(left: 22, top: 16, right: 22),
-      contentPadding: const .symmetric(vertical: 5),
-      actionsPadding: const .only(left: 16, right: 16, bottom: 10),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Flexible(
-            child: SingleChildScrollView(
-              child: AnimatedSize(
-                duration: const Duration(milliseconds: 200),
-                child: Builder(
-                  builder: (context) => Column(
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) {
+        bool isWithContentNow = isWithContent(reasonType);
+        bool isContentRequiredNow = isContentRequired(reasonType);
+
+        void updateReasonType(int? value) {
+          reasonType = value;
+          if (isWithContent(value)) {
+            key.currentState?.clearError();
+          }
+          setState(() {});
+        }
+
+        Widget buildReasonList() {
+          if (metadataFuture == null) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: .only(left: 22, right: 22, bottom: 5),
+                  child: Text('请选择举报的理由：'),
+                ),
+                RadioGroup(
+                  onChanged: updateReasonType,
+                  groupValue: reasonType,
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: .only(left: 22, right: 22, bottom: 5),
-                        child: Text('请选择举报的理由：'),
-                      ),
-                      RadioGroup(
-                        onChanged: (value) {
-                          updateReasonType(value);
-                          (context as Element).markNeedsBuild();
-                        },
-                        groupValue: reasonType,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: options.entries.map((entry) {
-                            return WrapRadioOptionsGroup<int>(
-                              groupTitle: entry.key,
-                              options: entry.value,
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                      if (isWithContent)
-                        Padding(
-                          padding: const .only(left: 22, top: 5, right: 22),
-                          child: TextFormField(
-                            key: key,
-                            minLines: 2,
-                            maxLines: 4,
-                            initialValue: reasonDesc,
-                            autofocus: isContentRequired,
-                            decoration: const InputDecoration(
-                              labelText: '为帮助审核人员更快处理，请补充问题类型和出现位置等详细信息',
-                              border: OutlineInputBorder(),
-                              contentPadding: .all(10),
-                              labelStyle: TextStyle(fontSize: 14),
-                              floatingLabelStyle: TextStyle(fontSize: 14),
+                    children: effectiveOptions.entries.map((entry) {
+                      return WrapRadioOptionsGroup<int>(
+                        groupTitle: entry.key,
+                        options: entry.value,
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            );
+          }
+          return FutureBuilder<LoadingState<Map<String, dynamic>>>(
+            future: metadataFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting && !metadataInited) {
+                return const Padding(
+                  padding: EdgeInsets.all(22),
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                );
+              }
+              if (snapshot.hasData && snapshot.data is Success) {
+                final data = (snapshot.data as Success<Map<String, dynamic>>).data;
+                if (!metadataInited) {
+                  // parse only once
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    bool newCanDelete = data['can_delete'] == true;
+                    Map<String, Map<int, String>> newOptions = Map.from(options);
+                    Map<int, bool> newRequired = {};
+                    final reasonList = data['reason_list'] as List?;
+                    final reportGroups = data['report_groups'] as List?;
+                    if (reasonList != null && reasonList.isNotEmpty) {
+                      // H5 new structure: reason_list -> tag_id/tag_name/content_required
+                      final map = <int, String>{};
+                      for (final e in reasonList) {
+                        if (e is Map) {
+                          final id = e['tag_id'] ?? e['reason'] ?? e['id'];
+                          final name = e['tag_name'] ?? e['reason_text'] ?? e['name'];
+                          final req = e['content_required'] == true || e['is_required'] == true;
+                          if (id is int && name is String) {
+                            map[id] = name;
+                            newRequired[id] = req;
+                          } else if (id is num && name is String) {
+                            map[id.toInt()] = name;
+                            newRequired[id.toInt()] = req;
+                          }
+                        }
+                      }
+                      if (map.isNotEmpty) {
+                        newOptions = {'': map};
+                      }
+                    } else if (reportGroups != null && reportGroups.isNotEmpty) {
+                      final parsed = <String, Map<int, String>>{};
+                      for (final g in reportGroups) {
+                        if (g is Map) {
+                          final gName = g['name'] as String? ?? '';
+                          final opts = g['report_options'] as List?;
+                          if (opts != null) {
+                            final m = <int, String>{};
+                            for (final o in opts) {
+                              if (o is Map) {
+                                final v = o['value'] ?? o['reason'];
+                                final l = o['label'] ?? o['reason_text'];
+                                if (v is int && l is String) m[v] = l;
+                                if (v is num && l is String) {
+                                  m[v.toInt()] = l;
+                                }
+                              }
+                            }
+                            if (m.isNotEmpty) parsed[gName] = m;
+                          }
+                        }
+                      }
+                      if (parsed.isNotEmpty) newOptions = parsed;
+                    }
+                    if (newOptions != effectiveOptions ||
+                        newRequired.isNotEmpty ||
+                        newCanDelete != canDelete) {
+                      setState(() {
+                        effectiveOptions = newOptions;
+                        dynamicContentRequired = newRequired;
+                        canDelete = newCanDelete;
+                        metadataInited = true;
+                      });
+                    } else {
+                      metadataInited = true;
+                    }
+                  });
+                }
+              } else if (snapshot.hasError || (snapshot.hasData && snapshot.data is Error)) {
+                metadataInited = true;
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: .only(left: 22, right: 22, bottom: 5),
+                    child: Text('请选择举报的理由：'),
+                  ),
+                  RadioGroup(
+                    onChanged: updateReasonType,
+                    groupValue: reasonType,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: effectiveOptions.entries.map((entry) {
+                        return WrapRadioOptionsGroup<int>(
+                          groupTitle: entry.key,
+                          options: entry.value,
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+
+        return AlertDialog(
+          title: title,
+          titlePadding: const .only(left: 22, top: 16, right: 22),
+          contentPadding: const .symmetric(vertical: 5),
+          actionsPadding: const .only(left: 16, right: 16, bottom: 10),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  child: AnimatedSize(
+                    duration: const Duration(milliseconds: 200),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        buildReasonList(),
+                        if (isWithContentNow)
+                          Padding(
+                            padding: const .only(left: 22, top: 5, right: 22),
+                            child: TextFormField(
+                              key: key,
+                              minLines: 2,
+                              maxLines: 4,
+                              initialValue: reasonDesc,
+                              autofocus: isContentRequiredNow,
+                              decoration: const InputDecoration(
+                                labelText: '为帮助审核人员更快处理，请补充问题类型和出现位置等详细信息',
+                                border: OutlineInputBorder(),
+                                contentPadding: .all(10),
+                                labelStyle: TextStyle(fontSize: 14),
+                                floatingLabelStyle: TextStyle(fontSize: 14),
+                              ),
+                              onChanged: (value) => reasonDesc = value,
+                              validator: (value) =>
+                                  isContentRequiredNow && value.isNullOrEmpty ? '理由不能为空' : null,
                             ),
-                            onChanged: (value) => reasonDesc = value,
-                            validator: (value) =>
-                                isContentRequired && value.isNullOrEmpty
-                                ? '理由不能为空'
-                                : null,
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+              if (ban)
+                Padding(
+                  padding: const EdgeInsets.only(left: 14, top: 6),
+                  child: CheckBoxText(
+                    text: '拉黑该用户',
+                    onChanged: (value) => banUid = value,
+                  ),
+                ),
+              if (canDelete)
+                Padding(
+                  padding: const EdgeInsets.only(left: 14, top: 4),
+                  child: CheckBoxText(
+                    text: '同时删除该评论',
+                    selected: false,
+                    onChanged: (value) => deleteComment = value,
+                  ),
+                ),
+              if (showImageBlock)
+                Padding(
+                  padding: const EdgeInsets.only(left: 14, top: 4),
+                  child: CheckBoxText(
+                    text: '同时屏蔽图片',
+                    selected: true,
+                    onChanged: (value) => blockImages = value,
+                  ),
+                ),
+            ],
           ),
-          if (ban)
-            Padding(
-              padding: const EdgeInsets.only(left: 14, top: 6),
-              child: CheckBoxText(
-                text: '拉黑该用户',
-                onChanged: (value) => banUid = value,
+          actions: [
+            if (targetMid != null && scene != null)
+              TextButton(
+                onPressed: () {
+                  final ctx = context;
+                  Get.back();
+                  if (!Accounts.report.isLogin) {
+                    SmartDialog.showToast('举报账号未登录');
+                    return;
+                  }
+                  showNewReportDialog(
+                    ctx,
+                    targetMid: targetMid,
+                    scene: scene,
+                  );
+                },
+                child: const Text('使用新版举报方式'),
+              ),
+            TextButton(
+              onPressed: Get.back,
+              child: Text(
+                '取消',
+                style: TextStyle(color: ColorScheme.of(context).outline),
               ),
             ),
-          if (showImageBlock)
-            Padding(
-              padding: const EdgeInsets.only(left: 14, top: 4),
-              child: CheckBoxText(
-                text: '同时屏蔽图片',
-                selected: true,
-                onChanged: (value) => blockImages = value,
-              ),
+            TextButton(
+              onPressed: () async {
+                final curWithContent = isWithContent(reasonType);
+                final curRequired = isContentRequired(reasonType);
+                if (reasonType == null || (curRequired && key.currentState?.validate() != true)) {
+                  return;
+                }
+                SmartDialog.showLoading();
+                try {
+                  final res = await onReport(
+                    reasonType!,
+                    curWithContent ? reasonDesc : null,
+                    banUid,
+                    deleteComment,
+                  );
+                  SmartDialog.dismiss();
+                  if (res.isSuccess) {
+                    Get.back();
+                    SmartDialog.showToast('举报成功');
+                  } else {
+                    res.toast();
+                  }
+                  if (showImageBlock && blockImages && onBlockImages != null && imageUrls != null) {
+                    await onBlockImages(imageUrls);
+                  }
+                } catch (e, s) {
+                  SmartDialog.dismiss();
+                  SmartDialog.showToast('提交失败：$e');
+                  Utils.reportError(e, s);
+                }
+              },
+              child: const Text('确定'),
             ),
-        ],
-      ),
-      actions: [
-        if (targetMid != null && scene != null)
-          TextButton(
-            onPressed: () {
-              final ctx = context;
-              Get.back();
-              if (!Accounts.report.isLogin) {
-                SmartDialog.showToast('举报账号未登录');
-                return;
-              }
-              showNewReportDialog(
-                ctx,
-                targetMid: targetMid,
-                scene: scene,
-              );
-            },
-            child: const Text('使用新版举报方式'),
-          ),
-        TextButton(
-          onPressed: Get.back,
-          child: Text(
-            '取消',
-            style: TextStyle(color: ColorScheme.of(context).outline),
-          ),
-        ),
-        TextButton(
-          onPressed: () async {
-            if (reasonType == null ||
-                (isContentRequired && key.currentState?.validate() != true)) {
-              return;
-            }
-            SmartDialog.showLoading();
-            try {
-              final res = await onReport(
-                reasonType!,
-                isWithContent ? reasonDesc : null,
-                banUid,
-              );
-              SmartDialog.dismiss();
-              if (res.isSuccess) {
-                Get.back();
-                SmartDialog.showToast('举报成功');
-              } else {
-                res.toast();
-              }
-              if (showImageBlock &&
-                  blockImages &&
-                  onBlockImages != null &&
-                  imageUrls != null) {
-                await onBlockImages(imageUrls);
-              }
-            } catch (e, s) {
-              SmartDialog.dismiss();
-              SmartDialog.showToast('提交失败：$e');
-              Utils.reportError(e, s);
-            }
-          },
-          child: const Text('确定'),
-        ),
-      ],
+          ],
+        );
+      },
     ),
   );
 }
@@ -262,12 +416,8 @@ class _CheckBoxTextState extends State<CheckBoxText> {
           children: [
             Icon(
               size: 22,
-              _selected
-                  ? Icons.check_box_outlined
-                  : Icons.check_box_outline_blank,
-              color: _selected
-                  ? colorScheme.primary
-                  : colorScheme.onSurfaceVariant,
+              _selected ? Icons.check_box_outlined : Icons.check_box_outline_blank,
+              color: _selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
             ),
             Text(
               ' ${widget.text}',
@@ -298,8 +448,7 @@ abstract final class ReportOptions {
     '其他': {0: '其他*'},
   };
   static ReasonCheck withContentReply = (reasonType) => reasonType != null;
-  static ReasonCheck contentRequiredReply = (reasonType) =>
-      reasonType == 0 || reasonType == 22;
+  static ReasonCheck contentRequiredReply = (reasonType) => reasonType == 0 || reasonType == 22;
 
   static Map<String, Map<int, String>> get dynamicReport => const {
     '': {

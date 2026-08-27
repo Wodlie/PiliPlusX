@@ -8,8 +8,7 @@ import 'package:PiliPlus/common/widgets/flutter/text_field/text_field.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/loading_widget.dart';
 import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
-import 'package:PiliPlus/common/widgets/scroll_physics.dart'
-    show platformAlwaysClampingPhysics;
+import 'package:PiliPlus/common/widgets/scroll_physics.dart' show platformAlwaysClampingPhysics;
 import 'package:PiliPlus/grpc/bilibili/im/type.pb.dart' show Msg;
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/msg.dart';
@@ -45,8 +44,7 @@ class WhisperDetailPage extends CommonRichTextPubPage {
   State<WhisperDetailPage> createState() => _WhisperDetailPageState();
 }
 
-class _WhisperDetailPageState
-    extends CommonRichTextPubPageState<WhisperDetailPage> {
+class _WhisperDetailPageState extends CommonRichTextPubPageState<WhisperDetailPage> {
   final _whisperDetailController = Get.put(
     WhisperDetailController(),
     tag: Utils.makeHeroTag(Get.parameters['talkerId']),
@@ -169,22 +167,18 @@ class _WhisperDetailPageState
                     _whisperDetailController.onLoadMore();
                   }
                   final item = response[index];
-                  final isOwner =
-                      item.senderUid.toInt() ==
-                      _whisperDetailController.account.mid;
+                  final isOwner = item.senderUid.toInt() == _whisperDetailController.account.mid;
                   return ChatItem(
                     item: item,
                     eInfos: _whisperDetailController.eInfos,
                     onLongPress: () => onLongPress(index, item, isOwner),
                     onSecondaryTapUp: PlatformUtils.isDesktop
-                        ? (e) =>
-                              _showMenu(e.globalPosition, index, item, isOwner)
+                        ? (e) => _showMenu(e.globalPosition, index, item, isOwner)
                         : null,
                     isOwner: isOwner,
                   );
                 },
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 12),
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
               )
             : scrollErrorWidget(onReload: _whisperDetailController.onReload),
       Error(:final errMsg) => scrollErrorWidget(
@@ -225,7 +219,7 @@ class _WhisperDetailPageState
       context,
       ban: false,
       ReportOptions.imMsgReport,
-      (reasonType, reasonDesc, banUid) => _whisperDetailController.onReport(
+      (reasonType, reasonDesc, banUid, deleteComment) => _whisperDetailController.onReport(
         item,
         reasonType,
         reasonDesc ?? ReportOptions.imMsgReport['']![reasonType]!,
@@ -280,9 +274,7 @@ class _WhisperDetailPageState
         children: [
           IconButton(
             onPressed: () => updatePanelType(
-              panelType.value == PanelType.emoji
-                  ? PanelType.keyboard
-                  : PanelType.emoji,
+              panelType.value == PanelType.emoji ? PanelType.keyboard : PanelType.emoji,
             ),
             icon: const Icon(Icons.emoji_emotions),
             tooltip: '表情',
@@ -386,9 +378,7 @@ class _WhisperDetailPageState
                   }
                 },
                 icon: Icon(
-                  enablePublish
-                      ? Icons.send
-                      : Icons.add_photo_alternate_outlined,
+                  enablePublish ? Icons.send : Icons.add_photo_alternate_outlined,
                 ),
                 tooltip: enablePublish ? '发送' : '图片',
               );
