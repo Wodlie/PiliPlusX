@@ -813,10 +813,6 @@ class LoginPageController extends GetxController
         ),
         actions: [
           TextButton(
-            onPressed: Get.back,
-            child: Text('取消', style: TextStyle(color: colorScheme.outline)),
-          ),
-          TextButton(
             onPressed: () {
               Get.back();
               Get.toNamed('/loginPage');
