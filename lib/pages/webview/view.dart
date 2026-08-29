@@ -339,9 +339,15 @@ class _WebviewPageState extends State<WebviewPage> {
           },
           shouldInterceptRequest: (controller, request) async {
             String url = request.url.toString();
-            if (url.startsWith(
-              'https://passport.bilibili.com/x/passport-login/web',
-            )) {
+            // 仅拦截主文档导航到 passport 网页登录页（避免 webview 内页面
+            // 被重定向/跳转到网页登录页，见 upstream #587）。页面内部的
+            // API 子请求（如扫码登录确认页 account-h5 scan-web 调用的
+            // qrcode/check、qrcode/scene、qrcode/confirm、sso/* 等）必须
+            // 放行，否则扫描网页登录二维码后无法完成确认登录（报"请求错误"）。
+            if (request.isForMainFrame == true &&
+                url.startsWith(
+                  'https://passport.bilibili.com/x/passport-login/web',
+                )) {
               progress.value = 1;
               return WebResourceResponse();
             }
