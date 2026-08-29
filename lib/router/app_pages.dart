@@ -69,6 +69,7 @@ import 'package:PiliPlus/pages/sponsor_block/view.dart';
 import 'package:PiliPlus/pages/subscription/view.dart';
 import 'package:PiliPlus/pages/subscription_detail/view.dart';
 import 'package:PiliPlus/pages/video/view.dart';
+import 'package:PiliPlus/pages/vip_manage/view.dart';
 import 'package:PiliPlus/pages/webview/view.dart';
 import 'package:PiliPlus/pages/webview_entry/view.dart';
 import 'package:PiliPlus/pages/whisper/view.dart';
@@ -193,5 +194,7 @@ class Routes {
     GetPage(name: '/ssWeb', page: () => const MemberSSWeb()),
     GetPage(name: '/memberGuard', page: () => const MemberGuard()),
     GetPage(name: '/bubble', page: () => const BubblePage()),
+    // 会员状态管理（大会员状态 + 播放设备管理）
+    GetPage(name: '/vipManage', page: () => const VipManagePage()),
   ];
 }

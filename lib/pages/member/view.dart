@@ -465,6 +465,17 @@ class _MemberPageState extends State<MemberPage> {
                 ),
               ),
             PopupMenuItem(
+              onTap: () => Get.toNamed('/vipManage'),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.workspace_premium_outlined, size: 19),
+                  SizedBox(width: 10),
+                  Text('会员状态管理'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
               onTap: () => Get.to(const LoginDevicesPage()),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,

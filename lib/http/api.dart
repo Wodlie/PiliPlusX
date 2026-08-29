@@ -900,6 +900,24 @@ abstract final class Api {
 
   static const String loginDevices = '${HttpString.passBaseUrl}/x/safecenter/user_login_devices';
 
+  /// 大会员中心状态（big.bilibili.com/mobile/index）
+  static const String vipCenter = '/x/vip/web/vip_center/v2';
+
+  /// 大会员中心模块
+  static const String vipCenterModules = '/x/vip/web/vip_center/modules';
+
+  /// 会员播放设备列表（big.bilibili.com/mobile/deviceManage）
+  static const String playDevicesList = '/x/vip/play_devices/list';
+
+  /// 会员播放设备-发送短信验证码
+  static const String playDevicesSendSms = '/x/vip/play_devices/send_sms';
+
+  /// 会员播放设备-更新状态（设为主设备/允许播放/移出可播）
+  static const String playDevicesUpdate = '/x/vip/play_devices/update';
+
+  /// 解冻（解除冻结状态）
+  static const String autoRenewUnfreeze = '/x/vip/auto_renew/unfreeze';
+
   static const String bgmDetail = '/x/copyright-music-publicity/bgm/detail';
 
   static const String wishUpdate = '/x/copyright-music-publicity/bgm/wish/update';
