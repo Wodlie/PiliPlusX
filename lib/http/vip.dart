@@ -72,15 +72,23 @@ abstract final class VipHttp {
       },
       options: Options(contentType: Headers.formUrlEncodedContentType),
     );
+    final ({bool status, int? code, String? msg, Map? data}) result;
     if (res.data['code'] == 0) {
-      return (status: true, code: 0, msg: null, data: res.data['data']);
+      result = (
+        status: true,
+        code: res.data['code'] as int?,
+        msg: null,
+        data: res.data['data'] as Map?,
+      );
+    } else {
+      result = (
+        status: false,
+        code: res.data['code'] as int?,
+        msg: res.data['message'] as String?,
+        data: res.data['data'] as Map?,
+      );
     }
-    return (
-      status: false,
-      code: res.data['code'],
-      msg: res.data['message'],
-      data: res.data['data'],
-    );
+    return result;
   }
 
   /// 更新设备状态（设为主设备/允许播放/移出可播）
