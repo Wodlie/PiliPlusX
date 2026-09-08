@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/user.dart';
-import 'package:PiliPlus/main.dart';
+import 'package:PiliPlus/main.dart' show webViewEnvironment;
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
@@ -11,6 +11,7 @@ import 'package:PiliPlus/utils/accounts/identity_core/identity_generators.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:PiliPlus/utils/linux_cookie_manager.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart' as web;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -28,9 +29,7 @@ abstract final class LoginUtils {
   }
 
   static FutureOr setWebCookie([Account? account]) {
-    if (Platform.isLinux) {
-      return null;
-    }
+    if (Platform.isLinux) return null;
     final cookies = (account ?? Accounts.main).cookieJar.toList();
     final webManager = web.CookieManager.instance(
       webViewEnvironment: webViewEnvironment,
@@ -105,7 +104,9 @@ abstract final class LoginUtils {
       ..isLogin.value = false;
 
     return Future.wait([
-      if (!Platform.isLinux)
+      if (Platform.isLinux)
+        LinuxCookieManager.deleteAllCookies()
+      else
         web.CookieManager.instance(
           webViewEnvironment: webViewEnvironment,
         ).deleteAllCookies(),

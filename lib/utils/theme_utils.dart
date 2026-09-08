@@ -1,5 +1,6 @@
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
+import 'package:PiliPlus/utils/font_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:cupertino_ui/cupertino_ui.dart' show CupertinoThemeData;
 import 'package:flutter/foundation.dart' show PlatformDispatcher;
@@ -31,22 +32,17 @@ abstract final class ThemeUtils {
     required bool isDynamic,
     bool isDark = false,
   }) {
-    final appFontWeight = Pref.appFontWeight.clamp(
-      -1,
-      FontWeight.values.length - 1,
-    );
-    final fontWeight = appFontWeight == -1
-        ? null
-        : FontWeight.values[appFontWeight];
-    final font = Pref.appFont;
+    final fontWeight = Pref.appFontWeight;
+    final font = FontUtils.fontFamily;
     // 根据设置决定使用系统字体还是 HarmonyOS_Sans
     final fontFamilyFallback = Pref.useSystemFont ? null : ['HarmonyOS_Sans'];
     final changeStyle =
-        font == null && fontWeight == null && fontFamilyFallback == null;
+        font == null && fontWeight == .normal && fontFamilyFallback == null;
     late final textStyle = TextStyle(fontWeight: fontWeight, fontFamily: font);
     ThemeData theme = ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      fontFamily: font,
       textTheme: changeStyle
           ? null
           : TextTheme(
@@ -105,9 +101,9 @@ abstract final class ThemeUtils {
         backgroundColor: colorScheme.surface,
         titleTextStyle: TextStyle(
           fontSize: 16,
-          color: colorScheme.onSurface,
-          fontFamily: font,
           fontWeight: fontWeight,
+          fontFamily: font,
+          color: colorScheme.onSurface,
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -118,7 +114,11 @@ abstract final class ThemeUtils {
         actionTextColor: colorScheme.primary,
         closeIconColor: colorScheme.secondary,
         backgroundColor: colorScheme.secondaryContainer,
-        contentTextStyle: TextStyle(color: colorScheme.onSecondaryContainer),
+        contentTextStyle: TextStyle(
+          fontFamily: font,
+          fontWeight: fontWeight,
+          color: colorScheme.onSecondaryContainer,
+        ),
       ),
       popupMenuTheme: PopupMenuThemeData(
         surfaceTintColor: isDark ? colorScheme.surfaceContainerHighest : null,
@@ -140,8 +140,8 @@ abstract final class ThemeUtils {
       dialogTheme: DialogThemeData(
         titleTextStyle: TextStyle(
           fontSize: 18,
-          fontFamily: font,
           fontWeight: fontWeight,
+          fontFamily: font,
           color: colorScheme.onSurface,
         ),
         backgroundColor: colorScheme.surface,
@@ -156,10 +156,15 @@ abstract final class ThemeUtils {
       // ignore: deprecated_member_use
       sliderTheme: const SliderThemeData(year2023: false),
       tooltipTheme: TooltipThemeData(
-        textStyle: const TextStyle(color: Colors.white, fontSize: 14),
-        decoration: BoxDecoration(
-          color: Colors.grey[700]!.withValues(alpha: 0.9),
-          borderRadius: const BorderRadius.all(Radius.circular(4)),
+        textStyle: TextStyle(
+          fontSize: 14,
+          color: Colors.white,
+          fontFamily: font,
+          fontWeight: fontWeight,
+        ),
+        decoration: const BoxDecoration(
+          color: Color(0xE6616161), // Colors.grey[700]!.withValues(alpha: 0.9)
+          borderRadius: BorderRadius.all(Radius.circular(4)),
         ),
       ),
       cupertinoOverrideTheme: CupertinoThemeData(

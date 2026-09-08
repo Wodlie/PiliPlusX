@@ -79,7 +79,8 @@ Future<void> autoWrapReportDialog(
         iconButton(
           iconSize: 21,
           tooltip: '网页举报',
-          onPressed: () => Get.toNamed('/webview', parameters: {'url': reportUrl}),
+          onPressed: () =>
+              Get.toNamed('/webview', parameters: {'url': reportUrl}),
           icon: const Icon(MdiIcons.web, size: 22),
         ),
       ],
@@ -129,7 +130,8 @@ Future<void> autoWrapReportDialog(
           return FutureBuilder<LoadingState<Map<String, dynamic>>>(
             future: metadataFuture,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting && !metadataInited) {
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  !metadataInited) {
                 return const Padding(
                   padding: EdgeInsets.all(22),
                   child: Center(
@@ -142,12 +144,15 @@ Future<void> autoWrapReportDialog(
                 );
               }
               if (snapshot.hasData && snapshot.data is Success) {
-                final data = (snapshot.data as Success<Map<String, dynamic>>).data;
+                final data =
+                    (snapshot.data as Success<Map<String, dynamic>>).data;
                 if (!metadataInited) {
                   // parse only once
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     bool newCanDelete = data['can_delete'] == true;
-                    Map<String, Map<int, String>> newOptions = Map.from(options);
+                    Map<String, Map<int, String>> newOptions = Map.from(
+                      options,
+                    );
                     Map<int, bool> newRequired = {};
                     final reasonList = data['reason_list'] as List?;
                     final reportGroups = data['report_groups'] as List?;
@@ -157,8 +162,11 @@ Future<void> autoWrapReportDialog(
                       for (final e in reasonList) {
                         if (e is Map) {
                           final id = e['tag_id'] ?? e['reason'] ?? e['id'];
-                          final name = e['tag_name'] ?? e['reason_text'] ?? e['name'];
-                          final req = e['content_required'] == true || e['is_required'] == true;
+                          final name =
+                              e['tag_name'] ?? e['reason_text'] ?? e['name'];
+                          final req =
+                              e['content_required'] == true ||
+                              e['is_required'] == true;
                           if (id is int && name is String) {
                             map[id] = name;
                             newRequired[id] = req;
@@ -171,7 +179,8 @@ Future<void> autoWrapReportDialog(
                       if (map.isNotEmpty) {
                         newOptions = {'': map};
                       }
-                    } else if (reportGroups != null && reportGroups.isNotEmpty) {
+                    } else if (reportGroups != null &&
+                        reportGroups.isNotEmpty) {
                       final parsed = <String, Map<int, String>>{};
                       for (final g in reportGroups) {
                         if (g is Map) {
@@ -209,7 +218,8 @@ Future<void> autoWrapReportDialog(
                     }
                   });
                 }
-              } else if (snapshot.hasError || (snapshot.hasData && snapshot.data is Error)) {
+              } else if (snapshot.hasError ||
+                  (snapshot.hasData && snapshot.data is Error)) {
                 metadataInited = true;
               }
               return Column(
@@ -273,7 +283,9 @@ Future<void> autoWrapReportDialog(
                               ),
                               onChanged: (value) => reasonDesc = value,
                               validator: (value) =>
-                                  isContentRequiredNow && value.isNullOrEmpty ? '理由不能为空' : null,
+                                  isContentRequiredNow && value.isNullOrEmpty
+                                  ? '理由不能为空'
+                                  : null,
                             ),
                           ),
                       ],
@@ -338,7 +350,8 @@ Future<void> autoWrapReportDialog(
               onPressed: () async {
                 final curWithContent = isWithContent(reasonType);
                 final curRequired = isContentRequired(reasonType);
-                if (reasonType == null || (curRequired && key.currentState?.validate() != true)) {
+                if (reasonType == null ||
+                    (curRequired && key.currentState?.validate() != true)) {
                   return;
                 }
                 SmartDialog.showLoading();
@@ -356,7 +369,10 @@ Future<void> autoWrapReportDialog(
                   } else {
                     res.toast();
                   }
-                  if (showImageBlock && blockImages && onBlockImages != null && imageUrls != null) {
+                  if (showImageBlock &&
+                      blockImages &&
+                      onBlockImages != null &&
+                      imageUrls != null) {
                     await onBlockImages(imageUrls);
                   }
                 } catch (e, s) {
@@ -416,8 +432,12 @@ class _CheckBoxTextState extends State<CheckBoxText> {
           children: [
             Icon(
               size: 22,
-              _selected ? Icons.check_box_outlined : Icons.check_box_outline_blank,
-              color: _selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+              _selected
+                  ? Icons.check_box_outlined
+                  : Icons.check_box_outline_blank,
+              color: _selected
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
             ),
             Text(
               ' ${widget.text}',
@@ -447,8 +467,9 @@ abstract final class ReportOptions {
     },
     '其他': {0: '其他*'},
   };
-  static ReasonCheck withContentReply = (reasonType) => reasonType != null;
-  static ReasonCheck contentRequiredReply = (reasonType) => reasonType == 0 || reasonType == 22;
+  static bool withContentReply(int? reasonType) => reasonType != null;
+  static bool contentRequiredReply(int? reasonType) =>
+      reasonType == 0 || reasonType == 22;
 
   static Map<String, Map<int, String>> get dynamicReport => const {
     '': {
@@ -482,7 +503,7 @@ abstract final class ReportOptions {
       11: '其它*',
     },
   };
-  static ReasonCheck danmakuReportCheck = (reasonType) => reasonType == 11;
+  static bool danmakuReportCheck(int? reasonType) => reasonType == 11;
 
   static Map<String, Map<int, String>> get liveDanmakuReport => const {
     '': {
@@ -495,7 +516,7 @@ abstract final class ReportOptions {
       0: '其他',
     },
   };
-  static ReasonCheck liveDanmakuReportCheck = (_) => false;
+  static bool liveDanmakuReportCheck(int? _) => false;
 
   static Map<String, Map<int, String>> get imMsgReport => const {
     '': {

@@ -112,7 +112,7 @@ abstract final class Accounts {
     // that lacked field 4). This closes the gap where a fresh BUVID was
     // computed transiently but never written back to durable storage.
     await Future.wait([
-      ...persistAccounts.map((a) => a.onChange()),
+      for (final a in persistAccounts) ?a.onChange(),
       ...(nextAccounts.toSet()..removeWhere((i) => i.activated)).map(
         Request.buvidActive,
       ),

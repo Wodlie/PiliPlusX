@@ -24,7 +24,8 @@ import 'package:PiliPlus/models/video/play/url.dart';
 import 'package:PiliPlus/models_new/video/video_play_info/subtitle.dart';
 import 'package:PiliPlus/pages/common/common_intro_controller.dart';
 import 'package:PiliPlus/pages/danmaku/danmaku_model.dart';
-import 'package:PiliPlus/pages/setting/models/play_settings.dart' show showPlayerVolumeDialog;
+import 'package:PiliPlus/pages/setting/models/play_settings.dart'
+    show showPlayerVolumeDialog;
 import 'package:PiliPlus/pages/setting/widgets/popup_item.dart';
 import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
@@ -37,7 +38,8 @@ import 'package:PiliPlus/pages/video/widgets/header_mixin.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
-import 'package:PiliPlus/services/shutdown_timer_service.dart' show shutdownTimerService;
+import 'package:PiliPlus/services/shutdown_timer_service.dart'
+    show shutdownTimerService, ShutdownPanel;
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/android/bindings.g.dart';
@@ -78,7 +80,8 @@ mixin TimeBatteryMixin<T extends StatefulWidget> on State<T> {
   ContextSingleTicker get effectiveProvider => provider ??= ContextSingleTicker(
     context,
     autoStart: () =>
-        plPlayerController.showControls.value && !plPlayerController.controlsLock.value,
+        plPlayerController.showControls.value &&
+        !plPlayerController.controlsLock.value,
   );
 
   bool get isPortrait;
@@ -332,7 +335,8 @@ class HeaderControl extends StatefulWidget {
   }
 }
 
-class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatteryMixin {
+class HeaderControlState extends State<HeaderControl>
+    with HeaderMixin, TimeBatteryMixin {
   @override
   late final PlPlayerController plPlayerController = widget.controller;
   late final VideoDetailController videoDetailCtr = widget.videoDetailCtr;
@@ -374,6 +378,7 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
     showBottomSheet(
       (context, setState) {
         final theme = Theme.of(context);
+
         return Padding(
           padding: const EdgeInsets.all(12),
           child: Material(
@@ -438,6 +443,19 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                   },
                   leading: const Icon(Icons.hourglass_top_outlined, size: 20),
                   title: const Text('定时关闭', style: titleStyle),
+                  subtitle: shutdownTimerService.isActive
+                      ? ShutdownPanel(
+                          buildCountdownText: (text) =>
+                              Text(text == null ? '已结束' : '剩余 $text'),
+                          builder:
+                              (
+                                context,
+                                countdown,
+                                onCountdown,
+                                setState,
+                              ) => countdown,
+                        )
+                      : null,
                 ),
                 if (!isFileSource) ...[
                   ListTile(
@@ -468,7 +486,8 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                     Icons.stay_current_landscape_outlined,
                     size: 20,
                   ),
-                  title: const Text('超分辨率'),
+                  title: const Text('超分辨率', style: titleStyle),
+                  titleStyle: theme.textTheme.bodyLarge,
                   value: () {
                     final value = plPlayerController.superResolutionType.value;
                     return (value, value.label);
@@ -480,11 +499,12 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                     plPlayerController.setShader(value);
                     setState();
                   },
-                  descFontSize: 12,
                   descPosType: .subtitle,
+                  descStyle: subTitleStyle,
                 ),
                 if (PlatformUtils.isMobile)
-                  if (plPlayerController.videoPlayerController case final player?)
+                  if (plPlayerController.videoPlayerController
+                      case final player?)
                     Builder(
                       builder: (context) => ListTile(
                         dense: true,
@@ -536,7 +556,8 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                           final flipX = plPlayerController.flipX.value;
                           return ActionRowLineItem(
                             iconData: Icons.flip,
-                            onTap: () => plPlayerController.flipX.value = !flipX,
+                            onTap: () =>
+                                plPlayerController.flipX.value = !flipX,
                             text: " 左右翻转 ",
                             selectStatus: flipX,
                           );
@@ -561,17 +582,24 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                           );
                         },
                       ),
-                      if ((isFileSource && !(plPlayerController.dataSource as FileSource).isMp4) ||
-                          (!isFileSource && videoDetailCtr.audioUrl?.isNotEmpty == true))
+                      if ((isFileSource &&
+                              !(plPlayerController.dataSource as FileSource)
+                                  .isMp4) ||
+                          (!isFileSource &&
+                              videoDetailCtr.audioUrl?.isNotEmpty == true))
                         Obx(
                           () {
-                            final onlyPlayAudio = plPlayerController.onlyPlayAudio.value;
+                            final onlyPlayAudio =
+                                plPlayerController.onlyPlayAudio.value;
                             return ActionRowLineItem(
                               iconData: Icons.headphones,
                               onTap: () {
-                                plPlayerController.onlyPlayAudio.value = !onlyPlayAudio;
-                                final player = plPlayerController.videoPlayerController!;
-                                if (onlyPlayAudio && player.state.tracks.video.length <= 2) {
+                                plPlayerController.onlyPlayAudio.value =
+                                    !onlyPlayAudio;
+                                final player =
+                                    plPlayerController.videoPlayerController!;
+                                if (onlyPlayAudio &&
+                                    player.state.tracks.video.length <= 2) {
                                   videoDetailCtr.playerInit();
                                 } else {
                                   player.setProperty(
@@ -589,9 +617,12 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                         Obx(
                           () => ActionRowLineItem(
                             iconData: Icons.play_circle_outline,
-                            onTap: plPlayerController.setContinuePlayInBackground,
+                            onTap:
+                                plPlayerController.setContinuePlayInBackground,
                             text: " 后台播放 ",
-                            selectStatus: plPlayerController.continuePlayInBackground.value,
+                            selectStatus: plPlayerController
+                                .continuePlayInBackground
+                                .value,
                           ),
                         ),
                     ],
@@ -642,7 +673,8 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                 PopupListTile(
                   dense: true,
                   leading: const Icon(Icons.repeat, size: 20),
-                  title: const Text('播放顺序'),
+                  title: const Text('播放顺序', style: titleStyle),
+                  titleStyle: theme.textTheme.bodyLarge,
                   value: () {
                     final value = plPlayerController.playRepeat;
                     return (value, value.label);
@@ -653,7 +685,7 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                     setState();
                   },
                   descPosType: .subtitle,
-                  descFontSize: 12,
+                  descStyle: subTitleStyle,
                 ),
                 ListTile(
                   dense: true,
@@ -689,14 +721,20 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                     try {
                       final result = await FilePicker.pickFile(
                         type: .custom,
-                        allowedExtensions: const ['json', 'vtt', 'srt', 'ass'],
+                        allowedExtensions: const [
+                          'json',
+                          'vtt',
+                          'srt',
+                          'ass',
+                          'bcc',
+                        ],
                       );
                       if (result != null) {
                         final file = result.xFile;
                         final path = file.path;
                         final name = file.name;
                         final length = videoDetailCtr.subtitles.length;
-                        if (name.endsWith('.json')) {
+                        if (name.endsWith('.json') || name.endsWith('.bcc')) {
                           final file = File(path);
                           final stream = file.openRead().transform(
                             utf8.decoder,
@@ -738,7 +776,8 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                   leading: const Icon(Icons.file_open_outlined, size: 20),
                   title: const Text('加载字幕', style: titleStyle),
                 ),
-                if (!videoDetailCtr.isFileSource && videoDetailCtr.subtitles.isNotEmpty)
+                if (!videoDetailCtr.isFileSource &&
+                    videoDetailCtr.subtitles.isNotEmpty)
                   ListTile(
                     dense: true,
                     onTap: () {
@@ -809,13 +848,15 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                       dense: true,
                       title: const Text("VideoParams"),
                       subtitle: Text(state.videoParams.toString()),
-                      onTap: () => Utils.copyText('VideoParams\n${state.videoParams}'),
+                      onTap: () =>
+                          Utils.copyText('VideoParams\n${state.videoParams}'),
                     ),
                     ListTile(
                       dense: true,
                       title: const Text("AudioParams"),
                       subtitle: Text(state.audioParams.toString()),
-                      onTap: () => Utils.copyText('AudioParams\n${state.audioParams}'),
+                      onTap: () =>
+                          Utils.copyText('AudioParams\n${state.audioParams}'),
                     ),
                     ListTile(
                       dense: true,
@@ -827,13 +868,15 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                       dense: true,
                       title: const Text("AudioTrack"),
                       subtitle: Text(state.track.audio.toString()),
-                      onTap: () => Utils.copyText('AudioTrack\n${state.track.audio}'),
+                      onTap: () =>
+                          Utils.copyText('AudioTrack\n${state.track.audio}'),
                     ),
                     ListTile(
                       dense: true,
                       title: const Text("VideoTrack"),
                       subtitle: Text(state.track.video.toString()),
-                      onTap: () => Utils.copyText('VideoTrack\n${state.track.video}'),
+                      onTap: () =>
+                          Utils.copyText('VideoTrack\n${state.track.video}'),
                     ),
                     ListTile(
                       dense: true,
@@ -882,21 +925,7 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
     if (currentVideoQa == null) return;
 
     final List<FormatItem> videoFormat = videoInfo.supportFormats!;
-
-    /// 总质量分类
-    final int totalQaSam = videoFormat.length;
-
-    /// 可用的质量分类
-    int usefulQaSam = 0;
-    final List<VideoItem> video = videoInfo.dash!.video!;
-    final Set<int> idSet = {};
-    for (final VideoItem item in video) {
-      final int id = item.id!;
-      if (!idSet.contains(id)) {
-        idSet.add(id);
-        usefulQaSam++;
-      }
-    }
+    final availableQa = videoInfo.dash!.video!.availableVideoQualities;
 
     showBottomSheet(
       (context, setState) {
@@ -932,7 +961,7 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                   ),
                 ),
                 SliverList.builder(
-                  itemCount: totalQaSam,
+                  itemCount: videoFormat.length,
                   itemBuilder: (context, index) {
                     final item = videoFormat[index];
                     final isCurr = currentVideoQa.code == item.quality;
@@ -986,7 +1015,7 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                         }
                       },
                       // 可能包含会员解锁画质
-                      enabled: index >= totalQaSam - usefulQaSam,
+                      enabled: availableQa.contains(item.quality),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20,
                       ),
@@ -1046,7 +1075,7 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                           return;
                         }
                         Get.back();
-                        final int quality = item.id!;
+                        final int quality = item.id;
                         final newQa = AudioQuality.fromCode(quality);
                         videoDetailCtr
                           ..plPlayerController.cacheAudioQa = newQa.code
@@ -1143,7 +1172,9 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                             contentPadding: const .symmetric(horizontal: 20),
                             title: Text(format.description),
                             subtitle: Text(item, style: subTitleStyle),
-                            trailing: isCurr ? Icon(Icons.done, color: colorScheme.primary) : null,
+                            trailing: isCurr
+                                ? Icon(Icons.done, color: colorScheme.primary)
+                                : null,
                           );
                         },
                       ),
@@ -1224,7 +1255,9 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                   final Uint8List bytes;
                   switch (format) {
                     case .vtt || .srt:
-                      var subtitle = format == .vtt ? videoDetailCtr.vttSubtitles[i]?.id : null;
+                      var subtitle = format == .vtt
+                          ? videoDetailCtr.vttSubtitles[i]?.id
+                          : null;
                       if (subtitle == null) {
                         final res = await VideoHttp.getSubtitles(
                           item.subtitleUrl!,
@@ -1395,7 +1428,8 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                         max: 2.5,
                         value: subtitleFontScale,
                         divisions: 200,
-                        label: '${(subtitleFontScale * 100).toStringAsFixed(1)}%',
+                        label:
+                            '${(subtitleFontScale * 100).toStringAsFixed(1)}%',
                         onChanged: updateFontScale,
                       ),
                     ),
@@ -1423,7 +1457,8 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                         max: 2.5,
                         value: subtitleFontScaleFS,
                         divisions: 200,
-                        label: '${(subtitleFontScaleFS * 100).toStringAsFixed(1)}%',
+                        label:
+                            '${(subtitleFontScaleFS * 100).toStringAsFixed(1)}%',
                         onChanged: updateFontScaleFS,
                       ),
                     ),
@@ -1710,14 +1745,19 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
   Widget build(BuildContext context) {
     final isFullScreen = this.isFullScreen;
     final isFSOrPip = isFullScreen || plPlayerController.isDesktopPip;
-    final showFSActionItem = !isFileSource && plPlayerController.showFSActionItem && isFSOrPip;
+    final showFSActionItem =
+        !isFileSource && plPlayerController.showFSActionItem && isFSOrPip;
     showCurrTimeIfNeeded(isFullScreen);
     Widget title;
     if (introController.videoDetail.value.title != null &&
-        (isFullScreen || ((!horizontalScreen || plPlayerController.isDesktopPip) && !isPortrait))) {
+        (isFullScreen ||
+            ((!horizontalScreen || plPlayerController.isDesktopPip) &&
+                !isPortrait))) {
       title = Padding(
         key: titleKey,
-        padding: isPortrait ? EdgeInsets.zero : const EdgeInsets.only(right: 10),
+        padding: isPortrait
+            ? EdgeInsets.zero
+            : const EdgeInsets.only(right: 10),
         child: Obx(
           () {
             final videoDetail = introController.videoDetail.value;
@@ -1796,10 +1836,12 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                     size: 15,
                     color: Colors.white,
                   ),
-                  onPressed: () => plPlayerController.onPopInvokedWithResult(false, null),
+                  onPressed: () =>
+                      plPlayerController.onPopInvokedWithResult(false, null),
                 ),
               ),
-              if (!plPlayerController.isDesktopPip && (!isFullScreen || !isPortrait))
+              if (!plPlayerController.isDesktopPip &&
+                  (!isFullScreen || !isPortrait))
                 SizedBox(
                   width: btnWidth,
                   height: btnHeight,
@@ -1826,7 +1868,8 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                     child: IconButton(
                       style: btnStyle,
                       tooltip: '${isAlwaysOnTop ? '取消' : ''}置顶',
-                      onPressed: () => plPlayerController.setAlwaysOnTop(!isAlwaysOnTop),
+                      onPressed: () =>
+                          plPlayerController.setAlwaysOnTop(!isAlwaysOnTop),
                       icon: isAlwaysOnTop
                           ? const Icon(
                               size: 19,
@@ -1927,7 +1970,8 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                   height: btnHeight,
                   child: Obx(
                     () {
-                      final enableShowDanmaku = plPlayerController.enableShowDanmaku.value;
+                      final enableShowDanmaku =
+                          plPlayerController.enableShowDanmaku.value;
                       return IconButton(
                         tooltip: "${enableShowDanmaku ? '关闭' : '开启'}弹幕",
                         style: btnStyle,
@@ -1971,7 +2015,8 @@ class HeaderControlState extends State<HeaderControl> with HeaderMixin, TimeBatt
                   ),
                 ),
               ),
-              if (Platform.isAndroid || (PlatformUtils.isDesktop && !isFullScreen))
+              if (Platform.isAndroid ||
+                  (PlatformUtils.isDesktop && !isFullScreen))
                 SizedBox(
                   width: btnWidth,
                   height: btnHeight,

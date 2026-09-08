@@ -145,7 +145,7 @@ class VipManageController extends GetxController {
       return (ok: false, msg: res.msg ?? '获取验证码失败');
     }
     final json = await GeetestWebviewDialog.geetest(geeGt!, geeChallenge!);
-    if (json is! Map) {
+    if (json == null) {
       return (ok: false, msg: '验证未通过');
     }
     captchaData

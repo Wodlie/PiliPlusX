@@ -1,5 +1,4 @@
 // edit from package:dio_cookie_manager
-import 'dart:async';
 import 'dart:io';
 
 import 'package:PiliPlus/http/api.dart';
@@ -26,7 +25,7 @@ final _setCookieReg = RegExp('(?<=)(,)(?=[^;]+?=)');
 class AccountManager extends Interceptor {
   AccountManager();
 
-  String blockServer = Pref.blockServer;
+  static String blockServer = Pref.blockServer;
 
   static String getCookies(List<Cookie> cookies) {
     // Sort cookies by path (longer path first).
@@ -107,7 +106,7 @@ class AccountManager extends Interceptor {
                 : '';
             handler.next(options);
           })
-          .catchError((dynamic e, StackTrace s) {
+          .catchError((Object e, StackTrace s) {
             final err = DioException(
               requestOptions: options,
               error: e,
@@ -149,7 +148,8 @@ class AccountManager extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    if (err.requestOptions.responseType == ResponseType.stream) {
+    final options = err.requestOptions;
+    if (options.responseType == ResponseType.stream) {
       return handler.next(err);
     }
     if (err.requestOptions.method != 'POST') {
@@ -162,7 +162,7 @@ class AccountManager extends Interceptor {
       _saveCookies(
         err.response!,
       ).whenComplete(() => handler.next(err)).catchError(
-        (dynamic e, StackTrace s) {
+        (Object e, StackTrace s) {
           final error = DioException(
             requestOptions: err.response!.requestOptions,
             error: e,
@@ -177,7 +177,7 @@ class AccountManager extends Interceptor {
   }
 
   static void toast(DioException err) {
-    const List<String> skipShow = [
+    const skipShow = [
       'heartbeat',
       'history/report',
       'roomEntryAction',
@@ -190,7 +190,7 @@ class AccountManager extends Interceptor {
     ];
     String url = err.requestOptions.uri.toString();
     if (kDebugMode) debugPrint('🌹🌹ApiInterceptor: $url\n$err');
-    if (skipShow.any((i) => url.contains(i)) ||
+    if (skipShow.any(url.contains) ||
         (url.contains('skipSegments') && err.requestOptions.method == 'GET')) {
       // skip
     } else {
@@ -239,7 +239,7 @@ class AccountManager extends Interceptor {
     await account.onChange();
   }
 
-  bool _skipCookie(String path) {
+  static bool _skipCookie(String path) {
     return path.startsWith(blockServer) ||
         path.contains('hdslb.com') ||
         path.contains('biliimg.com');
@@ -253,17 +253,20 @@ class AccountManager extends Interceptor {
     RequestOptions options,
     String path,
   ) {
-    final account = options.extra['account'];
-    if (account is Account && account is! NoAccount) {
-      final canonical = Accounts.canonicalize(account);
+    final bound = options.extra['account'];
+    // 将选定的账号绑定回请求，使响应/错误 cookie 落回到发起该请求的账号
+    if (bound is Account && bound is! NoAccount) {
+      final canonical = Accounts.canonicalize(bound);
+      options.extra['account'] = canonical;
       return (
         identity: OwnerScopedIdentitySnapshot.fromAccount(canonical),
         account: canonical,
       );
     }
     // 当明确指定 NoAccount 时，使用真正匿名的身份
-    if (account is NoAccount) {
+    if (bound is NoAccount) {
       final anonymous = AnonymousAccount();
+      options.extra['account'] = anonymous;
       return (
         identity: OwnerScopedIdentitySnapshot.fromAccount(anonymous),
         account: anonymous,
@@ -271,16 +274,18 @@ class AccountManager extends Interceptor {
     }
     if (_isLoginApi(path)) {
       final anonymous = AnonymousAccount();
+      options.extra['account'] = anonymous;
       return (
         identity: OwnerScopedIdentitySnapshot.fromAccount(anonymous),
         account: anonymous,
       );
     }
     final type = _accountTypeFor(path);
-    final identity = Accounts.snapshot(type);
+    final account = Accounts.get(type);
+    options.extra['account'] = account;
     return (
-      identity: identity,
-      account: Accounts.get(type),
+      identity: Accounts.snapshot(type),
+      account: account,
     );
   }
 
