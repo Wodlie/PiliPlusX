@@ -1,6 +1,6 @@
 # PROJECT KNOWLEDGE BASE
 
-**Updated:** 2026-09 · **Commit:** `cd4af793` · **Branch:** `dev`
+**Updated:** 2026-09 · **Commit:** `a32e4361` · **Branch:** `dev`
 
 ## OVERVIEW
 
