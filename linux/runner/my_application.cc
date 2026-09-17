@@ -22,6 +22,16 @@ static void first_frame_cb(MyApplication *self, FlView *view) {
 // Implements GApplication::activate.
 static void my_application_activate(GApplication *application) {
   MyApplication *self = MY_APPLICATION(application);
+
+  // A repeated launch is forwarded to this unique application instance.
+  GList *windows = gtk_application_get_windows(GTK_APPLICATION(application));
+  if (windows != nullptr) {
+    GtkWindow *window = GTK_WINDOW(windows->data);
+    gtk_widget_show(GTK_WIDGET(window));
+    gtk_window_present(window);
+    return;
+  }
+
   GtkWindow *window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
 
@@ -107,7 +117,7 @@ static gboolean my_application_local_command_line(GApplication *application,
   g_application_activate(application);
   *exit_status = 0;
 
-  return TRUE;
+  return FALSE;
 }
 
 // Implements GApplication::startup.
@@ -154,5 +164,8 @@ MyApplication *my_application_new() {
   g_set_prgname(APPLICATION_ID);
 
   return MY_APPLICATION(g_object_new(
-      my_application_get_type(), "application-id", APPLICATION_ID, nullptr));
+      my_application_get_type(), "application-id", APPLICATION_ID, "flags",
+      static_cast<GApplicationFlags>(G_APPLICATION_HANDLES_COMMAND_LINE |
+                                     G_APPLICATION_HANDLES_OPEN),
+      nullptr));
 }

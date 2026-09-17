@@ -2,23 +2,15 @@
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
 
+#include "app_links/app_links_plugin_c_api.h"
 #include "flutter_window.h"
 #include "utils.h"
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
-  HWND hwnd = ::FindWindow(L"FLUTTER_RUNNER_WIN32_WINDOW", L"PiliPlusX");
-  if (hwnd != NULL) {
-    // Restore the window if it's minimized
-    if (::IsIconic(hwnd)) {
-      ::ShowWindow(hwnd, SW_RESTORE);
-    } else {
-      ::ShowWindow(hwnd, SW_NORMAL);
-    }
-    ::SetForegroundWindow(hwnd);
-    // Bring window to top and activate it
-    ::SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-    ::SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+  // Single instance + forward the app link / activate the existing window
+  // (app_links C API matches by window class + executable path).
+  if (SendAppLinkToInstance()) {
     return EXIT_SUCCESS;
   }
 

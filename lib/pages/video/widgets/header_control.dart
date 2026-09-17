@@ -63,7 +63,7 @@ import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show compute;
+import 'package:flutter/foundation.dart' show compute, kDebugMode;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
@@ -261,15 +261,9 @@ class HeaderControl extends StatefulWidget {
             final filter = ctr.filters;
             if (filter.dmUid.add(extra.mid)) {
               filter.count++;
-              GStorage.localCache.put(
-                LocalCacheKey.danmakuFilterRules,
-                filter,
-              );
+              GStorage.localCache.put(LocalCacheKey.danmakuFilterRules, filter);
             }
-            DanmakuFilterHttp.danmakuFilterAdd(
-              filter: extra.mid,
-              type: 2,
-            );
+            DanmakuFilterHttp.danmakuFilterAdd(filter: extra.mid, type: 2);
           }
           return DanmakuHttp.danmakuReport(
             reason: reasonType,
@@ -1811,18 +1805,11 @@ class HeaderControlState extends State<HeaderControl>
     const btnHeight = 34.0;
     const btnStyle = ButtonStyle(padding: WidgetStatePropertyAll(.zero));
 
-    return AppBar(
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      backgroundColor: Colors.transparent,
-      foregroundColor: Colors.white,
-      primary: false,
-      automaticallyImplyLeading: false,
-      toolbarHeight: showFSActionItem ? 112 : null,
-      flexibleSpace: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Padding(
+      padding: const .symmetric(vertical: 12),
+      child: Column(
+        mainAxisSize: .min,
         children: [
-          const SizedBox(height: 11),
           Row(
             children: [
               SizedBox(
@@ -1916,7 +1903,7 @@ class HeaderControlState extends State<HeaderControl>
                     ),
                   ),
                 ],
-                if (plPlayerController.enableSponsorBlock)
+                if (kDebugMode || plPlayerController.enableSponsorBlock)
                   SizedBox(
                     width: btnWidth,
                     height: btnHeight,
@@ -2057,8 +2044,8 @@ class HeaderControlState extends State<HeaderControl>
           ),
           if (showFSActionItem)
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: .end,
+              crossAxisAlignment: .start,
               children: [
                 SizedBox(
                   width: btnWidth,

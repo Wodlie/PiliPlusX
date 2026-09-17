@@ -62,7 +62,8 @@ abstract final class SearchHttp {
     String? gaiaVtoken,
     required ValueChanged<String> onSuccess,
   }) async {
-    String api = Api.searchByType;
+    // 各搜索类型对应的接口（`综合` 走 searchAll）
+    String api = searchType.api;
     final gaiaFields = RequestIdentityAdapter.preserveGaiaFields(
       gaiaVtoken: gaiaVtoken,
     );
@@ -113,30 +114,18 @@ abstract final class SearchHttp {
           RequestUtils.validate(vVoucher, onSuccess);
           return const Error('触发风控');
         }
-        dynamic data;
         try {
-          switch (searchType) {
-            case SearchType.video:
-              data = SearchVideoData.fromJson(dataData);
-              break;
-            case SearchType.live_room:
-              data = SearchLiveData.fromJson(dataData);
-              break;
-            case SearchType.bili_user:
-              data = SearchUserData.fromJson(dataData);
-              break;
-            case SearchType.media_bangumi ||
-                SearchType.media_ft ||
-                SearchType.media_hk_bangumi:
-              data = SearchPgcData.fromJson(dataData);
-              break;
-            case SearchType.article:
-              data = SearchArticleData.fromJson(dataData);
-              break;
-            // default:
-            //   break;
-          }
-          return Success(data);
+          return Success(
+            switch (searchType) {
+              .all => SearchVideoData.fromSearchAll(dataData),
+              .video => SearchVideoData.fromJson(dataData),
+              .media_bangumi || .media_ft || .media_hk_bangumi =>
+                SearchPgcData.fromJson(dataData),
+              .live_room => SearchLiveData.fromJson(dataData),
+              .bili_user => SearchUserData.fromJson(dataData),
+              .article => SearchArticleData.fromJson(dataData),
+            } as R,
+          );
         } catch (e, s) {
           return Error('$e\n\n$s');
         }
@@ -145,49 +134,6 @@ abstract final class SearchHttp {
       }
     } else {
       return const Error('服务器错误');
-    }
-  }
-
-  @pragma('vm:notify-debugger-on-exception')
-  static Future<LoadingState<SearchAllData>> searchAll({
-    required String keyword,
-    required page,
-    String? order,
-    int? duration,
-    int? tids,
-    int? orderSort,
-    int? userType,
-    int? categoryId,
-    int? pubBegin,
-    int? pubEnd,
-  }) async {
-    final params = await WbiSign.makSign({
-      'keyword': keyword,
-      'page': page,
-      if (order != null && order.isNotEmpty) 'order': order,
-      'duration': ?duration,
-      'tids': ?tids,
-      'order_sort': ?orderSort,
-      'user_type': ?userType,
-      'category_id': ?categoryId,
-      'pubtime_begin_s': ?pubBegin,
-      'pubtime_end_s': ?pubEnd,
-    });
-    final res = await Request().get(
-      Api.searchAll,
-      queryParameters: params,
-    );
-    if (res.data is! Map) {
-      return const Error('没有相关数据');
-    }
-    if (res.data['code'] == 0) {
-      try {
-        return Success(SearchAllData.fromJson(res.data['data']));
-      } catch (e, s) {
-        return Error('$e\n\n$s');
-      }
-    } else {
-      return Error(res.data['message'] ?? '没有相关数据');
     }
   }
 
