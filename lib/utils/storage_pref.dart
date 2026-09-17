@@ -1251,6 +1251,8 @@ abstract final class Pref {
   static String? get saveScreenshotPath =>
       _setting.get(SettingBoxKey.saveScreenshotPath);
 
+  static String? get imageSavePath => _setting.get(SettingBoxKey.imageSavePath);
+
   static String? get liveCdnUrl => _setting.get(SettingBoxKey.liveCdnUrl);
 
   static bool get showBatteryLevel => _setting.get(

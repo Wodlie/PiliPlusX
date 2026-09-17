@@ -284,8 +284,8 @@ class _ImageGridViewState extends State<ImageGridView> {
             height: 42,
             onTap: () => PageUtils.launchURL(item.url),
             child: const Text('网页打开', style: TextStyle(fontSize: 14)),
-          )
-        else if (widget.picArr.length > 1)
+          ),
+        if (widget.picArr.length > 1)
           PopupMenuItem(
             height: 42,
             onTap: () => ImageUtils.downloadImg(
