@@ -50,7 +50,7 @@ import 'package:protobuf/protobuf.dart';
 
 /// view层根据 status 判断渲染逻辑
 abstract final class VideoHttp {
-  static const _recommendProfile = AppDeviceProfiles.androidHd;
+  static const _recommendProfile = AppDeviceProfiles.androidAppRcmd;
 
   static RegExp zoneRegExp = RegExp(Pref.banWordForZone, caseSensitive: false);
   static bool enableFilter = zoneRegExp.pattern.isNotEmpty;
@@ -62,18 +62,18 @@ abstract final class VideoHttp {
     'build': _recommendProfile.build,
     'c_locale': 'zh_CN',
     'channel': _recommendProfile.channel,
-    'column': 4,
+    'column': 2,
     'device': _recommendProfile.requestDevice,
     'device_name': _recommendProfile.deviceName,
     'device_type': 0,
     'disable_rcmd': 0,
-    'flush': 5,
+    'flush': 8,
     'fnval': 976,
     'fnver': 0,
     'force_host': 2,
     'fourk': 1,
-    'guidance': 0,
-    'https_url_req': 0,
+    'guidance': 1,
+    'https_url_req': 1,
     'idx': freshIdx,
     'mobi_app': _recommendProfile.mobiApp,
     'network': 'wifi',

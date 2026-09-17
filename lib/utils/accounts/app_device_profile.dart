@@ -261,6 +261,23 @@ abstract final class AppDeviceProfiles {
     userAgent: Constants.userAgentApp,
   );
 
+  /// 首页 App 推荐流使用的客户端指纹。
+  ///
+  /// 该接口上游使用 `mobi_app=android_i` + `device=phone` 的当前客户端参数
+  /// （build 8430300），与全局 `androidHd`/`androidApp` 档案都不同；单独建档
+  /// 以保证参数与 header 仍由同一档案派生（设备身份自洽）。
+  static const AppRequestProfile androidAppRcmd = AppRequestProfile(
+    deviceProfile: _sharedDevice,
+    mobiApp: 'android_i',
+    platform: 'android',
+    channel: 'master',
+    build: 8430300,
+    versionName: '8.43.0',
+    statistics: Constants.statisticsApp,
+    requestDevice: 'phone',
+    userAgent: Constants.userAgentApp,
+  );
+
   static AppDeviceProfile get defaultDeviceProfile =>
       defaultDeviceProfileForOwner('guest');
 
