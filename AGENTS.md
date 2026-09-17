@@ -100,13 +100,13 @@ lib/
 - `flutter_html` from `bggRGjQaUbCoE/flutter_html` (ref `dev`) — git dep, not pub.dev.
 - `material_ui` ^1.0.0, `cupertino_ui` ^1.0.0, `material_new_shapes` ^1.0.0 — decoupled Material/Cupertino packages.
 - `file_picker` ^12.0.0 (new API: `path.toFilePath()`, `pickFiles`).
-- `dependency_overrides` is critical: 7 `media_kit*` packages overridden with `bggRGjQaUbCoE/media-kit` fork (`version_1.2.5`); `flutter_inappwebview_android/_windows` and `cached_network_image_ce` also overridden.
+- `dependency_overrides` is critical: 7 `media_kit*` packages overridden with **`My-Responsitories/media-kit`** fork (ref `native`, since upstream 2.1.4 — was `bggRGjQaUbCoE/media-kit` @ `version_1.2.5`); `flutter_inappwebview_android/_windows` and `cached_network_image_ce` also overridden.
 - **Always check `dependency_overrides` before assuming package behavior.**
 
 ## COMMANDS
 
 ```bash
-# Dev (requires Flutter 3.47.2 per .fvmrc / pubspec environment:)
+# Dev (requires Flutter 3.47.4 per .fvmrc / pubspec environment:)
 flutter run
 # Build runner (after model edits)
 dart run build_runner build --delete-conflicting-outputs
@@ -121,7 +121,7 @@ flutter analyze
 
 ## NOTES
 
-- Flutter **3.47.2** pinned in both `.fvmrc` and `pubspec.yaml` — keep in sync. Dart SDK `>=3.13.0`.
+- Flutter **3.47.4** pinned in both `.fvmrc` and `pubspec.yaml` — keep in sync. Dart SDK `>=3.13.0`.
 - Fonts: custom font page (`lib/utils/font_utils.dart`, `pages/setting/pages/font_setting.dart`, route `/fontSetting`) + fork's `Pref.useSystemFont` → `HarmonyOS_Sans` fallback. `Pref.appFontWeight` returns a `FontWeight` (stored as `SettingBoxKey.appFontWeightV2`; v1 int key is migrated on read). `Pref.appFont` was removed — use `FontUtils.appFont`/`fontFamily`.
 - Linux desktop webview: `desktop_webview_window` (Predidit/linux_webview_window) + `lib/utils/linux_cookie_manager.dart`; `WebviewPage.openLinux` mirrors the mobile JS bridge hooks.
 - Package pubspec name is `PiliPlus` (not `PiliPlusX`) — imports use `package:PiliPlus/...`. Fork branding lives in CI/launcher names (`PiliPlusX`, `com.Wodlie.PiliPlusX`). CI details: see `.github/workflows/AGENTS.md`.
@@ -129,7 +129,8 @@ flutter analyze
 - `ScaledWidgetsFlutterBinding` replaces `WidgetsFlutterBinding` for UI scaling.
 - `reverse-output/` contains IDA reverse-engineering artifacts against the official Bilibili APK; `.sisyphus/` holds AI-assisted dev artifacts.
 - Sync upstream via merge (`git merge upstream/main`) then reconcile: keep fork workflows/README/version, preserve fork-only files, apply material_ui import style to any still-SDK file.
-- After merging, regenerate `pubspec.lock` with the pinned SDK (`flutter pub get`) — never hand-merge it. Git deps resolve to the commits already in the pub cache (`%LOCALAPPDATA%\Pub\Cache\git\cache\<pkg>-<sha1(url)>`); if upstream's lock pins a newer commit that fork code now needs, fetch it into that cache dir before `pub get`.
+- After merging, regenerate `pubspec.lock` with the pinned SDK (`flutter pub get`) — never hand-merge it. Git deps resolve to the commits already in the pub cache (`%LOCALAPPDATA%\Pub\Cache\git\cache\<pkg>-<sha1(url)>`); if upstream's lock pins a newer commit that fork code now needs, fetch it into that cache dir before `pub get`. When local resolution isn't practical (SDK bump + new git forks), seed the lock from upstream and let CI's `flutter pub get` (in `patch.ps1`) refresh it — the committed lock may then lag one resolution, which is harmless because pub re-resolves the missing/fork-only entries at build time.
 - Verify a sync with the **patched** SDK: `lib/scripts/patch.ps1 windows` (needs `GITHUB_WORKSPACE`/`FLUTTER_ROOT`; it also rewrites global git identity, so restore it) then `flutter analyze` — fork code legitimately calls patch-added SDK APIs. Compare against a pre-merge worktree baseline instead of expecting a clean report.
+- Recurring conflict — device identity vs upstream API params: `lib/http/video.dart` `rcmdVideoListApp` and every endpoint whose params come from `AppDeviceProfiles` (`lib/utils/accounts/app_device_profile.dart`). Params **and** identity headers are derived from one profile, so never paste upstream's literal params next to a different profile (that mixes fingerprints). Add/point at a profile instead — e.g. the rcmd feed uses `AppDeviceProfiles.androidAppRcmd` (`android_i` / `phone` / build 8430300 / `statisticsApp`), matching upstream's current client. `androidHd` is the fork's global app/gRPC baseline (`http/init.dart`, `grpc_headers.dart`) — don't repoint it.
 - Known pre-existing analyzer noise (not a merge regression): `lib/common/widgets/context_menu/reply_menu_helper.dart` is a `part of` `reply_item_grpc.dart`, but that library no longer declares the `part` (the fork replaced the emote copy menu) — ~40 errors. Either delete the orphan or restore the `part` directive when touching the reply menu.
 - Pages have **no tests** (117 pages, zero coverage), but `test/` has ~17 unit tests covering fork-only services (identity/BUVID, phash image-block, reply dedup, video summary). No integration tests.
