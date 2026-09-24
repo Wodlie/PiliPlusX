@@ -1,6 +1,6 @@
 # PROJECT KNOWLEDGE BASE
 
-**Updated:** 2026-09 · **Commit:** `a32e4361` · **Branch:** `dev`
+**Updated:** 2026-09 · **Commit:** `bb5aa2f3` · **Branch:** `dev`
 
 ## OVERVIEW
 
@@ -106,7 +106,7 @@ lib/
 ## COMMANDS
 
 ```bash
-# Dev (requires Flutter 3.47.4 per .fvmrc / pubspec environment:)
+# Dev (requires Flutter 3.47.5 per .fvmrc / pubspec environment:)
 flutter run
 # Build runner (after model edits)
 dart run build_runner build --delete-conflicting-outputs
@@ -121,9 +121,9 @@ flutter analyze
 
 ## NOTES
 
-- Flutter **3.47.4** pinned in both `.fvmrc` and `pubspec.yaml` — keep in sync. Dart SDK `>=3.13.0`.
+- Flutter **3.47.5** pinned in both `.fvmrc` and `pubspec.yaml` — keep in sync. Dart SDK `>=3.13.0`.
 - Fonts: custom font page (`lib/utils/font_utils.dart`, `pages/setting/pages/font_setting.dart`, route `/fontSetting`) + fork's `Pref.useSystemFont` → `HarmonyOS_Sans` fallback. `Pref.appFontWeight` returns a `FontWeight` (stored as `SettingBoxKey.appFontWeightV2`; v1 int key is migrated on read). `Pref.appFont` was removed — use `FontUtils.appFont`/`fontFamily`.
-- Linux desktop webview: `desktop_webview_window` (Predidit/linux_webview_window) + `lib/utils/linux_cookie_manager.dart`; `WebviewPage.openLinux` mirrors the mobile JS bridge hooks.
+- Linux desktop webview is an **in-tree plugin** (upstream 2.1.4 follow-up): `linux/runner/plugins/linux_webview_plugin.cc` + `lib/plugin/linux_webview.dart` (`LinuxWebviewPlugin`/`LinuxWebviewController`). The `desktop_webview_window` dependency is gone — don't reintroduce it. `WebviewPage` drives the embedded controller and still uses `lib/utils/linux_cookie_manager.dart` to inject Bili cookies.
 - Package pubspec name is `PiliPlus` (not `PiliPlusX`) — imports use `package:PiliPlus/...`. Fork branding lives in CI/launcher names (`PiliPlusX`, `com.Wodlie.PiliPlusX`). CI details: see `.github/workflows/AGENTS.md`.
 - SDK patching is two-part (CI only, `lib/scripts/patch.ps1`): 27 `.patch` files patch the Flutter SDK in `$FLUTTER_ROOT`, and `lib/scripts/material/*.patch` (10 files) patch the **material_ui package in the pub cache** (after `flutter pub get`, under `%LOCALAPPDATA%/Pub/Cache` / `~/.pub-cache`). Keep fork's HarmonyOS font paths intact — upstream removed them.
 - `ScaledWidgetsFlutterBinding` replaces `WidgetsFlutterBinding` for UI scaling.
