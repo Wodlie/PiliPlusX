@@ -190,7 +190,36 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                 }
               }
               if (index == response.length) {
-                _videoReplyController.onLoadMore();
+                if (_videoReplyController.canShowFoldEntry) {
+                    return InkWell(
+                      onTap: _videoReplyController.loadFoldedReplies,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                _videoReplyController.foldText,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.keyboard_arrow_right,
+                              size: 16,
+                              color: colorScheme.primary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  _videoReplyController.onLoadMore();
                 return Container(
                   height: 125,
                   alignment: .center,
@@ -226,6 +255,7 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                       ? translated
                       : null,
                   isTranslating: translated != null && translated.isEmpty,
+                  isOfficialFolded: _videoReplyController.foldedIds.contains(rpid.toInt()),
                   onTranslate: () =>
                       _videoReplyController.translateReply(replyItem),
                 );

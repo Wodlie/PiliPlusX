@@ -1,6 +1,7 @@
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart';
 import 'package:PiliPlus/grpc/bilibili/pagination.pb.dart';
+import 'package:PiliPlus/grpc/fold_list_req_ext.dart';
 import 'package:PiliPlus/grpc/grpc_req.dart';
 import 'package:PiliPlus/grpc/url.dart';
 import 'package:PiliPlus/http/loading_state.dart';
@@ -500,6 +501,38 @@ abstract final class ReplyGrpc {
     return res;
   }
 
+  /// 官方折叠的二级评论（Reply/FoldList）。
+  /// 游标来自 DetailListReply.mixed_cards[11].fold.fold_pagination.offset
+  /// （见 fold_list_req_ext.dart 的 decodeFoldCardFromUnknown）。
+  static Future<LoadingState<FoldListResp>> foldList({
+    int type = 1,
+    required int oid,
+    required String offset,
+    String extra = '',
+  }) async {
+    final res = await GrpcReq.request(
+      GrpcUrl.foldList,
+      FoldListReq(
+        oid: Int64(oid),
+        type: Int64(type),
+        extra: extra,
+        pagination: FeedPagination(offset: offset),
+      ),
+      FoldListResp.fromBuffer,
+    );
+    if (showBlockedReplyBanner) {
+      final data = res.dataOrNull;
+      if (data != null) {
+        for (final reply in data.replies) {
+          final reason = checkBlockReason(reply);
+          if (reason != null) _blockedReasons[reply.id.toInt()] = reason;
+        }
+      }
+    } else {
+      res.dataOrNull?.replies.removeWhere(needRemoveGrpc);
+    }
+    return res;
+  }
   static Future<LoadingState<SearchItemReply>> searchItem({
     required int page,
     required SearchItemType itemType,
@@ -538,3 +571,4 @@ abstract final class ReplyGrpc {
     );
   }
 }
+

@@ -130,6 +130,7 @@ abstract final class SettingBoxKey {
       antiGoodsDyn = 'antiGoodsDyn',
       antiGoodsReply = 'antiGoodsReply',
       showBlockedReplyBanner = 'showBlockedReplyBanner',
+      autoShowFoldedReply = 'autoShowFoldedReply',
       expandDynLivePanel = 'expandDynLivePanel',
       springDescription = 'springDescription',
       enableHttp2 = 'enableHttp2',
@@ -320,3 +321,4 @@ abstract final class VideoBoxKey {
       speedsList = 'speedsList',
       cacheVideoFit = 'cacheVideoFit';
 }
+

@@ -52,6 +52,13 @@ List<SettingsModel> get blockFilterSettings => [
         : '屏蔽低于 lv${ReplyGrpc.minLevelForReply} 的评论',
     onTap: _showReplyMinLevelDialog,
   ),
+  SwitchModel(
+    title: '自动展示官方折叠评论',
+    subtitle: '开启后自动按当前排序插入 B 站官方折叠的评论并标记来源；关闭则在底部显示入口',
+    leading: const Icon(Icons.unfold_more_outlined),
+    setKey: SettingBoxKey.autoShowFoldedReply,
+    defaultVal: true,
+  ),
   SplitModel(
     normalModel: const NormalModel.split(
       title: '@评论过滤',
@@ -126,3 +133,4 @@ List<SettingsModel> get blockFilterSettings => [
     },
   ),
 ];
+

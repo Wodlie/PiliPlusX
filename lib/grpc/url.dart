@@ -23,6 +23,7 @@ abstract final class GrpcUrl {
   static const mainList = '$reply/MainList';
   static const detailList = '$reply/DetailList';
   static const dialogList = '$reply/DialogList';
+  static const foldList = '$reply/FoldList';
   // static const replyInfo = '$reply/ReplyInfo';
   static const searchItem = '$reply/SearchItem';
   static const translateReply = '$reply/TranslateReply';
@@ -64,3 +65,6 @@ abstract final class GrpcUrl {
   static const space = '/bilibili.app.interface.v1.Space';
   static const searchArchive = '$space/SearchArchive';
 }
+
+
+

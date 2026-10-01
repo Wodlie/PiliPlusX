@@ -566,6 +566,10 @@ abstract final class Pref {
   static bool get showBlockedReplyBanner =>
       _setting.get(SettingBoxKey.showBlockedReplyBanner, defaultValue: true);
 
+  /// 自动把 B 站官方折叠的二级评论按当前排序插入列表并标记来源（默认开启）。
+  static bool get autoShowFoldedReply =>
+      _setting.get(SettingBoxKey.autoShowFoldedReply, defaultValue: true);
+
   static bool get expandDynLivePanel =>
       _setting.get(SettingBoxKey.expandDynLivePanel, defaultValue: false);
 
@@ -1352,3 +1356,4 @@ abstract final class Pref {
   static bool get enableEmoteTooltip =>
       _setting.get(SettingBoxKey.enableEmoteTooltip, defaultValue: false);
 }
+

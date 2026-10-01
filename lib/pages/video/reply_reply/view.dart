@@ -325,7 +325,36 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
       Success(:final response!) => SuperSliverList.builder(
         listController: _controller.listController,
         itemBuilder: (context, index) {
-          if (index == response.length) {
+          if (index == response.length && _controller.canShowFoldEntry) {
+            final foldText = _controller.foldCard.value?.bottomText;
+            return InkWell(
+              onTap: _controller.loadFoldedReplies,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      foldText != null && foldText.isNotEmpty
+                          ? foldText
+                          : '显示被折叠评论',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                    Icon(
+                      Icons.keyboard_arrow_right,
+                      size: 16,
+                      color: colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          if (index ==
+              response.length + (_controller.canShowFoldEntry ? 1 : 0)) {
             _controller.onLoadMore();
             return Container(
               height: 125,
@@ -356,7 +385,7 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
           }
           return child;
         },
-        itemCount: response.length + 1,
+        itemCount: response.length + 1 + (_controller.canShowFoldEntry ? 1 : 0),
       ),
       Error(:final errMsg) => HttpError(
         errMsg: errMsg,
@@ -365,10 +394,30 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
     };
   }
 
+  Widget _foldedMark(BuildContext context) {
+    final color = Theme.of(context).disabledColor;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(13, 6, 13, 0),
+      child: Row(
+        children: [
+          Icon(Icons.unfold_less, size: 16, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '此评论已被 B 站官方折叠',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, color: color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   Widget _replyItem(BuildContext context, ReplyInfo replyItem, int index) {
     final rpid = replyItem.id;
     final translated = _controller.translatedReplies[rpid];
-    return ReplyItemGrpc(
+    final item = ReplyItemGrpc(
       replyItem: replyItem,
       replyLevel: isDialogue ? 3 : 2,
       onReply: (replyItem) => _controller.onReply(replyItem, index: index),
@@ -397,5 +446,11 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
       isTranslating: translated != null && translated.isEmpty,
       onTranslate: () => _controller.translateReply(replyItem),
     );
+    if (!_controller.foldedIds.contains(replyItem.id.toInt())) return item;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [_foldedMark(context), item],
+    );
   }
 }
+

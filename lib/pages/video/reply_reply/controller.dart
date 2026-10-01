@@ -1,7 +1,9 @@
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
     show ReplyInfo, DetailListReply, Mode;
 import 'package:PiliPlus/grpc/reply.dart';
+import 'package:PiliPlus/grpc/fold_list_req_ext.dart';
 import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/models/common/reply/reply_sort_type.dart';
 import 'package:PiliPlus/pages/common/publish/publish_route.dart';
 import 'package:PiliPlus/pages/common/reply_controller.dart';
 import 'package:PiliPlus/pages/video/reply_new/view.dart';
@@ -76,6 +78,14 @@ class VideoReplyReplyController extends ReplyController
     // reply2Reply // isDialogue.not
     if (data is DetailListReply) {
       count.value = data.root.count.toInt();
+      // 官方折叠卡（mixed_cards[11]）：拿到则记下，开启设置时自动把折叠回复并入列表
+      final fold = decodeFoldCardFromUnknown(data);
+      if (fold != null && fold.foldPagination.offset.isNotEmpty) {
+        foldCard.value = fold;
+        if (Pref.autoShowFoldedReply && !foldedLoaded) {
+          loadFoldedReplies();
+        }
+      }
       if (isRefresh && !hasRoot) {
         firstFloor.value ??= data.root;
       }
@@ -88,6 +98,58 @@ class VideoReplyReplyController extends ReplyController
     return false;
   }
 
+  /// 官方折叠卡（来自 DetailListReply.mixed_cards[11]）。
+  final Rxn<FoldCard> foldCard = Rxn<FoldCard>();
+
+  /// 由官方折叠渠道取回、已并入列表的评论 id（用于"已被 B 站折叠"标记）。
+  final foldedIds = <int>{};
+
+  bool foldedLoaded = false;
+
+  /// 设置关闭时，是否应在列表底部展示「显示被折叠评论 >」入口。
+  bool get canShowFoldEntry =>
+      !Pref.autoShowFoldedReply && foldCard.value != null && !foldedLoaded;
+
+  /// 用折叠卡里的游标调 Reply/FoldList，把官方折叠的回复并入列表并按当前排序重排。
+  Future<void> loadFoldedReplies() async {
+    final card = foldCard.value;
+    if (card == null || foldedLoaded) return;
+    foldedLoaded = true;
+    var offset = card.foldPagination.offset;
+    for (var page = 0; page < 3 && offset.isNotEmpty; page++) {
+      final res = await ReplyGrpc.foldList(
+        type: replyType,
+        oid: oid,
+        offset: offset,
+      );
+      if (res case Success(:final response)) {
+        final existing = loadingState.value.dataOrNull;
+        if (existing != null && response.replies.isNotEmpty) {
+          final seen = existing.map((e) => e.id).toSet();
+          final added = response.replies.where((e) => seen.add(e.id)).toList();
+          if (added.isNotEmpty) {
+            foldedIds.addAll(added.map((e) => e.id.toInt()));
+            existing.addAll(added);
+            sortByCurrentOrder(existing);
+            loadingState.refresh();
+          }
+        }
+        offset = response.paginationReply.nextOffset;
+      } else {
+        res.toast();
+        break;
+      }
+    }
+  }
+
+  /// 与当前排序口径保持一致：热度按点赞倒序，时间按发布时间升序。
+  void sortByCurrentOrder(List<ReplyInfo> list) {
+    if (sortType.value == ReplySortType.hot) {
+      list.sort((a, b) => b.like.compareTo(a.like));
+    } else {
+      list.sort((a, b) => a.ctime.compareTo(b.ctime));
+    }
+  }
   bool setIndexById(Int64 id64, [List<ReplyInfo>? replies]) {
     final index = (replies ?? loadingState.value.data!).indexWhere(
       (item) => item.id == id64,
@@ -209,3 +271,4 @@ class VideoReplyReplyController extends ReplyController
     super.dispose();
   }
 }
+

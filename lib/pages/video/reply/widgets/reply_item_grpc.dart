@@ -111,6 +111,7 @@ class ReplyItemGrpc extends StatefulWidget {
     required this.replyLevel,
     this.replyReply,
     this.needDivider = true,
+    this.isOfficialFolded = false,
     this.onReply,
     this.onDelete,
     this.upMid,
@@ -128,6 +129,7 @@ class ReplyItemGrpc extends StatefulWidget {
   final ReplyInfo replyItem;
   final int replyLevel;
   final Function(ReplyInfo replyItem, int? rpid)? replyReply;
+  final bool isOfficialFolded;
   final bool needDivider;
   final ValueChanged<ReplyInfo>? onReply;
   final Function(ReplyInfo replyItem, int? subIndex)? onDelete;
@@ -223,7 +225,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         ],
       );
     }
-    return Material(
+    final itemWidget = Material(
       type: MaterialType.transparency,
       child: InkWell(
         onTap: () => widget.replyReply?.call(widget.replyItem, null),
@@ -231,6 +233,31 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         onSecondaryTap: PlatformUtils.isMobile ? null : showMore,
         child: child,
       ),
+    );
+    if (!widget.isOfficialFolded) return itemWidget;
+    final markColor = Theme.of(context).disabledColor;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(13, 6, 13, 0),
+          child: Row(
+            children: [
+              Icon(Icons.unfold_less, size: 16, color: markColor),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '此评论已被 B 站官方折叠',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, color: markColor),
+                ),
+              ),
+            ],
+          ),
+        ),
+        itemWidget,
+      ],
     );
   }
 
