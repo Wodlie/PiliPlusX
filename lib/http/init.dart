@@ -13,7 +13,6 @@ import 'package:PiliPlus/http/user.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/account_manager/account_mgr.dart';
-import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/gaia_report.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
 import 'package:PiliPlus/utils/global_data.dart';
@@ -70,7 +69,10 @@ class Request {
       // ExClimbCongLing(自发上报):body 为 GaiaRiskReport 构造的
       // {"header":{...},"encrypt_payload":<AES-CBC密文>};query 按官方旧栈
       // 注入公共参数并做 APP 签名。
-      const profile = AppDeviceProfiles.android;
+      //
+      // 用**账号绑定的**平台 + 设备（登录时确定），否则激活用的身份会与
+      // 该账号日常请求的身份不一致。
+      final profile = account.appRequestProfile;
       final query = <String, dynamic>{
         'platform': profile.platform,
         'mobi_app': profile.mobiApp,

@@ -29,7 +29,6 @@ import 'package:PiliPlus/models_new/video/video_relation/data.dart';
 import 'package:PiliPlus/models_new/video/video_shot/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
-import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
@@ -52,54 +51,57 @@ import 'package:protobuf/protobuf.dart';
 
 /// view层根据 status 判断渲染逻辑
 abstract final class VideoHttp {
-  static const _recommendProfile = AppDeviceProfiles.android;
-
   static RegExp zoneRegExp = RegExp(Pref.banWordForZone, caseSensitive: false);
   static bool enableFilter = zoneRegExp.pattern.isNotEmpty;
 
   @visibleForTesting
   static Map<String, dynamic> recommendAppQueryParameters({
     required int freshIdx,
-  }) => {
-    'build': _recommendProfile.build,
-    'c_locale': Constants.cLocale,
-    'channel': _recommendProfile.channel,
-    'column': 2,
-    'device': _recommendProfile.requestDevice,
-    'device_name': _recommendProfile.deviceName,
-    'device_type': 0,
-    'disable_rcmd': 0,
-    'flush': 8,
-    'fnval': 976,
-    'fnver': 0,
-    'force_host': 2,
-    'fourk': 1,
-    'guidance': 1,
-    'https_url_req': 1,
-    'idx': freshIdx,
-    'mobi_app': _recommendProfile.mobiApp,
-    'network': 'wifi',
-    'platform': _recommendProfile.platform,
-    'player_net': 1,
-    'pull': freshIdx == 0 ? 'true' : 'false',
-    'qn': 32,
-    'recsys_mode': 0,
-    's_locale': Constants.sLocale,
-    'splash_id': '',
-    'statistics': _recommendProfile.statistics,
-    'voice_balance': 0,
-  };
+    Account? account,
+  }) {
+    // 账号绑定的平台 + 设备（登录时确定）；未显式传入时用推荐流账号。
+    final profile = (account ?? Accounts.get(AccountType.recommend))
+        .appRequestProfile;
+    return {
+      'build': profile.build,
+      'c_locale': Constants.cLocale,
+      'channel': profile.channel,
+      'column': 2,
+      'device': profile.requestDevice,
+      'device_name': profile.deviceName,
+      'device_type': 0,
+      'disable_rcmd': 0,
+      'flush': 8,
+      'fnval': 976,
+      'fnver': 0,
+      'force_host': 2,
+      'fourk': 1,
+      'guidance': 1,
+      'https_url_req': 1,
+      'idx': freshIdx,
+      'mobi_app': profile.mobiApp,
+      'network': 'wifi',
+      'platform': profile.platform,
+      'player_net': 1,
+      'pull': freshIdx == 0 ? 'true' : 'false',
+      'qn': 32,
+      'recsys_mode': 0,
+      's_locale': Constants.sLocale,
+      'splash_id': '',
+      'statistics': profile.statistics,
+      'voice_balance': 0,
+    };
+  }
 
   @visibleForTesting
   static Map<String, String> recommendAppIdentityHeaders(Account account) {
+    final userAgent = account.appRequestProfile.userAgent;
     final identity = RequestIdentityAdapter.fromAccount(
       account: account,
-      userAgent: _recommendProfile.userAgent,
+      userAgent: userAgent,
     );
     return {
-      ...identity.appHeaders(
-        userAgent: _recommendProfile.userAgent,
-      ),
+      ...identity.appHeaders(userAgent: userAgent),
       ...identity.appIdentityHeaders,
     };
   }
@@ -152,7 +154,10 @@ abstract final class VideoHttp {
     required int freshIdx,
   }) async {
     final account = Accounts.get(AccountType.recommend);
-    final params = recommendAppQueryParameters(freshIdx: freshIdx);
+    final params = recommendAppQueryParameters(
+      freshIdx: freshIdx,
+      account: account,
+    );
     final res = await Request().get(
       Api.recommendListApp,
       queryParameters: params,

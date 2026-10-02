@@ -34,9 +34,6 @@ final class RequestIdentityAdapter {
     required String userAgent,
   }) {
     final snapshot = OwnerScopedIdentitySnapshot.fromAccount(account);
-    final storedDeviceProfile = account is LoginAccount
-        ? account.deviceProfile
-        : null;
     final derived = IdentityCoreGenerators.deriveProfile(
       owner: snapshot.owner,
       storedProfile: snapshot.profile,
@@ -47,7 +44,8 @@ final class RequestIdentityAdapter {
       isLogin: snapshot.isLogin,
       mid: snapshot.mid,
       derived: derived,
-      storedDeviceProfile: storedDeviceProfile,
+      // 账号绑定的平台 + 设备（登录时确定，之后一直沿用）。
+      boundProfile: account.appRequestProfile,
     );
   }
 
@@ -67,7 +65,7 @@ final class RequestIdentityAdapter {
       isLogin: false,
       mid: 0,
       derived: derived,
-      storedDeviceProfile: null,
+      boundProfile: null,
     );
   }
 
@@ -77,12 +75,11 @@ final class RequestIdentityAdapter {
     required bool isLogin,
     required int mid,
     required IdentityDerivedProfile derived,
-    required AppDeviceProfile? storedDeviceProfile,
+    required AppRequestProfile? boundProfile,
   }) {
-    final profile = AppDeviceProfiles.resolve(
-      ownerKey: ownerKey,
-      deviceProfile: storedDeviceProfile,
-    );
+    final profile =
+        boundProfile ??
+        AppDeviceProfiles.resolve(ownerKey: ownerKey, deviceProfile: null);
     return RequestIdentityAdapter._(
       ownerKey: ownerKey,
       buvid: buvid,

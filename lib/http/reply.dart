@@ -9,7 +9,6 @@ import 'package:PiliPlus/models_new/reply2reply/data.dart';
 import 'package:PiliPlus/models_new/reply_interaction/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
-import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -233,7 +232,7 @@ abstract final class ReplyHttp {
     // 避免硬编码 8430300 导致与账号伪装档案不一致。
     final adapter = RequestIdentityAdapter.fromAccount(
       account: account,
-      userAgent: AppDeviceProfiles.android.userAgent,
+      userAgent: account.appRequestProfile.userAgent,
     );
     final effectivePlatform = platform ?? adapter.profile.platform;
     final effectiveBuild = build ?? adapter.profile.build;

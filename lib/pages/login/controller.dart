@@ -728,19 +728,30 @@ class LoginPageController extends GetxController
         captchaData.token?.isNotEmpty == true;
   }
 
+  /// 登录成功后落库。
+  ///
+  /// 这里把**本次登录实际使用的「设备 + 平台」绑定到账号**：
+  /// - 设备取登录会话身份（[RequestIdentityAdapter.fromBuvid] 按 workflow 稳定选出的那台）；
+  /// - 平台取本次流程用的档案（[profile]，缺省 [_smsFlowProfile]，WhatsApp 走 `android_i`）。
+  ///
+  /// 绑定后该账号的所有请求（参数、UA、身份头、gRPC metadata）都走这一套，
+  /// 见 `Account.appRequestProfile`。
   Future<void> setAccount(
     Map tokenInfo,
     List cookieInfo, {
     RequestIdentityAdapter? identity,
+    AppRequestProfile? profile,
   }) async {
     final loginIdentity = identity ?? _loginSessionIdentity;
+    final boundProfile = profile ?? _smsFlowProfile;
     final account = LoginAccount(
       BiliCookieJar.fromList(cookieInfo),
       tokenInfo['access_token'],
       tokenInfo['refresh_token'],
       null,
       loginIdentity?.buvid,
-      loginIdentity?.profile.deviceProfile,
+      loginIdentity?.profile.deviceProfile ?? boundProfile.deviceProfile,
+      boundProfile.mobiApp,
     );
     await Future.wait([?account.onChange(), AnonymousAccount().delete()]);
     for (int i = 0; i < AccountType.values.length; i++) {

@@ -43,6 +43,25 @@ sealed class Account {
 
   String? get refresh => throw UnimplementedError();
 
+  /// 该账号绑定的平台档位（`mobi_app`）。
+  ///
+  /// 登录时确定（`LoginPage.setAccount`），之后该账号的所有请求都用它 ——
+  /// 参数里的 `mobi_app`/`build`/`statistics`、UA 与身份头全部同源。
+  /// 未登录 / 无账号时用国内基线。
+  String get boundMobiApp => AppDeviceProfiles.android.mobiApp;
+
+  /// 该账号绑定的设备档案（品牌/型号/系统版本）。同样是登录时确定。
+  AppDeviceProfile? get boundDeviceProfile => null;
+
+  /// 该账号的请求档案 = 绑定平台 + 绑定设备。
+  ///
+  /// 访客按 `ownerKey` 从设备池里稳定取一台；登录号用绑定值。
+  AppRequestProfile get appRequestProfile => AppDeviceProfiles.resolve(
+    ownerKey: 'guest',
+    deviceProfile: boundDeviceProfile,
+    base: AppDeviceProfiles.forMobiApp(boundMobiApp),
+  );
+
   const Account();
 }
 
@@ -68,6 +87,26 @@ class LoginAccount extends Account {
   @HiveField(5)
   final AppDeviceProfile? deviceProfile;
 
+  /// 登录时使用的平台档位（`mobi_app`）：`android`（国内）/ `android_i`（海外）。
+  ///
+  /// 与 [deviceProfile] 一起在登录成功时绑定；老记录没有这个字段，
+  /// 反序列化时回落国内基线。
+  @HiveField(6)
+  final String mobiApp;
+
+  @override
+  String get boundMobiApp => mobiApp;
+
+  @override
+  AppDeviceProfile? get boundDeviceProfile => deviceProfile;
+
+  @override
+  AppRequestProfile get appRequestProfile => AppDeviceProfiles.resolve(
+    ownerKey: 'account:$mid',
+    deviceProfile: deviceProfile,
+    base: AppDeviceProfiles.forMobiApp(mobiApp),
+  );
+
   /// Whether this account's BUVID was auto-generated because the stored Hive
   /// record lacked field 4 (old accounts created before per-account BUVID).
   /// When true, [Accounts.refresh] will persist this account back so the
@@ -90,7 +129,7 @@ class LoginAccount extends Account {
 
   @override
   Map<String, String> get grpcHeaders =>
-      GrpcHeaders.newHeaders(accessKey, buvid, deviceProfile, mid);
+      GrpcHeaders.newHeaders(accessKey, buvid, appRequestProfile, mid);
 
   @override
   late final String csrf =
@@ -118,6 +157,7 @@ class LoginAccount extends Account {
     'type': type.map((i) => i.index).toList(),
     'buvid': buvid,
     if (deviceProfile != null) 'deviceProfile': deviceProfile!.toJson(),
+    'mobiApp': mobiApp,
   };
 
   final String _midStr;
@@ -131,6 +171,7 @@ class LoginAccount extends Account {
     Set<AccountType>? type,
     String? buvid,
     AppDeviceProfile? deviceProfile,
+    String? mobiApp,
   ]) {
     return LoginAccount._resolve(
       cookieJar,
@@ -139,6 +180,7 @@ class LoginAccount extends Account {
       type: type,
       buvid: buvid,
       deviceProfile: deviceProfile,
+      mobiApp: mobiApp,
       persistResolvedDeviceProfile: true,
     );
   }
@@ -150,6 +192,7 @@ class LoginAccount extends Account {
     Set<AccountType>? type,
     String? buvid,
     AppDeviceProfile? deviceProfile,
+    String? mobiApp,
   ]) {
     return LoginAccount._resolve(
       cookieJar,
@@ -158,6 +201,7 @@ class LoginAccount extends Account {
       type: type,
       buvid: buvid,
       deviceProfile: deviceProfile,
+      mobiApp: mobiApp,
       persistResolvedDeviceProfile: false,
     );
   }
@@ -169,6 +213,7 @@ class LoginAccount extends Account {
     Set<AccountType>? type,
     String? buvid,
     required AppDeviceProfile? deviceProfile,
+    required String? mobiApp,
     required bool persistResolvedDeviceProfile,
   }) {
     final resolved = _resolveLoginAccountIdentity(cookieJar, buvid);
@@ -187,6 +232,7 @@ class LoginAccount extends Account {
       resolved.midStr,
       resolved.resolution.profile.buvid,
       resolvedDeviceProfile,
+      mobiApp ?? AppDeviceProfiles.android.mobiApp,
       resolved.resolution.source == IdentityPersistenceSource.generated ||
           resolved.resolution.source == IdentityPersistenceSource.legacy,
     );
@@ -200,6 +246,7 @@ class LoginAccount extends Account {
     this._midStr,
     this.buvid,
     this.deviceProfile,
+    this.mobiApp,
     this._needsBuvidPersist,
   ) {
     cookieJar.setBuvid3();
@@ -215,6 +262,7 @@ class LoginAccount extends Account {
       final Map deviceProfile => AppDeviceProfile.fromJson(deviceProfile),
       _ => null,
     },
+    json['mobiApp'] as String?,
   );
 
   LoginAccount get _persistedAccount => deviceProfile == null
@@ -226,6 +274,7 @@ class LoginAccount extends Account {
           _midStr,
           buvid,
           AppDeviceProfiles.defaultDeviceProfileForOwner('account:$mid'),
+          mobiApp,
           false,
         )
       : this;

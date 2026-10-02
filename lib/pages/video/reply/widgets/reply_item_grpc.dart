@@ -26,7 +26,6 @@ import 'package:PiliPlus/pages/save_panel/view.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/zan_grpc.dart';
 import 'package:PiliPlus/utils/accounts.dart';
-import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/danmaku_utils.dart';
@@ -1391,7 +1390,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                 final rpid = item.id;
                 final _reportProfile = RequestIdentityAdapter.fromAccount(
                   account: Accounts.reply,
-                  userAgent: AppDeviceProfiles.android.userAgent,
+                  userAgent: Accounts.reply.appRequestProfile.userAgent,
                 ).profile;
 
                 autoWrapReportDialog(

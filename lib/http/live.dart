@@ -34,7 +34,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 abstract final class LiveHttp {
-  static const _appProfile = AppDeviceProfiles.android;
+  /// 账号绑定的请求档案（平台 + 设备，登录时确定）。
+  static AppRequestProfile get _appProfile => recommend.appRequestProfile;
 
   static Account get recommend => Accounts.get(AccountType.recommend);
 
@@ -43,40 +44,42 @@ abstract final class LiveHttp {
     required Account account,
     required int pn,
     bool moduleSelect = false,
-  }) => {
-    'access_key': ?account.accessKey,
-    'channel': _appProfile.channel,
-    'actionKey': 'appkey',
-    'build': _appProfile.build,
-    'version': _appProfile.versionName,
-    'c_locale': Constants.cLocale,
-    'device': _appProfile.requestDevice,
-    'device_name': _appProfile.deviceName,
-    'device_type': 0,
-    'fnval': 912,
-    'disable_rcmd': 0,
-    'https_url_req': 1,
-    if (moduleSelect) 'module_select': 1,
-    'mobi_app': _appProfile.mobiApp,
-    'network': 'wifi',
-    'page': pn,
-    'platform': _appProfile.platform,
-    if (account.isLogin) 'relation_page': 1,
-    's_locale': Constants.sLocale,
-    'scale': 2,
-    'statistics': _appProfile.statistics,
-  };
+  }) {
+    // 账号绑定的平台 + 设备（登录时确定）。
+    final appProfile = account.appRequestProfile;
+    return {
+      'access_key': ?account.accessKey,
+      'channel': appProfile.channel,
+      'actionKey': 'appkey',
+      'build': appProfile.build,
+      'version': appProfile.versionName,
+      'c_locale': Constants.cLocale,
+      'device': appProfile.requestDevice,
+      'device_name': appProfile.deviceName,
+      'device_type': 0,
+      'fnval': 912,
+      'disable_rcmd': 0,
+      'https_url_req': 1,
+      if (moduleSelect) 'module_select': 1,
+      'mobi_app': appProfile.mobiApp,
+      'network': 'wifi',
+      'page': pn,
+      'platform': appProfile.platform,
+      if (account.isLogin) 'relation_page': 1,
+      's_locale': Constants.sLocale,
+      'scale': 2,
+      'statistics': appProfile.statistics,
+    };
+  }
 
-  @visibleForTesting
   static Map<String, String> appIdentityHeaders(Account account) {
+    final userAgent = account.appRequestProfile.userAgent;
     final identity = RequestIdentityAdapter.fromAccount(
       account: account,
-      userAgent: _appProfile.userAgent,
+      userAgent: userAgent,
     );
     return {
-      ...identity.appHeaders(
-        userAgent: _appProfile.userAgent,
-      ),
+      ...identity.appHeaders(userAgent: userAgent),
       ...identity.appIdentityHeaders,
     };
   }

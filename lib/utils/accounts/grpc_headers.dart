@@ -15,7 +15,8 @@ import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 
 abstract final class GrpcHeaders {
-  static const _profile = AppDeviceProfiles.android;
+  /// 无账号语境下的兜底档案（国内基线）。
+  static const _defaultProfile = AppDeviceProfiles.android;
 
   /// 所有 `x-bili-*-bin` 的统一编码。
   ///
@@ -33,9 +34,11 @@ abstract final class GrpcHeaders {
   /// `appkey` 是 **Fawkes 档位串**（`GFoundation.getFawkesAppKey()`），
   /// 不是签名 appkey、也不是 `mobi_app`：国内 arm64 包为 `android64`
   /// （真机抓包 + `tflite/a.java` 三档字面量 + `gripper/update/a.java` 的 64 规则）。
-  static String fawkes(String sessionId) => _bin(
+  ///
+  /// [profile] 传账号绑定档案（海外档为 `android_i`），缺省用国内基线。
+  static String fawkes(String sessionId, [AppRequestProfile? profile]) => _bin(
     FawkesReq(
-      appkey: _profile.fawkesAppKey,
+      appkey: (profile ?? _defaultProfile).fawkesAppKey,
       env: 'prod',
       sessionId: sessionId,
     ).writeToBuffer(),
@@ -63,22 +66,29 @@ abstract final class GrpcHeaders {
     ).writeToBuffer(),
   );
 
+  /// 构造 gRPC metadata。
+  ///
+  /// [accountProfile] 是**账号绑定的请求档案**（平台 + 设备，见
+  /// `Account.appRequestProfile`）：登录号传它，则该账号的设备档位在登录时
+  /// 定下后一直沿用。缺省回落到按 ownerKey 派生的默认档案。
   static Map<String, String> newHeaders([
     String? accessKey,
     String? buvid,
-    AppDeviceProfile? deviceProfile,
+    AppRequestProfile? accountProfile,
     int? mid,
   ]) {
     final identity = _resolveHeaderIdentity(
       accessKey: accessKey,
       buvid: buvid,
-      fallbackDeviceProfile: deviceProfile,
+      fallbackDeviceProfile: accountProfile?.deviceProfile,
     );
     final resolvedBuvid = identity.profile.buvid;
-    final profile = AppDeviceProfiles.resolve(
-      ownerKey: identity.profile.owner.key,
-      deviceProfile: deviceProfile ?? identity.deviceProfile,
-    );
+    final profile =
+        accountProfile ??
+        AppDeviceProfiles.resolve(
+          ownerKey: identity.profile.owner.key,
+          deviceProfile: identity.deviceProfile,
+        );
     return {
       'grpc-encoding': 'gzip',
       // 官方用 `grpc-accept-encoding`（Ktor 回退路径 = "gzip"，
@@ -129,7 +139,7 @@ abstract final class GrpcHeaders {
       // 见 Jc0/a.java line 48: metadata.put(aVar.e, runtimeHelper.restriction().toByteArray())
       'x-bili-restriction-bin': '',
       if (accessKey != null) 'authorization': 'identify_v1 $accessKey',
-      'x-bili-fawkes-req-bin': fawkes(identity.derived.sessionId),
+      'x-bili-fawkes-req-bin': fawkes(identity.derived.sessionId, profile),
       // 由 Sc0.a（Ticket 拦截器）总是接续 Aurora 处理之后无条件添加
       'x-bili-ticket': '',
       'x-bili-metadata-bin': _bin(

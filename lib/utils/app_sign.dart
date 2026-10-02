@@ -6,15 +6,17 @@ import 'package:crypto/crypto.dart';
 abstract final class AppSign {
   /// APP 签名：`md5(按键升序拼接的 query + appsec)`。
   ///
-  /// [appkey] / [appsec] 缺省取国家基线档案 [AppDeviceProfiles.android]；
-  /// 走海外版档案的请求必须显式传 `AppDeviceProfiles.androidIntl` 那一对，
-  /// 否则会出现「签名用国内 key、参数写 android_i」的身份错位。
+  /// 签名 key 必须与请求里的 `mobi_app` **同源**：未显式传 [appkey] 时按
+  /// `params['mobi_app']` 反查档案（账号可能绑定 `android_i`），否则回落国内基线。
+  /// 显式传 [appkey] 时仍以国内基线取 [appsec]（与原行为一致）。
   static void appSign(
     Map<String, dynamic> params, {
     String? appkey,
     String? appsec,
   }) {
-    const profile = AppDeviceProfiles.android;
+    final profile = appkey == null
+        ? AppDeviceProfiles.forMobiApp(params['mobi_app']?.toString())
+        : AppDeviceProfiles.android;
     params['appkey'] = appkey ?? profile.appKey;
     params['ts'] = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
     final sorted = params.entries.toList()

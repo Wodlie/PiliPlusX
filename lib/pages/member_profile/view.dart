@@ -1,4 +1,3 @@
-import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'dart:async';
 import 'dart:io' show File;
 
@@ -71,14 +70,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _getInfo() async {
+    // 账号绑定的平台 + 设备（登录时确定）。
+    final profile = Accounts.main.appRequestProfile;
     Map<String, String> data = {
-      'build': '${AppDeviceProfiles.android.build}',
+      'build': '${profile.build}',
       'c_locale': Constants.cLocale,
-      'channel': 'master',
-      'mobi_app': AppDeviceProfiles.android.mobiApp,
-      'platform': 'android',
+      'channel': profile.channel,
+      'mobi_app': profile.mobiApp,
+      'platform': profile.platform,
       's_locale': Constants.sLocale,
-      'statistics': Constants.statistics,
+      'statistics': profile.statistics,
     };
     Request()
         .get(
@@ -351,15 +352,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
       SmartDialog.showToast('请退出账号后重新登录');
       return;
     }
+    final profile = Accounts.main.appRequestProfile;
     final data = <String, String>{
       'access_key': accessKey,
-      'build': '${AppDeviceProfiles.android.build}',
+      'build': '${profile.build}',
       'c_locale': Constants.cLocale,
-      'channel': 'master',
-      'mobi_app': AppDeviceProfiles.android.mobiApp,
-      'platform': 'android',
+      'channel': profile.channel,
+      'mobi_app': profile.mobiApp,
+      'platform': profile.platform,
       's_locale': Constants.sLocale,
-      'statistics': Constants.statistics,
+      'statistics': profile.statistics,
       if (type == ProfileType.uname)
         'uname': _textController.text
       else if (type == ProfileType.sign)

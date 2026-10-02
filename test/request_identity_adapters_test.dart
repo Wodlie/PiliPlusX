@@ -280,31 +280,66 @@ void main() {
     expect(headers['x-bili-trace-id'], identity.traceId);
   });
 
-  test('video and live app params read shared device profiles', () {
-    const hdProfile = AppDeviceProfiles.android;
-    const appProfile = AppDeviceProfiles.android;
+  test('video and live app params come from the account profile', () {
+    // 访客：参数按 ownerKey 从设备池稳定取一台。
+    final guest = AnonymousAccount();
+    final guestProfile = guest.appRequestProfile;
 
-    final videoParams = VideoHttp.recommendAppQueryParameters(freshIdx: 7);
-    final liveParams = LiveHttp.liveFeedIndexQueryParameters(
-      account: AnonymousAccount(),
+    final guestVideoParams = VideoHttp.recommendAppQueryParameters(
+      freshIdx: 7,
+      account: guest,
+    );
+    final guestLiveParams = LiveHttp.liveFeedIndexQueryParameters(
+      account: guest,
       pn: 3,
     );
 
-    expect(videoParams['build'], hdProfile.build);
-    expect(videoParams['channel'], hdProfile.channel);
-    expect(videoParams['device'], hdProfile.requestDevice);
-    expect(videoParams['device_name'], hdProfile.deviceName);
-    expect(videoParams['mobi_app'], hdProfile.mobiApp);
-    expect(videoParams['platform'], hdProfile.platform);
-    expect(videoParams['statistics'], hdProfile.statistics);
+    expect(guestVideoParams['build'], guestProfile.build);
+    expect(guestVideoParams['channel'], guestProfile.channel);
+    expect(guestVideoParams['device'], guestProfile.requestDevice);
+    expect(guestVideoParams['device_name'], guestProfile.deviceName);
+    expect(guestVideoParams['mobi_app'], guestProfile.mobiApp);
+    expect(guestVideoParams['platform'], guestProfile.platform);
+    expect(guestVideoParams['statistics'], guestProfile.statistics);
 
-    expect(liveParams['build'], appProfile.build);
-    expect(liveParams['channel'], appProfile.channel);
-    expect(liveParams['device'], appProfile.requestDevice);
-    expect(liveParams['device_name'], appProfile.deviceName);
-    expect(liveParams['mobi_app'], appProfile.mobiApp);
-    expect(liveParams['platform'], appProfile.platform);
-    expect(liveParams['statistics'], appProfile.statistics);
+    expect(guestLiveParams['build'], guestProfile.build);
+    expect(guestLiveParams['device_name'], guestProfile.deviceName);
+    expect(guestLiveParams['mobi_app'], guestProfile.mobiApp);
+    expect(guestLiveParams['statistics'], guestProfile.statistics);
+
+    // 登录号：参数跟着**账号绑定的平台与设备**走（这里是海外档）。
+    final boundDevice = AppDeviceProfile(
+      brand: 'OnePlus',
+      model: 'PJZ110',
+      osver: '16',
+    );
+    final account = _createLoginAccount(
+      mid: 4321,
+      buvid: IdentityCoreGenerators.deriveBuvidFromSeed('adapters-4321'),
+      deviceProfile: boundDevice,
+      mobiApp: AppDeviceProfiles.androidIntl.mobiApp,
+    );
+
+    final videoParams = VideoHttp.recommendAppQueryParameters(
+      freshIdx: 7,
+      account: account,
+    );
+    final liveParams = LiveHttp.liveFeedIndexQueryParameters(
+      account: account,
+      pn: 3,
+    );
+
+    expect(videoParams['mobi_app'], 'android_i');
+    expect(videoParams['build'], AppDeviceProfiles.androidIntl.build);
+    expect(videoParams['statistics'], AppDeviceProfiles.androidIntl.statistics);
+    expect(videoParams['device_name'], 'OnePlusPJZ110');
+    expect(liveParams['mobi_app'], 'android_i');
+    expect(liveParams['device_name'], 'OnePlusPJZ110');
+
+    // 参数与身份头必须同源（否则就是「参数写 A、头写 B」的身份错位）。
+    final headers = VideoHttp.recommendAppIdentityHeaders(account);
+    expect(headers['app-key'], AppDeviceProfiles.androidIntl.appKey);
+    expect(headers['user-agent'], AppDeviceProfiles.androidIntl.userAgent);
   });
 }
 
@@ -313,6 +348,7 @@ LoginAccount _createLoginAccount({
   required String buvid,
   Set<AccountType>? type,
   AppDeviceProfile? deviceProfile,
+  String? mobiApp,
 }) {
   return LoginAccount(
     _createCookieJar(mid: mid),
@@ -321,6 +357,7 @@ LoginAccount _createLoginAccount({
     type,
     buvid,
     deviceProfile,
+    mobiApp,
   );
 }
 

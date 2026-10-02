@@ -21,13 +21,14 @@ class LoginAccountAdapter extends TypeAdapter<LoginAccount> {
       (fields[3] as List?)?.cast<AccountType>().toSet(),
       fields[4] as String?,
       fields[5] as AppDeviceProfile?,
+      fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, LoginAccount obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.cookieJar)
       ..writeByte(1)
@@ -39,7 +40,9 @@ class LoginAccountAdapter extends TypeAdapter<LoginAccount> {
       ..writeByte(4)
       ..write(obj.buvid)
       ..writeByte(5)
-      ..write(obj.deviceProfile);
+      ..write(obj.deviceProfile)
+      ..writeByte(6)
+      ..write(obj.mobiApp);
   }
 
   @override
