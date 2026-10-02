@@ -85,9 +85,18 @@ final class AppDeviceProfile {
     return normalized;
   }
 
-  String get deviceName => model;
+  /// 官方 `PassportCommParams.getDeviceName()`：
+  /// `androidx.camera.core.impl.i.a(Build.MANUFACTURER, Build.MODEL)`，
+  /// 而该辅助类的方法体就是 `return str + str2;` —— **厂商与型号裸拼、无分隔符**。
+  ///
+  /// 这里用**伪装档案**的 brand/model（不是真机 `Build.*`），
+  /// 既对齐服务端看到的形态，又不泄露真实设备。
+  String get deviceName => '$brand$model';
 
-  String get devicePlatform => 'Android$osver$model';
+  /// 官方 `PassportCommParams.getDevicePlatFrom()`：
+  /// `C.i.a("Android", Build.VERSION.RELEASE, Build.MANUFACTURER, Build.MODEL)`，
+  /// 同样是四串裸拼（`C/i.java` 方法体 `str + str2 + str3 + str4`）。
+  String get devicePlatform => 'Android$osver$brand$model';
 
   bool get hasGenericPlaceholderFields {
     final normalizedBrand = brand.trim().toLowerCase();
@@ -161,6 +170,10 @@ final class AppRequestProfile {
     required this.statistics,
     required this.requestDevice,
     required this.userAgent,
+    required this.appKey,
+    required this.appSec,
+    required this.appId,
+    required this.fawkesAppKey,
   });
 
   final AppDeviceProfile deviceProfile;
@@ -172,6 +185,25 @@ final class AppRequestProfile {
   final String statistics;
   final String requestDevice;
   final String userAgent;
+
+  /// 与 [mobiApp] 配套的 AppKey / AppSec。
+  ///
+  /// key 必须与 `mobi_app` 同源：服务端按 appkey 记账，混用会签名通过但身份错位。
+  final String appKey;
+  final String appSec;
+
+  /// neuronAppId，写进 `statistics` 的 `appId`，也是 gRPC `Device.appId`。
+  final int appId;
+
+  /// Fawkes 档位串 —— `GFoundation.getFawkesAppKey()`。
+  ///
+  /// 用途：gRPC `x-bili-fawkes-req-bin` 的 `appkey` 字段，以及官方 H5/离线容器
+  /// 请求头里的 `fawkes_key` / `app-key`。**不是**签名用的 appkey。
+  ///
+  /// 国内 arm64 包 = `android64`（真机抓包 + `tflite/a.java` 的
+  /// `android` / `android64` / `android_b` 三档字面量 + `gripper/update/a.java`
+  /// 的「fawkesAppKey == android 且 ABI 含 64 ⇒ 追加 "64"」规则，三源印证）。
+  final String fawkesAppKey;
 
   String get brand => deviceProfile.brand;
 
@@ -194,6 +226,10 @@ final class AppRequestProfile {
         statistics: statistics,
         requestDevice: requestDevice,
         userAgent: userAgent,
+        appKey: appKey,
+        appSec: appSec,
+        appId: appId,
+        fawkesAppKey: fawkesAppKey,
       );
 }
 
@@ -237,46 +273,64 @@ abstract final class AppDeviceProfiles {
     osver: '15',
   );
 
-  static const AppRequestProfile androidHd = AppRequestProfile(
-    deviceProfile: _sharedDevice,
-    mobiApp: 'android_hd',
-    platform: 'android',
-    channel: 'master',
-    build: 2001100,
-    versionName: '2.0.1',
-    statistics: Constants.statistics,
-    requestDevice: 'pad',
-    userAgent: Constants.userAgent,
-  );
-
-  static const AppRequestProfile androidApp = AppRequestProfile(
+  /// 国内版基线（`tv.danmaku.bili` 9.13.0 / versionCode 9130500，`MOBI_APP=android`）。
+  ///
+  /// 全部接口默认走这一档：参数、header、签名 key 都由同一个档案派生，身份自洽。
+  /// appkey/appsec 与 `mobi_app=android` 配套（见 `reverse-output/domestic-profile/`）。
+  static const AppRequestProfile android = AppRequestProfile(
     deviceProfile: _sharedDevice,
     mobiApp: 'android',
     platform: 'android',
     channel: 'master',
-    build: 8430300,
-    versionName: '8.43.0',
-    statistics: Constants.statisticsApp,
-    requestDevice: 'android',
-    userAgent: Constants.userAgentApp,
+    build: 9130500,
+    versionName: '9.13.0',
+    statistics: Constants.statistics,
+    requestDevice: 'phone',
+    userAgent: Constants.userAgent,
+    appKey: '1d8b6e7d45233436',
+    appSec: '560c52ccd288fed045859ed18bffd973',
+    appId: 1,
+    fawkesAppKey: 'android64',
   );
 
-  /// 首页 App 推荐流使用的客户端指纹。
+  /// 海外版（`com.bilibili.app.in` 6.6.0 / versionCode 9130300，`MOBI_APP=android_i`）。
   ///
-  /// 该接口上游使用 `mobi_app=android_i` + `device=phone` 的当前客户端参数
-  /// （build 8430300），与全局 `androidHd`/`androidApp` 档案都不同；单独建档
-  /// 以保证参数与 header 仍由同一档案派生（设备身份自洽）。
-  static const AppRequestProfile androidAppRcmd = AppRequestProfile(
+  /// 与 [android] 的差异只有 mobi_app / appkey+appsec / build+version / appId 四项。
+  ///
+  /// **当前唯一使用点**：WhatsApp 取码流程（`lib/pages/login/controller.dart` 的
+  /// `_smsFlowProfile`）—— WhatsApp 是海外版能力，用海外身份更稳；SMS 走 [android]。
+  ///
+  /// 之所以不像其它接口那样直接切国内版：静态上国内版有同一套登录代码
+  /// （`otp_channel` / `actual_channel` / 门控齐全），但"参数能发"不等于"服务端照办"——
+  /// 极验之前服务端不校验 `otp_channel` 的取值，国内身份下会不会被降级没有实测证据，
+  /// 而 [androidIntl] 这一套是已被端到端实测跑通（`actual_channel:"whatsapp"`）的。
+  static const AppRequestProfile androidIntl = AppRequestProfile(
     deviceProfile: _sharedDevice,
     mobiApp: 'android_i',
     platform: 'android',
     channel: 'master',
-    build: 8430300,
-    versionName: '8.43.0',
-    statistics: Constants.statisticsApp,
+    build: 9130300,
+    versionName: '6.6.0',
+    statistics: Constants.statisticsIntl,
     requestDevice: 'phone',
-    userAgent: Constants.userAgentApp,
+    userAgent: Constants.userAgentIntl,
+    appKey: 'bb3101000e232e27',
+    appSec: '36efcfed79309338ced0380abd824ac1',
+    appId: 14,
+    // ⚠️ 未验证：海外档的 Fawkes 档位串没有抓包证据。
+    // 依据 `gripper/update/a.java` 的规则（仅当 fawkesAppKey == "android"
+    // 且 ABI 含 64 才追加 "64"），海外档保持 mobi_app 原值。
+    fawkesAppKey: 'android_i',
   );
+
+  /// 按 `mobi_app` 反查档案 —— 让「签名 key」与「请求里的 mobi_app」同源。
+  ///
+  /// 请求显式带了别的 `mobi_app`（例如某接口固定走海外版）时，签名必须跟着换，
+  /// 否则会出现「签名用 A 的 key、参数写 B 的 mobi_app」这种身份错位。
+  static AppRequestProfile forMobiApp(String? mobiApp) => switch (mobiApp) {
+    'android_i' => androidIntl,
+    _ => android,
+  };
 
   static AppDeviceProfile get defaultDeviceProfile =>
       defaultDeviceProfileForOwner('guest');
@@ -291,25 +345,20 @@ abstract final class AppDeviceProfiles {
     return _curatedPool[_stableIndex('device-profile:$normalizedOwnerKey')];
   }
 
+  /// 把某个设备档案套到请求档案上（国家基线默认 [android]）。
   static AppRequestProfile resolve({
-    required String userAgent,
     String? ownerKey,
     AppDeviceProfile? deviceProfile,
+    AppRequestProfile base = android,
   }) {
-    final baseProfile = userAgent == androidApp.userAgent
-        ? androidApp
-        : androidHd;
     final resolvedDeviceProfile =
         deviceProfile ?? defaultDeviceProfileForOwner(ownerKey ?? 'guest');
-    if (identical(resolvedDeviceProfile, baseProfile.deviceProfile) ||
-        resolvedDeviceProfile == baseProfile.deviceProfile) {
-      return baseProfile;
+    if (identical(resolvedDeviceProfile, base.deviceProfile) ||
+        resolvedDeviceProfile == base.deviceProfile) {
+      return base;
     }
-    return baseProfile.copyWithDeviceProfile(resolvedDeviceProfile);
+    return base.copyWithDeviceProfile(resolvedDeviceProfile);
   }
-
-  static AppRequestProfile fromUserAgent(String userAgent) =>
-      resolve(userAgent: userAgent);
 
   /// 生成官方 App 内 WebView 风格 UA（对应真实抓包格式，非 API 的
   /// `BiliDroid/...` 格式）：标准 WebView 内核 UA + 附加 B 站字段。
@@ -324,19 +373,19 @@ abstract final class AppDeviceProfiles {
   /// ```
   ///
   /// [profile.brand] / [profile.model] / [profile.osver] 取自账号伪装档案，
-  /// `sdkInt` 由 [profile.osver] 推导，`BiliApp/<versionCode>` 与 API 版本
-  /// 一致（android 8430300 / android_hd 2001100），可选 [buvid] 写入
-  /// `Buvid/` 字段。全程不暴露第三方标识。
+  /// `sdkInt` 由 [profile.osver] 推导，`BiliApp/<versionCode>` 与基线档案
+  /// [android] 保持一致；[desktop] 为真时去掉 ` Mobile` 段（PC 版页面用），
+  /// 可选 [buvid] 写入 `Buvid/` 字段。全程不暴露第三方标识。
   static String buildUserAgent(
     AppDeviceProfile profile, {
-    bool hd = false,
+    bool desktop = false,
     String? buvid,
   }) {
-    final versionCode = hd ? '2001100' : '8430300';
-    final mobiApp = hd ? 'android_hd' : 'android';
+    final versionCode = '${android.build}';
+    final mobiApp = android.mobiApp;
     final osver = profile.osver;
     final sdkInt = _sdkIntForOsver(osver);
-    final mobilePart = hd ? '' : ' Mobile';
+    final mobilePart = desktop ? '' : ' Mobile';
     return 'Mozilla/5.0 (Linux; Android $osver; ${profile.model} '
         'Build/${profile.brand}${profile.model}; wv) '
         'AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 '

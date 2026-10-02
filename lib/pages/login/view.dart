@@ -360,7 +360,13 @@ class _LoginPageState extends State<LoginPage> {
     return Column(
       children: [
         const SizedBox(height: 20),
-        const Text('使用手机短信验证码登录'),
+        Obx(
+          () => Text(
+            _loginPageCtr.isWhatsappChannel
+                ? '使用 WhatsApp 验证码登录'
+                : '使用手机短信验证码登录',
+          ),
+        ),
         const SizedBox(height: 10),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -380,7 +386,7 @@ class _LoginPageState extends State<LoginPage> {
                       tooltip:
                           '选择国际冠码，'
                           '当前为${_loginPageCtr.selectedCountryCodeId.cname}，'
-                          '+${_loginPageCtr.selectedCountryCodeId.countryId}',
+                          '+${_loginPageCtr.selectedCountryCodeId.countryCode}',
                       onSelected: (item) {
                         _loginPageCtr.selectedCountryCodeId = item;
                         (context as Element).markNeedsBuild();
@@ -393,7 +399,7 @@ class _LoginPageState extends State<LoginPage> {
                             children: [
                               Text(item.cname),
                               const Spacer(),
-                              Text("+${item.countryId}"),
+                              Text("+${item.countryCode}"),
                             ],
                           ),
                         );
@@ -406,7 +412,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            "+${_loginPageCtr.selectedCountryCodeId.countryId}",
+                            "+${_loginPageCtr.selectedCountryCodeId.countryCode}",
                           ),
                         ],
                       ),
@@ -453,17 +459,25 @@ class _LoginPageState extends State<LoginPage> {
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _loginPageCtr.smsCodeTextController,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.sms_outlined),
-                      border: InputBorder.none,
-                      labelText: '验证码',
+                  child: Obx(
+                    () => TextField(
+                      controller: _loginPageCtr.smsCodeTextController,
+                      decoration: InputDecoration(
+                        prefixIcon: Icon(
+                          _loginPageCtr.isWhatsappChannel
+                              ? Icons.chat_outlined
+                              : Icons.sms_outlined,
+                        ),
+                        border: InputBorder.none,
+                        labelText: _loginPageCtr.isWhatsappChannel
+                            ? 'WhatsApp 验证码'
+                            : '验证码',
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: <TextInputFormatter>[
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
                     ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
                   ),
                 ),
                 Obx(
@@ -480,6 +494,23 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+        // 短信 / WhatsApp 通道切换。服务端未必照办 —— 若请求 WhatsApp 却被
+        // 降级回短信，controller 会按响应里的 actual_channel 纠正状态并提示。
+        Obx(
+          () => TextButton.icon(
+            onPressed: _loginPageCtr.switchOtpChannel,
+            icon: Icon(
+              _loginPageCtr.isWhatsappChannel
+                  ? Icons.sms_outlined
+                  : Icons.chat_outlined,
+            ),
+            label: Text(
+              _loginPageCtr.isWhatsappChannel
+                  ? '从 WhatsApp 切换到短信'
+                  : '从短信切换到 WhatsApp',
             ),
           ),
         ),

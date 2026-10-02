@@ -70,17 +70,18 @@ class Request {
       // ExClimbCongLing(自发上报):body 为 GaiaRiskReport 构造的
       // {"header":{...},"encrypt_payload":<AES-CBC密文>};query 按官方旧栈
       // 注入公共参数并做 APP 签名。
+      const profile = AppDeviceProfiles.android;
       final query = <String, dynamic>{
-        'platform': AppDeviceProfiles.androidHd.platform,
-        'mobi_app': AppDeviceProfiles.androidHd.mobiApp,
-        'appkey': Constants.appKey,
-        'build': AppDeviceProfiles.androidHd.build.toString(),
-        'channel': AppDeviceProfiles.androidHd.channel,
+        'platform': profile.platform,
+        'mobi_app': profile.mobiApp,
+        'appkey': profile.appKey,
+        'build': profile.build.toString(),
+        'channel': profile.channel,
         if (account is LoginAccount) 'access_key': account.accessKey ?? '',
-        'c_locale': 'zh_CN',
-        's_locale': 'zh_CN',
+        'c_locale': Constants.cLocale,
+        's_locale': Constants.sLocale,
       };
-      AppSign.appSign(query);
+      AppSign.appSign(query, appkey: profile.appKey, appsec: profile.appSec);
 
       // Use dio.post directly so that DioException (non-2xx, network
       // error) propagates out of the try block and keeps activated=false.

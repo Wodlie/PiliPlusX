@@ -71,17 +71,17 @@ void main() {
         );
         final restIdentity = RequestIdentityAdapter.fromAccount(
           account: account,
-          userAgent: AppDeviceProfiles.androidHd.userAgent,
+          userAgent: AppDeviceProfiles.android.userAgent,
         );
         final headers = Accounts.main.grpcHeaders;
         final metadata = Metadata.fromBuffer(
-          base64Decode(headers['x-bili-metadata-bin']!),
+          base64Decode(base64.normalize(headers['x-bili-metadata-bin']!)),
         );
         final fawkes = FawkesReq.fromBuffer(
-          base64Decode(headers['x-bili-fawkes-req-bin']!),
+          base64Decode(base64.normalize(headers['x-bili-fawkes-req-bin']!)),
         );
         final device = Device.fromBuffer(
-          base64Decode(headers['x-bili-device-bin']!),
+          base64Decode(base64.normalize(headers['x-bili-device-bin']!)),
         );
         final sendMsgRequest = ImGrpc.buildSendMsgRequest(
           senderUid: account.mid,
@@ -96,7 +96,7 @@ void main() {
         expect(restIdentity.profile.deviceProfile, grpcProfile);
         expect(restIdentity.deviceName, grpcProfile.deviceName);
         expect(restIdentity.devicePlatform, grpcProfile.devicePlatform);
-        expect(headers['user-agent'], AppDeviceProfiles.androidHd.userAgent);
+        expect(headers['user-agent'], AppDeviceProfiles.android.userAgent);
         expect(headers['authorization'], 'identify_v1 ACCESS_KEY_2101');
         expect(headers['buvid'], account.buvid);
         expect(
@@ -114,23 +114,23 @@ void main() {
           isTrue,
         );
         expect(device.buvid, account.buvid);
-        expect(device.build, AppDeviceProfiles.androidHd.build);
-        expect(device.mobiApp, AppDeviceProfiles.androidHd.mobiApp);
-        expect(device.platform, AppDeviceProfiles.androidHd.platform);
-        expect(device.channel, AppDeviceProfiles.androidHd.channel);
+        expect(device.build, AppDeviceProfiles.android.build);
+        expect(device.mobiApp, AppDeviceProfiles.android.mobiApp);
+        expect(device.platform, AppDeviceProfiles.android.platform);
+        expect(device.channel, AppDeviceProfiles.android.channel);
         expect(device.brand, grpcProfile.brand);
         expect(device.model, grpcProfile.model);
         expect(device.osver, grpcProfile.osver);
-        expect(device.versionName, AppDeviceProfiles.androidHd.versionName);
+        expect(device.versionName, AppDeviceProfiles.android.versionName);
         expect(device.fpLocal, derived.fpLocal);
         expect(device.fpRemote, derived.fpRemote);
         expect(device.fp, derived.fpLocal);
         expect(device.guestId, derived.deviceId);
-        expect(metadata.mobiApp, AppDeviceProfiles.androidHd.mobiApp);
-        expect(metadata.device, AppDeviceProfiles.androidHd.platform);
-        expect(metadata.build, AppDeviceProfiles.androidHd.build);
-        expect(metadata.channel, AppDeviceProfiles.androidHd.channel);
-        expect(metadata.platform, AppDeviceProfiles.androidHd.platform);
+        expect(metadata.mobiApp, AppDeviceProfiles.android.mobiApp);
+        expect(metadata.device, AppDeviceProfiles.android.platform);
+        expect(metadata.build, AppDeviceProfiles.android.build);
+        expect(metadata.channel, AppDeviceProfiles.android.channel);
+        expect(metadata.platform, AppDeviceProfiles.android.platform);
         expect(sendMsgRequest.devId, derived.deviceId);
         expect(syncRequest.devId, derived.deviceId);
         expect(sendMsgRequest.devId, isNot('1'));
@@ -155,17 +155,17 @@ void main() {
         );
         final restIdentity = RequestIdentityAdapter.fromAccount(
           account: guest,
-          userAgent: AppDeviceProfiles.androidHd.userAgent,
+          userAgent: AppDeviceProfiles.android.userAgent,
         );
         final headers = guest.grpcHeaders;
         final metadata = Metadata.fromBuffer(
-          base64Decode(headers['x-bili-metadata-bin']!),
+          base64Decode(base64.normalize(headers['x-bili-metadata-bin']!)),
         );
         final fawkes = FawkesReq.fromBuffer(
-          base64Decode(headers['x-bili-fawkes-req-bin']!),
+          base64Decode(base64.normalize(headers['x-bili-fawkes-req-bin']!)),
         );
         final device = Device.fromBuffer(
-          base64Decode(headers['x-bili-device-bin']!),
+          base64Decode(base64.normalize(headers['x-bili-device-bin']!)),
         );
         final sendMsgRequest = ImGrpc.buildSendMsgRequest(
           senderUid: 0,
@@ -180,7 +180,7 @@ void main() {
         expect(restIdentity.profile.deviceProfile, grpcProfile);
         expect(restIdentity.deviceName, grpcProfile.deviceName);
         expect(restIdentity.devicePlatform, grpcProfile.devicePlatform);
-        expect(headers['user-agent'], AppDeviceProfiles.androidHd.userAgent);
+        expect(headers['user-agent'], AppDeviceProfiles.android.userAgent);
         expect(snapshot.profile.buvid, Pref.guestBuvid);
         expect(headers.containsKey('authorization'), isFalse);
         expect(headers.containsKey('x-bili-aurora-eid'), isFalse);
@@ -202,7 +202,7 @@ void main() {
         expect(device.brand, grpcProfile.brand);
         expect(device.model, grpcProfile.model);
         expect(device.osver, grpcProfile.osver);
-        expect(device.versionName, AppDeviceProfiles.androidHd.versionName);
+        expect(device.versionName, AppDeviceProfiles.android.versionName);
         expect(device.fpLocal, derived.fpLocal);
         expect(device.fpRemote, derived.fpRemote);
         expect(device.fp, derived.fpLocal);
@@ -237,11 +237,11 @@ void main() {
 
         final restIdentity = RequestIdentityAdapter.fromAccount(
           account: account,
-          userAgent: AppDeviceProfiles.androidHd.userAgent,
+          userAgent: AppDeviceProfiles.android.userAgent,
         );
         final headers = account.grpcHeaders;
         final device = Device.fromBuffer(
-          base64Decode(headers['x-bili-device-bin']!),
+          base64Decode(base64.normalize(headers['x-bili-device-bin']!)),
         );
 
         expect(restIdentity.profile.deviceProfile, storedProfile);
@@ -276,15 +276,15 @@ void main() {
 
         final headers = Accounts.main.grpcHeaders;
         final device = Device.fromBuffer(
-          base64Decode(headers['x-bili-device-bin']!),
+          base64Decode(base64.normalize(headers['x-bili-device-bin']!)),
         );
 
         expect(device.brand, storedProfile.brand);
         expect(device.model, storedProfile.model);
         expect(device.osver, storedProfile.osver);
-        expect(headers['user-agent'], AppDeviceProfiles.androidHd.userAgent);
-        expect(device.build, AppDeviceProfiles.androidHd.build);
-        expect(device.mobiApp, AppDeviceProfiles.androidHd.mobiApp);
+        expect(headers['user-agent'], AppDeviceProfiles.android.userAgent);
+        expect(device.build, AppDeviceProfiles.android.build);
+        expect(device.mobiApp, AppDeviceProfiles.android.mobiApp);
       },
     );
   });

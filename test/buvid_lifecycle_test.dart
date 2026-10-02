@@ -145,14 +145,12 @@ void main() {
         await Accounts.set(AccountType.recommend, first);
         final firstHeaders = LoginHttp.appHeaders(
           buvid: Accounts.get(AccountType.recommend).buvid,
-          appKey: 'android_hd',
           userAgent: Constants.userAgent,
         );
 
         await Accounts.set(AccountType.recommend, second);
         final secondHeaders = LoginHttp.appHeaders(
           buvid: Accounts.get(AccountType.recommend).buvid,
-          appKey: 'android_hd',
           userAgent: Constants.userAgent,
         );
 
@@ -302,13 +300,14 @@ void main() {
       () {
         final headers = LoginHttp.appHeaders(
           buvid: 'REST_BUVID',
-          appKey: 'android_hd',
           userAgent: Constants.userAgent,
           contentType: 'application/x-www-form-urlencoded',
         );
 
         expect(headers['buvid'], 'REST_BUVID');
-        expect(headers['app-key'], 'android_hd');
+        // app-key header 现在带档案自带的 appkey（与 mobi_app 同源），
+        // 而不再是 mobi_app 字符串。
+        expect(headers['app-key'], AppDeviceProfiles.android.appKey);
         expect(headers['user-agent'], Constants.userAgent);
         expect(headers['content-type'], 'application/x-www-form-urlencoded');
       },
@@ -328,10 +327,10 @@ void main() {
         final firstHeaders = account.grpcHeaders;
         final secondHeaders = account.grpcHeaders;
         final metadata = Metadata.fromBuffer(
-          base64Decode(firstHeaders['x-bili-metadata-bin']!),
+          base64Decode(base64.normalize(firstHeaders['x-bili-metadata-bin']!)),
         );
         final device = Device.fromBuffer(
-          base64Decode(firstHeaders['x-bili-device-bin']!),
+          base64Decode(base64.normalize(firstHeaders['x-bili-device-bin']!)),
         );
 
         expect(identical(firstHeaders, secondHeaders), isFalse);
@@ -347,10 +346,10 @@ void main() {
       final anonymous = AnonymousAccount();
       final headers = anonymous.grpcHeaders;
       final metadata = Metadata.fromBuffer(
-        base64Decode(headers['x-bili-metadata-bin']!),
+        base64Decode(base64.normalize(headers['x-bili-metadata-bin']!)),
       );
       final device = Device.fromBuffer(
-        base64Decode(headers['x-bili-device-bin']!),
+        base64Decode(base64.normalize(headers['x-bili-device-bin']!)),
       );
 
       expect(headers['buvid'], anonymous.buvid);

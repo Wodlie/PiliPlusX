@@ -159,3 +159,6 @@ test*
 AGENTS.md
 
 reverse-output/
+
+# Reverse-engineering workspace (APK samples, dex, jadx/apktool output, captures)
+.probe/

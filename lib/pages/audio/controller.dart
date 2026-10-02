@@ -357,7 +357,7 @@ class AudioController extends GetxController
 
   Future<void> _onOpenMedia(
     String url, {
-    String ua = Constants.userAgentApp,
+    String ua = Constants.userAgent,
     String? referer,
     http_model.Volume? volume,
   }) async {

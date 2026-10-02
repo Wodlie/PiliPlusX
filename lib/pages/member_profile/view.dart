@@ -1,3 +1,4 @@
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'dart:async';
 import 'dart:io' show File;
 
@@ -71,12 +72,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Future<void> _getInfo() async {
     Map<String, String> data = {
-      'build': '2001100',
-      'c_locale': 'zh_CN',
+      'build': '${AppDeviceProfiles.android.build}',
+      'c_locale': Constants.cLocale,
       'channel': 'master',
-      'mobi_app': 'android_hd',
+      'mobi_app': AppDeviceProfiles.android.mobiApp,
       'platform': 'android',
-      's_locale': 'zh_CN',
+      's_locale': Constants.sLocale,
       'statistics': Constants.statistics,
     };
     Request()
@@ -352,12 +353,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
     final data = <String, String>{
       'access_key': accessKey,
-      'build': '2001100',
-      'c_locale': 'zh_CN',
+      'build': '${AppDeviceProfiles.android.build}',
+      'c_locale': Constants.cLocale,
       'channel': 'master',
-      'mobi_app': 'android_hd',
+      'mobi_app': AppDeviceProfiles.android.mobiApp,
       'platform': 'android',
-      's_locale': 'zh_CN',
+      's_locale': Constants.sLocale,
       'statistics': Constants.statistics,
       if (type == ProfileType.uname)
         'uname': _textController.text

@@ -25,6 +25,7 @@ final class RequestIdentityAdapter {
     required this.traceId,
     required this.auroraZone,
     required this.isLogin,
+    required this.mid,
     this.auroraEid,
   });
 
@@ -43,7 +44,6 @@ final class RequestIdentityAdapter {
     return RequestIdentityAdapter._build(
       ownerKey: snapshot.owner.key,
       buvid: snapshot.profile.buvid,
-      userAgent: userAgent,
       isLogin: snapshot.isLogin,
       mid: snapshot.mid,
       derived: derived,
@@ -64,7 +64,6 @@ final class RequestIdentityAdapter {
     return RequestIdentityAdapter._build(
       ownerKey: owner.key,
       buvid: buvid,
-      userAgent: userAgent,
       isLogin: false,
       mid: 0,
       derived: derived,
@@ -75,14 +74,12 @@ final class RequestIdentityAdapter {
   factory RequestIdentityAdapter._build({
     required String ownerKey,
     required String buvid,
-    required String userAgent,
     required bool isLogin,
     required int mid,
     required IdentityDerivedProfile derived,
     required AppDeviceProfile? storedDeviceProfile,
   }) {
     final profile = AppDeviceProfiles.resolve(
-      userAgent: userAgent,
       ownerKey: ownerKey,
       deviceProfile: storedDeviceProfile,
     );
@@ -101,7 +98,13 @@ final class RequestIdentityAdapter {
       traceId: derived.traceId,
       auroraZone: Constants.baseHeaders['x-bili-aurora-zone'] ?? '',
       isLogin: isLogin,
-      auroraEid: isLogin && mid > 0 ? IdUtils.genAuroraEid(mid) : null,
+      mid: mid,
+      // REST 走官方的 okretro/OkHttp 全局 aurora 拦截器
+      // （`p087dm1/a.java:43` → `Wl1.a.a()` = android `Base64(..., 10)`），
+      // 该实现用 **URL-safe** 字母表；gRPC 侧才是标准字母表。
+      auroraEid: isLogin && mid > 0
+          ? IdUtils.genAuroraEid(mid, urlSafe: true)
+          : null,
     );
   }
 
@@ -119,6 +122,7 @@ final class RequestIdentityAdapter {
   final String traceId;
   final String auroraZone;
   final bool isLogin;
+  final int mid;
   final String? auroraEid;
 
   Map<String, String> get loginPayloadFields => {
@@ -135,18 +139,39 @@ final class RequestIdentityAdapter {
     'device_platform': devicePlatform,
   };
 
+  /// REST 公共头。
+  ///
+  /// `env` / `app-key` **对所有请求都发**：它们来自官方 H5/WebView 桥接路径
+  /// （`WebContainerOfflineRuntimeKt` 用 `fawkes_key` + `env`，真机抓包实证
+  /// 该路径确实发 `app-key: android64` + `env: prod`），而本项目多数 web 端点
+  /// 是照 H5 逆向的，需要它们在场。
+  ///
+  /// [appKey] 缺省取档案自带的 appkey —— 这一对必须与请求里的 `mobi_app` 同源。
   Map<String, String> appHeaders({
-    required String appKey,
+    String? appKey,
     required String userAgent,
     String? contentType,
   }) => {
+    // 键名保持小写：HTTP/2 会把头名统一小写，改成 `Buvid` 无功能收益，
+    // 却会在 HTTP/1.1 回退栈上与其它小写写法重复。
     'buvid': buvid,
     'env': 'prod',
-    'app-key': appKey,
+    'app-key': appKey ?? profile.appKey,
     'user-agent': userAgent,
     'x-bili-trace-id': traceId,
     'x-bili-aurora-zone': auroraZone,
+    // 官方全局 aurora 拦截器（`p087dm1/a.java:50-57`）**无条件**设置这个头：
+    // 登录态为 `<mid>`，未登录为空串（不是不设，也不是 "0"）。
+    'x-bili-mid': mid > 0 ? '$mid' : '',
     if (auroraEid != null) 'x-bili-aurora-eid': auroraEid!,
+    // 官方的 moss/rest REST 栈（`Fn1/a.java:78` 与 `Bb1/d.java:58-62`）会**同时**发
+    // `bili-rest-engine: moss` 与 `bili-http-engine: <运行时引擎名>`；
+    // 本项目的 REST 身份头组（user-agent + fp_local/fp_remote/session_id）与这条栈最接近。
+    //
+    // 引擎名 `cronet` 并非自造：9.13.0 包里存在 `moss_grpc_cronet` /
+    // `moss_rest_okhttp_cronet` / `okhttp_cronet` 等配置键，说明 cronet 是官方支持的引擎之一
+    // （真机抓包中该头为 `ignet`，两者都是合法取值）。
+    'bili-rest-engine': 'moss',
     'bili-http-engine': 'cronet',
     if (contentType != null) 'content-type': contentType,
   };

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
     show ReplyInfo;
 import 'package:PiliPlus/http/api.dart';
@@ -51,7 +52,7 @@ import 'package:protobuf/protobuf.dart';
 
 /// view层根据 status 判断渲染逻辑
 abstract final class VideoHttp {
-  static const _recommendProfile = AppDeviceProfiles.androidAppRcmd;
+  static const _recommendProfile = AppDeviceProfiles.android;
 
   static RegExp zoneRegExp = RegExp(Pref.banWordForZone, caseSensitive: false);
   static bool enableFilter = zoneRegExp.pattern.isNotEmpty;
@@ -61,7 +62,7 @@ abstract final class VideoHttp {
     required int freshIdx,
   }) => {
     'build': _recommendProfile.build,
-    'c_locale': 'zh_CN',
+    'c_locale': Constants.cLocale,
     'channel': _recommendProfile.channel,
     'column': 2,
     'device': _recommendProfile.requestDevice,
@@ -83,7 +84,7 @@ abstract final class VideoHttp {
     'pull': freshIdx == 0 ? 'true' : 'false',
     'qn': 32,
     'recsys_mode': 0,
-    's_locale': 'zh_CN',
+    's_locale': Constants.sLocale,
     'splash_id': '',
     'statistics': _recommendProfile.statistics,
     'voice_balance': 0,
@@ -97,7 +98,6 @@ abstract final class VideoHttp {
     );
     return {
       ...identity.appHeaders(
-        appKey: _recommendProfile.mobiApp,
         userAgent: _recommendProfile.userAgent,
       ),
       ...identity.appIdentityHeaders,

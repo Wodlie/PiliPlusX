@@ -7,6 +7,7 @@ import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models_new/login_devices/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/identity_core/identity_generators.dart';
 import 'package:PiliPlus/utils/accounts/identity_core/identity_owner.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
@@ -30,11 +31,17 @@ abstract final class LoginHttp {
     );
   }
 
+  /// 登录请求的公共 header。
+  ///
+  /// [scope] 只用于派生**本次登录会话**的临时身份（buvid 等），与 appkey 无关；
+  /// `app-key` header 默认取档案自带的 appkey，[appKey] 用于显式覆盖
+  /// （例如 WhatsApp 流程走 `android_i` 时，必须与请求里的 `mobi_app` 配套）。
   static Map<String, String> appHeaders({
     required String buvid,
-    required String appKey,
     required String userAgent,
+    String? appKey,
     String? contentType,
+    String scope = 'login-http',
     Account? account,
     RequestIdentityAdapter? identity,
   }) {
@@ -44,7 +51,7 @@ abstract final class LoginHttp {
             ? RequestIdentityAdapter.fromBuvid(
                 buvid: buvid,
                 userAgent: userAgent,
-                scope: 'login-http:$appKey',
+                scope: scope,
               )
             : RequestIdentityAdapter.fromAccount(
                 account: account,
@@ -64,7 +71,7 @@ abstract final class LoginHttp {
     final params = {
       'local_id': identity.localId,
       'platform': 'android',
-      'mobi_app': 'android_hd',
+      'mobi_app': AppDeviceProfiles.android.mobiApp,
     };
     AppSign.appSign(params);
     final res = await Request().post(Api.getTVCode, queryParameters: params);
@@ -126,6 +133,16 @@ abstract final class LoginHttp {
     required Object cid,
     required String tel,
     required RequestIdentityAdapter identity,
+    /// 请求身份档案。默认国内基线；走 WhatsApp 通道时传
+    /// [AppDeviceProfiles.androidIntl]（`mobi_app=android_i`）——WhatsApp 发码是
+    /// 海外版能力，用海外身份更稳；签名 key 会由 `account_mgr` 按 `mobi_app`
+    /// 自动换成配套的 appkey/appsec。
+    AppRequestProfile profile = AppDeviceProfiles.android,
+    /// 验证码下发通道：`sms`（默认）或 `whatsapp`。
+    ///
+    /// 服务端未必照办 —— 实际通道以响应里的 `actual_channel` 为准
+    /// （可能被静默降级回 `sms`）。
+    String? otpChannel,
     // String? deviceTouristId,
     String? geeChallenge,
     String? geeSeccode,
@@ -135,10 +152,10 @@ abstract final class LoginHttp {
     final guestBuvid = identity.buvid;
     int timestamp = DateTime.now().millisecondsSinceEpoch;
     final data = {
-      'build': '2001100',
+      'build': '${profile.build}',
       'buvid': guestBuvid,
-      'c_locale': 'zh_CN',
-      'channel': 'master',
+      'c_locale': Constants.cLocale,
+      'channel': profile.channel,
       'cid': cid,
       // if (deviceTouristId != null) 'device_tourist_id': deviceTouristId,
       'disable_rcmd': '0',
@@ -150,11 +167,12 @@ abstract final class LoginHttp {
       'login_session_id': md5
           .convert(ascii.encode(guestBuvid + timestamp.toString()))
           .toString(),
-      'mobi_app': 'android_hd',
-      'platform': 'android',
+      'mobi_app': profile.mobiApp,
+      'otp_channel': ?otpChannel,
+      'platform': profile.platform,
       'recaptcha_token': ?recaptchaToken,
-      's_locale': 'zh_CN',
-      'statistics': Constants.statistics,
+      's_locale': Constants.sLocale,
+      'statistics': profile.statistics,
       'tel': tel,
       'ts': (timestamp ~/ 1000).toString(),
     };
@@ -164,19 +182,27 @@ abstract final class LoginHttp {
       Api.appSmsCode,
       data: data,
       options: Options(
-        contentType: Headers.formUrlEncodedContentType,
+        contentType: Constants.formUrlEncodedContentType,
         headers: appHeaders(
           buvid: guestBuvid,
-          appKey: 'android_hd',
-          userAgent: Constants.userAgent,
-          contentType: Headers.formUrlEncodedContentType,
+          userAgent: profile.userAgent,
+          appKey: profile.appKey,
+          contentType: Constants.formUrlEncodedContentType,
           identity: identity,
         ),
       ),
     );
 
     if (res.data['code'] == 0 && res.data['data']['recaptcha_url'] == "") {
-      return {'status': true, 'data': res.data['data']};
+      // 走到这里才是「真的把码发出去了」。此时 data 里才会有 actual_channel；
+      // 被极验拦下时（recaptcha_url 非空）该字段根本不存在，所以只能在这里读。
+      return {
+        'status': true,
+        'data': res.data['data'],
+        // 服务端实际使用的通道（`sms` / `whatsapp`），可能为 null（老服务端不下发）
+        'actualChannel': res.data['data']['actual_channel'] as String?,
+        'isNew': res.data['data']['is_new'] as bool?,
+      };
     } else {
       return {
         'status': false,
@@ -191,7 +217,7 @@ abstract final class LoginHttp {
   //   dynamic publicKey = RSAKeyParser().parse(key);
   //   final params = {
   //     'appkey': Constants.appKey,
-  //     'build': '2001100',
+  //     'build': '${AppDeviceProfiles.android.build}',
   //     'buvid': buvid,
   //     'c_locale': 'zh_CN',
   //     'channel': 'master',
@@ -201,7 +227,7 @@ abstract final class LoginHttp {
   //         .encrypt(generateRandomString(16))
   //         .base64),
   //     'local_id': buvid,
-  //     'mobi_app': 'android_hd',
+  //     'mobi_app': AppDeviceProfiles.android.mobiApp,
   //     'platform': 'android',
   //     's_locale': 'zh_CN',
   //     'statistics': Constants.statistics,
@@ -246,9 +272,9 @@ abstract final class LoginHttp {
 
     Map<String, String> data = {
       ...identity.loginPayloadFields,
-      'build': '2001100',
+      'build': '${AppDeviceProfiles.android.build}',
       'buvid': guestBuvid,
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'channel': 'master',
       'device': 'phone',
       //'device_meta': '',
@@ -263,12 +289,12 @@ abstract final class LoginHttp {
       'gee_challenge': ?geeChallenge,
       'gee_seccode': ?geeSeccode,
       'gee_validate': ?geeValidate,
-      'mobi_app': 'android_hd',
+      'mobi_app': AppDeviceProfiles.android.mobiApp,
       'password': passwordEncrypted,
       'permission': 'ALL',
       'platform': 'android',
       'recaptcha_token': ?recaptchaToken,
-      's_locale': 'zh_CN',
+      's_locale': Constants.sLocale,
       'statistics': Constants.statistics,
       'username': username,
     };
@@ -277,12 +303,11 @@ abstract final class LoginHttp {
       Api.loginByPwdApi,
       data: data,
       options: Options(
-        contentType: Headers.formUrlEncodedContentType,
+        contentType: Constants.formUrlEncodedContentType,
         headers: appHeaders(
           buvid: guestBuvid,
-          appKey: 'android_hd',
           userAgent: Constants.userAgent,
-          contentType: Headers.formUrlEncodedContentType,
+          contentType: Constants.formUrlEncodedContentType,
           identity: identity,
         ),
         //responseType: ResponseType.plain
@@ -313,19 +338,22 @@ abstract final class LoginHttp {
     required Object cid,
     required String key,
     required RequestIdentityAdapter identity,
+    /// 必须与发码时用的是同一个档案 —— `captcha_key` 是那一次发码签发的一次性凭据，
+    /// 中途换身份会把「发码身份」和「登录身份」拆开。
+    AppRequestProfile profile = AppDeviceProfiles.android,
   }) async {
     final guestBuvid = identity.buvid;
     dynamic publicKey = RSAKeyParser().parse(key);
     Map<String, Object> data = {
       ...identity.loginPayloadFields,
-      'build': '2001100',
+      'build': '${profile.build}',
       'buvid': guestBuvid,
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'captcha_key': captchaKey,
-      'channel': 'master',
+      'channel': profile.channel,
       'cid': cid,
       'code': code,
-      'device': 'phone',
+      'device': profile.requestDevice,
       //'device_meta': '',
       // 'device_tourist_id': '',
       'disable_rcmd': '0',
@@ -336,10 +364,10 @@ abstract final class LoginHttp {
       ),
       'from_pv': 'main.my-information.my-login.0.click',
       'from_url': Uri.encodeComponent('bilibili://user_center/mine'),
-      'mobi_app': 'android_hd',
-      'platform': 'android',
-      's_locale': 'zh_CN',
-      'statistics': Constants.statistics,
+      'mobi_app': profile.mobiApp,
+      'platform': profile.platform,
+      's_locale': Constants.sLocale,
+      'statistics': profile.statistics,
       'tel': tel,
     };
     AppSign.appSign(data);
@@ -347,12 +375,12 @@ abstract final class LoginHttp {
       Api.logInByAppSms,
       data: data,
       options: Options(
-        contentType: Headers.formUrlEncodedContentType,
+        contentType: Constants.formUrlEncodedContentType,
         headers: appHeaders(
           buvid: guestBuvid,
-          appKey: 'android_hd',
-          userAgent: Constants.userAgent,
-          contentType: Headers.formUrlEncodedContentType,
+          userAgent: profile.userAgent,
+          appKey: profile.appKey,
+          contentType: Constants.formUrlEncodedContentType,
           identity: identity,
         ),
         //responseType: ResponseType.plain
@@ -433,7 +461,7 @@ abstract final class LoginHttp {
       Api.safeCenterSmsCode,
       data: data,
       options: Options(
-        contentType: Headers.formUrlEncodedContentType,
+        contentType: Constants.formUrlEncodedContentType,
         headers: {
           "Referer": refererUrl,
         },
@@ -475,7 +503,7 @@ abstract final class LoginHttp {
       Api.safeCenterSmsVerify,
       data: data,
       options: Options(
-        contentType: Headers.formUrlEncodedContentType,
+        contentType: Constants.formUrlEncodedContentType,
         headers: {
           "Referer": refererUrl,
         },
@@ -501,7 +529,7 @@ abstract final class LoginHttp {
   }) async {
     final guestBuvid = identity.buvid;
     final Map<String, String> data = {
-      'build': '2001100',
+      'build': '${AppDeviceProfiles.android.build}',
       'buvid': guestBuvid,
       // 'c_locale': 'zh_CN',
       // 'channel': 'master',
@@ -509,7 +537,7 @@ abstract final class LoginHttp {
       'disable_rcmd': '0',
       'grant_type': 'authorization_code',
       'local_id': identity.localId,
-      'mobi_app': 'android_hd',
+      'mobi_app': AppDeviceProfiles.android.mobiApp,
       'platform': 'android',
       // 's_locale': 'zh_CN',
       // 'statistics': Constants.statistics,
@@ -519,12 +547,11 @@ abstract final class LoginHttp {
       Api.oauth2AccessToken,
       data: data,
       options: Options(
-        contentType: Headers.formUrlEncodedContentType,
+        contentType: Constants.formUrlEncodedContentType,
         headers: appHeaders(
           buvid: guestBuvid,
-          appKey: 'android_hd',
           userAgent: Constants.userAgent,
-          contentType: Headers.formUrlEncodedContentType,
+          contentType: Constants.formUrlEncodedContentType,
           identity: identity,
         ),
       ),
@@ -547,7 +574,7 @@ abstract final class LoginHttp {
       Api.logout,
       data: {'biliCSRF': account.csrf},
       options: Options(
-        contentType: Headers.formUrlEncodedContentType,
+        contentType: Constants.formUrlEncodedContentType,
         extra: {'account': account},
       ),
     );
@@ -571,7 +598,7 @@ abstract final class LoginHttp {
       'device_name': identity.deviceName,
       'device_platform': identity.devicePlatform,
       'csrf': account.csrf,
-      'mobi_app': 'android_hd',
+      'mobi_app': AppDeviceProfiles.android.mobiApp,
       'platform': 'android',
       'access_key': account.accessKey,
       'statistics': Constants.statistics,

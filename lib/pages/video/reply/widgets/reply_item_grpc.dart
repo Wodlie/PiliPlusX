@@ -1391,7 +1391,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                 final rpid = item.id;
                 final _reportProfile = RequestIdentityAdapter.fromAccount(
                   account: Accounts.reply,
-                  userAgent: AppDeviceProfiles.androidApp.userAgent,
+                  userAgent: AppDeviceProfiles.android.userAgent,
                 ).profile;
 
                 autoWrapReportDialog(

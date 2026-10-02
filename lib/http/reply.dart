@@ -233,7 +233,7 @@ abstract final class ReplyHttp {
     // 避免硬编码 8430300 导致与账号伪装档案不一致。
     final adapter = RequestIdentityAdapter.fromAccount(
       account: account,
-      userAgent: AppDeviceProfiles.androidApp.userAgent,
+      userAgent: AppDeviceProfiles.android.userAgent,
     );
     final effectivePlatform = platform ?? adapter.profile.platform;
     final effectiveBuild = build ?? adapter.profile.build;

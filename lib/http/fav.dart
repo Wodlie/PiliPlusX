@@ -576,12 +576,12 @@ abstract final class FavHttp {
     final params = {
       'build': 8430300,
       'version': '8.43.0',
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'channel': 'master',
       'mobi_app': 'android',
       'platform': 'android',
-      's_locale': 'zh_CN',
-      'statistics': Constants.statisticsApp,
+      's_locale': Constants.sLocale,
+      'statistics': Constants.statistics,
       'up_mid': mid,
     };
     final res = await Request().get(
@@ -590,7 +590,7 @@ abstract final class FavHttp {
       options: Options(
         headers: {
           'bili-http-engine': 'cronet',
-          'user-agent': Constants.userAgentApp,
+          'user-agent': Constants.userAgent,
         },
       ),
     );

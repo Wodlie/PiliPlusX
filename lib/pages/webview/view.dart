@@ -73,10 +73,10 @@ class _WebviewPageState extends State<WebviewPage> with RouteAware {
   }
 
   /// 伪装官方客户端 UA：基于当前账号伪装设备档案生成 BiliDroid UA，
-  /// 追加 `BiliApp/<versionCode>` 后缀；桌面端伪装为 android_hd 平板客户端。
+  /// 追加 `BiliApp/<versionCode>` 后缀；桌面端伪装成不带 ` Mobile` 的形态。
   String _buildFakeUa() {
     final uaType = Get.parameters['uaType'] ?? 'platform';
-    final hd = switch (uaType) {
+    final desktop = switch (uaType) {
       'pc' => true,
       'mob' => false,
       _ => !PlatformUtils.isMobile,
@@ -87,7 +87,7 @@ class _WebviewPageState extends State<WebviewPage> with RouteAware {
         : AppDeviceProfiles.defaultDeviceProfileForOwner('guest');
     return AppDeviceProfiles.buildUserAgent(
       profile,
-      hd: hd,
+      desktop: desktop,
       buvid: account.buvid,
     );
   }

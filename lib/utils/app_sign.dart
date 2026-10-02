@@ -1,25 +1,30 @@
 import 'dart:convert' show utf8;
 
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:crypto/crypto.dart';
 
 abstract final class AppSign {
+  /// APP 签名：`md5(按键升序拼接的 query + appsec)`。
+  ///
+  /// [appkey] / [appsec] 缺省取国家基线档案 [AppDeviceProfiles.android]；
+  /// 走海外版档案的请求必须显式传 `AppDeviceProfiles.androidIntl` 那一对，
+  /// 否则会出现「签名用国内 key、参数写 android_i」的身份错位。
   static void appSign(
     Map<String, dynamic> params, {
-    String appkey = Constants.appKey,
-    String appsec = Constants.appSec,
+    String? appkey,
+    String? appsec,
   }) {
-    // retry error
-    // assert(
-    //   params['appkey'] == null,
-    //   'appkey-appsec should be provided in appSign',
-    // );
-    params['appkey'] = appkey;
+    const profile = AppDeviceProfiles.android;
+    params['appkey'] = appkey ?? profile.appKey;
     params['ts'] = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
     final sorted = params.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
     params['sign'] = md5
-        .convert(utf8.encode(_makeQueryFromParametersDefault(sorted) + appsec))
+        .convert(
+          utf8.encode(
+            _makeQueryFromParametersDefault(sorted) + (appsec ?? profile.appSec),
+          ),
+        )
         .toString(); // 获取MD5哈希值
   }
 

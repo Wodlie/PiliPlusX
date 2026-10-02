@@ -34,7 +34,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 abstract final class LiveHttp {
-  static const _appProfile = AppDeviceProfiles.androidApp;
+  static const _appProfile = AppDeviceProfiles.android;
 
   static Account get recommend => Accounts.get(AccountType.recommend);
 
@@ -49,7 +49,7 @@ abstract final class LiveHttp {
     'actionKey': 'appkey',
     'build': _appProfile.build,
     'version': _appProfile.versionName,
-    'c_locale': 'zh_CN',
+    'c_locale': Constants.cLocale,
     'device': _appProfile.requestDevice,
     'device_name': _appProfile.deviceName,
     'device_type': 0,
@@ -62,7 +62,7 @@ abstract final class LiveHttp {
     'page': pn,
     'platform': _appProfile.platform,
     if (account.isLogin) 'relation_page': 1,
-    's_locale': 'zh_CN',
+    's_locale': Constants.sLocale,
     'scale': 2,
     'statistics': _appProfile.statistics,
   };
@@ -75,7 +75,6 @@ abstract final class LiveHttp {
     );
     return {
       ...identity.appHeaders(
-        appKey: _appProfile.mobiApp,
         userAgent: _appProfile.userAgent,
       ),
       ...identity.appIdentityHeaders,
@@ -295,7 +294,7 @@ abstract final class LiveHttp {
       'parent_area_id': ?parentAreaId,
       'build': _appProfile.build,
       'version': _appProfile.versionName,
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'device': _appProfile.requestDevice,
       'device_name': _appProfile.deviceName,
       'device_type': 0,
@@ -311,7 +310,7 @@ abstract final class LiveHttp {
       'qn': 0,
       'sort_type': ?sortType,
       'tag_version': 1,
-      's_locale': 'zh_CN',
+      's_locale': Constants.sLocale,
       'scale': 2,
       'statistics': _appProfile.statistics,
     };
@@ -337,12 +336,12 @@ abstract final class LiveHttp {
       'build': _appProfile.build,
       'channel': _appProfile.channel,
       'version': _appProfile.versionName,
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'device': _appProfile.requestDevice,
       'disable_rcmd': 0,
       'mobi_app': _appProfile.mobiApp,
       'platform': _appProfile.platform,
-      's_locale': 'zh_CN',
+      's_locale': Constants.sLocale,
       'statistics': _appProfile.statistics,
     };
     AppSign.appSign(params);
@@ -368,12 +367,12 @@ abstract final class LiveHttp {
       'build': _appProfile.build,
       'channel': _appProfile.channel,
       'version': _appProfile.versionName,
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'device': _appProfile.requestDevice,
       'disable_rcmd': 0,
       'mobi_app': _appProfile.mobiApp,
       'platform': _appProfile.platform,
-      's_locale': 'zh_CN',
+      's_locale': Constants.sLocale,
       'statistics': _appProfile.statistics,
     };
     AppSign.appSign(params);
@@ -404,12 +403,12 @@ abstract final class LiveHttp {
       'build': _appProfile.build,
       'channel': _appProfile.channel,
       'version': _appProfile.versionName,
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'device': _appProfile.requestDevice,
       'disable_rcmd': 0,
       'mobi_app': _appProfile.mobiApp,
       'platform': _appProfile.platform,
-      's_locale': 'zh_CN',
+      's_locale': Constants.sLocale,
       'statistics': _appProfile.statistics,
     };
     AppSign.appSign(data);
@@ -435,7 +434,7 @@ abstract final class LiveHttp {
       'build': _appProfile.build,
       'channel': _appProfile.channel,
       'version': _appProfile.versionName,
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'device': _appProfile.requestDevice,
       'disable_rcmd': 0,
       'need_entrance': 1,
@@ -443,7 +442,7 @@ abstract final class LiveHttp {
       'source_id': 2,
       'mobi_app': _appProfile.mobiApp,
       'platform': _appProfile.platform,
-      's_locale': 'zh_CN',
+      's_locale': Constants.sLocale,
       'statistics': _appProfile.statistics,
     };
     AppSign.appSign(params);
@@ -471,7 +470,7 @@ abstract final class LiveHttp {
       'build': _appProfile.build,
       'channel': _appProfile.channel,
       'version': _appProfile.versionName,
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'device': _appProfile.requestDevice,
       'page': page,
       'pagesize': 30,
@@ -479,7 +478,7 @@ abstract final class LiveHttp {
       'disable_rcmd': 0,
       'mobi_app': _appProfile.mobiApp,
       'platform': _appProfile.platform,
-      's_locale': 'zh_CN',
+      's_locale': Constants.sLocale,
       'statistics': _appProfile.statistics,
       'type': type.name,
     };
@@ -777,13 +776,13 @@ abstract final class LiveHttp {
       'actionKey': 'appkey',
       'build': 8430300,
       'channel': 'master',
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'device': 'android',
       'disable_rcmd': 0,
       'mobi_app': 'android',
       'platform': 'android',
-      's_locale': 'zh_CN',
-      'statistics': Constants.statisticsApp,
+      's_locale': Constants.sLocale,
+      'statistics': Constants.statistics,
       'version': '8.43.0',
       'id': id,
       'id_type': type,

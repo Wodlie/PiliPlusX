@@ -65,7 +65,6 @@ final class IdentityDerivedProfile {
   const IdentityDerivedProfile({
     required this.profile,
     required this.buvid3,
-    required this.deviceId,
     required this.sessionId,
     required this.traceId,
     required this.fpLocal,
@@ -74,15 +73,24 @@ final class IdentityDerivedProfile {
 
   final IdentityCoreProfile profile;
   final String buvid3;
-  final String deviceId;
   final String sessionId;
   final String traceId;
   final String fpLocal;
   final String fpRemote;
 
-  String get biliLocalId => deviceId;
+  /// 官方 `PassportCommParams.getBiliLocalId()` → `BiliIds.buvidLocal()`
+  /// → BLKV `fp_local`（见 `reverse-output/device-fields/` §7.1）。
+  String get biliLocalId => fpLocal;
 
-  String get localId => deviceId;
+  /// 官方 `PassportCommParams.getLocalId()` → `paramDelegate.getBuvid()`，
+  /// 即 **BUVID 本身**（同一个类里 `getLocalId()` 直接返回 `getBuvid()`）。
+  String get localId => profile.buvid;
+
+  /// 官方 `getDeviceId()` → `BiliIds.fingerprint()`（= `fp_server` 优先，否则 `fp_local`）。
+  ///
+  /// 本项目**不做设备级持久化**（维护者要求保持隐私性与账号隔离），
+  /// 因此这里按约定直接取 [fpLocal]。
+  String get deviceId => fpLocal;
 }
 
 abstract final class IdentityCoreGenerators {
@@ -106,11 +114,13 @@ abstract final class IdentityCoreGenerators {
 
   static final RegExp buvidRegExp = RegExp(r'^X[A-Z][0-9A-F]{35}$');
   static final RegExp buvid3RegExp = RegExp(r'^[0-9A-F]{32}\d{5}infoc$');
-  static final RegExp deviceIdRegExp = RegExp(r'^[0-9a-f]{34}$');
   static final RegExp fpRegExp = RegExp(r'^[0-9a-f]{64}$');
   static final RegExp sessionIdRegExp = RegExp(r'^[0-9a-z]{8}$');
+
+  /// 官方 `Qa1/d.getXtraceId()` 把 16 个随机字节整体按 `%02x` 输出，
+  /// 因此线上样本是**纯小写 hex**（不是 `[0-9a-z]`）。
   static final RegExp traceIdRegExp = RegExp(
-    r'^[0-9a-z]{32}:[0-9a-z]{16}:0:0$',
+    r'^[0-9a-f]{32}:[0-9a-f]{16}:0:0$',
   );
 
   static IdentityDerivedProfile deriveProfile({
@@ -128,9 +138,10 @@ abstract final class IdentityCoreGenerators {
     return IdentityDerivedProfile(
       profile: profile,
       buvid3: generateBuvid3(),
-      deviceId: generateDeviceLocalId(owner: owner, buvid: profile.buvid),
-      sessionId: generateSessionId(),
-      traceId: generateTraceId(now: derivedNow),
+      sessionId: generateSessionId(scope: owner.key),
+      // traceId 用真实秒（官方 `Xl1/a.a()` 把秒级时间戳写进末 4 字节），
+      // 不再复用 fp 的伪时间戳。
+      traceId: generateTraceId(now: now),
       fpLocal: fp,
       fpRemote: fp,
     );
@@ -212,41 +223,6 @@ abstract final class IdentityCoreGenerators {
           );
   }
 
-  static String generateDeviceLocalId({
-    required IdentityOwnerKey owner,
-    required String buvid,
-  }) {
-    final seed = _seedBytes('device-local:${owner.key}:${buvid.toUpperCase()}');
-    final encodedTime = _encodeBcdTimestamp(_pseudoTimestamp(seed));
-    final payloadBytes = <int>[
-      ...seed.take(16),
-      ...encodedTime,
-      ...seed.skip(16).take(8),
-    ];
-    final digest = md5.convert(payloadBytes).toString();
-    final checksum = _pairedHexChecksum(digest);
-    return '$digest$checksum';
-  }
-
-  static IdentityValidationResult validateDeviceLocalId(String deviceLocalId) {
-    final normalized = deviceLocalId.trim().toLowerCase();
-    if (!deviceIdRegExp.hasMatch(normalized)) {
-      return const IdentityValidationResult.invalid(
-        'device/local id must be 34 lowercase hex characters.',
-      );
-    }
-
-    final payload = normalized.substring(0, 32);
-    final checksum = normalized.substring(32);
-    if (_pairedHexChecksum(payload) != checksum) {
-      return const IdentityValidationResult.invalid(
-        'device/local id checksum mismatch.',
-      );
-    }
-
-    return const IdentityValidationResult.valid();
-  }
-
   static String generateFp({
     required IdentityOwnerKey owner,
     required String buvid,
@@ -280,8 +256,19 @@ abstract final class IdentityCoreGenerators {
     return const IdentityValidationResult.valid();
   }
 
-  static String generateSessionId() =>
-      _randomFromAlphabet(_sessionIdLength, _alphanumeric);
+  /// 会话 ID：**每个 owner 在进程生命周期内恒等**。
+  ///
+  /// 官方 `Qa1/d.getSessionId()` ← `Sa1.a`（`by lazy`）是**每进程一次**；
+  /// 本项目额外按 [scope]（= `owner.key`）分桶，以保持账号之间的隔离
+  /// —— 维护者明确要求不要引入设备级共享身份。
+  static final Map<String, String> _sessionIds = {};
+
+  static String generateSessionId({String? scope}) {
+    return _sessionIds.putIfAbsent(
+      scope ?? '',
+      () => _randomFromAlphabet(_sessionIdLength, _alphanumeric),
+    );
+  }
 
   static IdentityValidationResult validateSessionId(String sessionId) {
     return sessionIdRegExp.hasMatch(sessionId)
@@ -291,14 +278,17 @@ abstract final class IdentityCoreGenerators {
           );
   }
 
+  /// 官方 `Xl1/a.a()` / `n10/b.a()`：16 个随机字节，
+  /// 把**秒级时间戳按大端写进最后 4 字节**，再整体 `%02x` 成 32 位小写 hex，
+  /// 拼成 `<32 hex>:<body[16..32]>:0:0`。
   static String generateTraceId({DateTime? now}) {
-    final timestamp =
-        (((now ?? DateTime.now()).millisecondsSinceEpoch ~/ 1000) >> 8)
-            .toRadixString(16)
-            .padLeft(6, '0')
-            .substring(0, 6);
-    final body =
-        '${_randomFromAlphabet(24, _alphanumeric)}$timestamp${_randomFromAlphabet(2, _alphanumeric)}';
+    final bytes = _randomBytes(16);
+    final seconds = (now ?? DateTime.now()).millisecondsSinceEpoch ~/ 1000;
+    bytes[12] = (seconds >> 24) & 0xff;
+    bytes[13] = (seconds >> 16) & 0xff;
+    bytes[14] = (seconds >> 8) & 0xff;
+    bytes[15] = seconds & 0xff;
+    final body = _hexBytes(bytes);
     return '$body:${body.substring(16, 32)}:0:0';
   }
 
@@ -355,22 +345,20 @@ abstract final class IdentityCoreGenerators {
     );
   }
 
-  static List<int> _encodeBcdTimestamp(DateTime timestamp) {
-    return [
-      _dec2bcd(timestamp.year ~/ 100),
-      _dec2bcd(timestamp.year % 100),
-      _dec2bcd(timestamp.month),
-      _dec2bcd(timestamp.day),
-      _dec2bcd(timestamp.hour),
-      _dec2bcd(timestamp.minute),
-      _dec2bcd(timestamp.second),
-    ];
+  /// 取 [length] 个随机字节。与 [_secureishIndex] 同源（sha256 摘要），
+  /// 混入自增计数器以保证同微秒内的连续调用也不重复。
+  static List<int> _randomBytes(int length) {
+    final out = <int>[];
+    while (out.length < length) {
+      out.addAll(
+        _seedBytes('bytes:${_randomCounter++}:${DateTime.now().microsecondsSinceEpoch}'),
+      );
+    }
+    return out.sublist(0, length);
   }
 
-  static int _dec2bcd(int value) {
-    assert(0 <= value && value < 100);
-    return ((value ~/ 10) << 4) | (value % 10);
-  }
+  static int _randomCounter = 0;
+
 
   static String _formatFpTimestamp(DateTime timestamp) {
     return '${timestamp.year.toString().padLeft(4, '0')}'
@@ -421,8 +409,10 @@ abstract final class IdentityCoreGenerators {
   }
 
   static int _secureishIndex({required int length, required int salt}) {
+    // 计数器必须参与熵：否则同一微秒内的两次调用会得到完全相同的序列
+    // （session_id 现在按 scope 缓存，两个账号若在同一微秒内首次取用就会撞值）。
     final bytes = _seedBytes(
-      'random:$salt:${DateTime.now().microsecondsSinceEpoch}',
+      'random:$salt:${_randomCounter++}:${DateTime.now().microsecondsSinceEpoch}',
     );
     return bytes[salt % bytes.length] % length;
   }

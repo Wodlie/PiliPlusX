@@ -152,13 +152,13 @@ abstract final class MemberHttp {
       'build': 8430300,
       'channel': 'master',
       'version': '8.43.0',
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'mobi_app': 'android',
       'platform': 'android',
       'pn': page,
       'ps': 10,
-      's_locale': 'zh_CN',
-      'statistics': Constants.statisticsApp,
+      's_locale': Constants.sLocale,
+      'statistics': Constants.statistics,
       'vmid': mid,
     };
     final res = await Request().get(
@@ -167,7 +167,7 @@ abstract final class MemberHttp {
       options: Options(
         headers: {
           'bili-http-engine': 'cronet',
-          'user-agent': Constants.userAgentApp,
+          'user-agent': Constants.userAgent,
         },
       ),
     );
@@ -215,11 +215,11 @@ abstract final class MemberHttp {
       'aid': ?aid,
       'build': 8430300,
       'version': '8.43.0',
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'channel': 'master',
       'mobi_app': 'android',
       'platform': 'android',
-      's_locale': 'zh_CN',
+      's_locale': Constants.sLocale,
       'ps': 20,
       'pn': ?pn,
       'next': ?next,
@@ -229,7 +229,7 @@ abstract final class MemberHttp {
       'order': ?order?.name,
       'sort': ?sort?.name,
       'include_cursor': ?includeCursor,
-      'statistics': Constants.statisticsApp,
+      'statistics': Constants.statistics,
       'vmid': mid,
     };
     final res = await Request().get(
@@ -238,7 +238,7 @@ abstract final class MemberHttp {
       options: Options(
         headers: {
           'bili-http-engine': 'cronet',
-          'user-agent': Constants.userAgentApp,
+          'user-agent': Constants.userAgent,
         },
       ),
     );
@@ -313,7 +313,7 @@ abstract final class MemberHttp {
   //     'mobi_app': 'android',
   //     'platform': 'android',
   //     's_locale': 'zh_CN',
-  //     'statistics': Constants.statisticsApp,
+  //     'statistics': Constants.statistics,
   //     'vmid': mid,
   //   };
   //   final res = await Request().get(
@@ -322,7 +322,7 @@ abstract final class MemberHttp {
   //     options: Options(
   //       headers: {
   //         'bili-http-engine': 'cronet',
-  //         'user-agent': Constants.userAgentApp,
+  //         'user-agent': Constants.userAgent,
   //       },
   //     ),
   //   );
@@ -340,13 +340,13 @@ abstract final class MemberHttp {
     final params = {
       'build': 8430300,
       'version': '8.43.0',
-      'c_locale': 'zh_CN',
+      'c_locale': Constants.cLocale,
       'channel': 'master',
       'mobi_app': 'android',
       'platform': 'android',
-      's_locale': 'zh_CN',
+      's_locale': Constants.sLocale,
       'from_view_aid': ?fromViewAid,
-      'statistics': Constants.statisticsApp,
+      'statistics': Constants.statistics,
       'vmid': mid,
     };
     final res = await Request().get(
@@ -355,7 +355,7 @@ abstract final class MemberHttp {
       options: Options(
         headers: {
           'bili-http-engine': 'cronet',
-          'user-agent': Constants.userAgentApp,
+          'user-agent': Constants.userAgent,
         },
       ),
     );
@@ -904,7 +904,7 @@ abstract final class MemberHttp {
       'build': 8430300,
       'mVersion': 309,
       'mallVersion': 8430300,
-      'statistics': Constants.statisticsApp,
+      'statistics': Constants.statistics,
     };
     AppSign.appSign(params);
     final res = await Request().post(

@@ -15,13 +15,51 @@ import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 
 abstract final class GrpcHeaders {
-  static const _profile = AppDeviceProfiles.androidHd;
+  static const _profile = AppDeviceProfiles.android;
 
-  static String fawkes(String sessionId) => base64Encode(
+  /// 所有 `x-bili-*-bin` 的统一编码。
+  ///
+  /// gRPC 规范要求二进制 metadata 的 base64 **不带 padding**，官方用的正是
+  /// `com.bilibili.lib.moss.utils.MetadataCodeC.encode` =
+  /// `io.grpc.InternalMetadata.BASE64_ENCODING_OMIT_PADDING`。
+  ///
+  /// （对比：官方 kntr 的**纯头**通道用 Kotlin `Base64.Default`（带 padding），
+  /// 例如 `x-bili-aurora-eid`；两者不可混用。）
+  static String _bin(List<int> bytes) =>
+      base64Encode(bytes).replaceAll('=', '');
+
+  /// `x-bili-fawkes-req-bin`。
+  ///
+  /// `appkey` 是 **Fawkes 档位串**（`GFoundation.getFawkesAppKey()`），
+  /// 不是签名 appkey、也不是 `mobi_app`：国内 arm64 包为 `android64`
+  /// （真机抓包 + `tflite/a.java` 三档字面量 + `gripper/update/a.java` 的 64 规则）。
+  static String fawkes(String sessionId) => _bin(
     FawkesReq(
-      appkey: _profile.mobiApp,
+      appkey: _profile.fawkesAppKey,
       env: 'prod',
       sessionId: sessionId,
+    ).writeToBuffer(),
+  );
+
+  /// `x-bili-locale-bin` —— **固定头**，不随设备变动。
+  ///
+  /// 官方 `BiliConfig.Delegate.getLocalBin()`（`gripper/container/bilow/b.java:110`）
+  /// 会取 App 内语言 / 系统语言 / 设备时区 / UTC 偏移 / 夏令时 / 自动翻译；
+  /// 本项目按要求一律用常量，避免泄露设备信息。
+  ///
+  /// 第 5 字段 `utcOffset` 是抓包里实际出现的值（`x-bili-locale-bin` 解码 →
+  /// `timezone=Asia/Shanghai`, `utcOffset=+08:00`）；`isDaylightTime` /
+  /// `alwaysTranslate` 为 proto 默认 `false`，不会序列化。
+  ///
+  /// Base64 **不带 padding** —— 与其它 `-bin` 一致走 gRPC 的 omit-padding 约定
+  /// （官方 moss 库 `MetadataCodec.encode`）。注意官方 kntr 的**纯头**通道
+  /// （`imp/n.java:27` 的 Kotlin `Base64.Default`）才带 padding，本函数不在那条路径上。
+  static String localeBin() => _bin(
+    Locale(
+      cLocale: LocaleIds(language: 'zh', region: 'CN', script: 'Hans'),
+      sLocale: LocaleIds(language: 'zh', region: 'CN', script: 'Hans'),
+      timezone: 'Asia/Shanghai',
+      utcOffset: '+08:00',
     ).writeToBuffer(),
   );
 
@@ -38,29 +76,33 @@ abstract final class GrpcHeaders {
     );
     final resolvedBuvid = identity.profile.buvid;
     final profile = AppDeviceProfiles.resolve(
-      userAgent: _profile.userAgent,
       ownerKey: identity.profile.owner.key,
       deviceProfile: deviceProfile ?? identity.deviceProfile,
     );
     return {
       'grpc-encoding': 'gzip',
-      'gzip-accept-encoding': 'gzip,identity',
+      // 官方用 `grpc-accept-encoding`（Ktor 回退路径 = "gzip"，
+      // 见 `kntr/base/moss/ignet/impl/grpc/ignet/fallback/a.java:32`；
+      // chronos 插件 = "identity, gzip"）。原来的 `gzip-accept-encoding`
+      // 在官方代码里**不存在**，是自造的头名。
+      'grpc-accept-encoding': 'gzip',
       'user-agent': profile.userAgent,
       'x-bili-gaia-vtoken': '',
       'x-bili-aurora-zone': Constants.baseHeaders['x-bili-aurora-zone'] ?? '',
       'x-bili-trace-id': identity.derived.traceId,
       'buvid': resolvedBuvid,
+      // 与 REST 侧一致：官方 ignet 的 gRPC 回退路径同样发这一对
+      // （`fallback/a.java:33-37`：`bili-rest-engine: moss` + `bili-http-engine: <引擎名>`）。
+      'bili-rest-engine': 'moss',
       'bili-http-engine': 'cronet',
       if (identity.auroraEid != null) 'x-bili-aurora-eid': identity.auroraEid!,
-      // 由 Kc0.a（Aurora 拦截器）始终加入：
-      // - x-bili-mid（未登录为 0）
-      // - x-bili-aurora-eid（已经上面处理）
-      // - x-bili-aurora-zone（已存在）
-      // 见 reverse-output/verification/05_grpc_minimal_headers.md
-      'x-bili-mid': '${mid ?? 0}',
-      'x-bili-device-bin': base64Encode(
+      // 官方 gRPC 侧由 Gripper provider `Ib1/a.java:35-41` 提供：
+      // 未登录时 `Ib1/g.getMid()` 返回 **null** → provider 返回 null →
+      // 被 `header/b.java` 的 null 过滤跳过 ⇒ **整键不发**（不是发 "0"）。
+      if (mid != null && mid > 0) 'x-bili-mid': '$mid',
+      'x-bili-device-bin': _bin(
         Device(
-          appId: 5,
+          appId: profile.appId,
           build: profile.build,
           buvid: resolvedBuvid,
           mobiApp: profile.mobiApp,
@@ -76,16 +118,11 @@ abstract final class GrpcHeaders {
           guestId: identity.derived.deviceId,
         ).writeToBuffer(),
       ),
-      'x-bili-network-bin': base64Encode(
+      'x-bili-network-bin': _bin(
         network.Network(type: network.NetworkType.WIFI).writeToBuffer(),
       ),
-      'x-bili-locale-bin': base64Encode(
-        Locale(
-          cLocale: LocaleIds(language: 'zh', region: 'CN', script: 'Hans'),
-          sLocale: LocaleIds(language: 'zh', region: 'CN', script: 'Hans'),
-          timezone: 'Asia/Shanghai',
-        ).writeToBuffer(),
-      ),
+      // 固定头（不随设备变动）—— 见 [localeBin] 的说明。
+      'x-bili-locale-bin': localeBin(),
       'x-bili-exps-bin': '',
       // 由 Jc0.a（主 Metadata 构建器）始终加入：
       // - x-bili-restriction-bin（Restriction proto，无登录态约束时为空）
@@ -95,7 +132,7 @@ abstract final class GrpcHeaders {
       'x-bili-fawkes-req-bin': fawkes(identity.derived.sessionId),
       // 由 Sc0.a（Ticket 拦截器）总是接续 Aurora 处理之后无条件添加
       'x-bili-ticket': '',
-      'x-bili-metadata-bin': base64Encode(
+      'x-bili-metadata-bin': _bin(
         Metadata(
           accessKey: accessKey,
           mobiApp: profile.mobiApp,

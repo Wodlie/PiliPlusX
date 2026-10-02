@@ -148,7 +148,7 @@ void main() {
         );
         final identity = RequestIdentityAdapter.fromAccount(
           account: restored,
-          userAgent: AppDeviceProfiles.androidHd.userAgent,
+          userAgent: AppDeviceProfiles.android.userAgent,
         );
         expect(identity.profile.deviceProfile, fallbackProfile);
         expect(identity.deviceName, fallbackProfile.deviceName);

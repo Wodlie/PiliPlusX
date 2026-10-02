@@ -52,36 +52,47 @@ void main() {
     );
     final headers = LoginHttp.appHeaders(
       buvid: account.buvid,
-      appKey: 'android_hd',
       userAgent: Constants.userAgent,
       account: account,
     );
 
+    // 官方语义：local_id = BUVID；bili_local_id / device_id 都取 fp_local。
     expect(
       identity.loginPayloadFields,
-      containsPair('local_id', identity.deviceId),
+      containsPair('local_id', identity.buvid),
     );
     expect(
       identity.loginPayloadFields,
-      containsPair('bili_local_id', identity.deviceId),
+      containsPair('bili_local_id', identity.fpLocal),
     );
     expect(
       identity.loginPayloadFields,
-      containsPair('device_id', identity.deviceId),
+      containsPair('device_id', identity.fpLocal),
     );
     expect(
-      IdentityCoreGenerators.validateDeviceLocalId(identity.deviceId).isValid,
+      IdentityCoreGenerators.validateBuvid(identity.localId).isValid,
+      isTrue,
+    );
+    expect(
+      IdentityCoreGenerators.validateFp(identity.deviceId).isValid,
       isTrue,
     );
     expect(identity.profile.deviceProfile, hdProfile);
     expect(identity.deviceName, hdProfile.deviceName);
+    // 官方 = Build.MANUFACTURER + Build.MODEL（裸拼，无分隔符）
+    expect(identity.deviceName, '${hdProfile.brand}${hdProfile.model}');
     expect(identity.deviceName, isNot('vivo'));
     expect(identity.devicePlatform, hdProfile.devicePlatform);
+    // 官方 = "Android" + VERSION.RELEASE + MANUFACTURER + MODEL
+    expect(
+      identity.devicePlatform,
+      'Android${hdProfile.osver}${hdProfile.brand}${hdProfile.model}',
+    );
     expect(identity.devicePlatform, isNot('Android14vivo'));
     expect(identity.profile.deviceProfile.hasGenericPlaceholderFields, isFalse);
     expect(
       VideoHttp.recommendAppIdentityHeaders(account)['user-agent'],
-      AppDeviceProfiles.androidHd.userAgent,
+      AppDeviceProfiles.android.userAgent,
     );
     expect(
       IdentityCoreGenerators.validateTraceId(
@@ -105,13 +116,12 @@ void main() {
     );
     final headers = LoginHttp.appHeaders(
       buvid: guest.buvid,
-      appKey: 'android_hd',
       userAgent: Constants.userAgent,
       account: guest,
     );
 
     expect(
-      IdentityCoreGenerators.validateDeviceLocalId(identity.localId).isValid,
+      IdentityCoreGenerators.validateBuvid(identity.localId).isValid,
       isTrue,
     );
     expect(
@@ -151,7 +161,7 @@ void main() {
     );
     final identity = RequestIdentityAdapter.fromAccount(
       account: account,
-      userAgent: Constants.userAgentApp,
+      userAgent: Constants.userAgent,
     );
 
     expect(
@@ -178,7 +188,7 @@ void main() {
     expect(identity.profile.deviceProfile, appProfile);
     expect(
       LiveHttp.appIdentityHeaders(account)['user-agent'],
-      AppDeviceProfiles.androidApp.userAgent,
+      AppDeviceProfiles.android.userAgent,
     );
     expect(
       identity.appIdentityHeaders['fp_local'],
@@ -209,8 +219,8 @@ void main() {
     expect(identity.profile.deviceProfile, storedProfile);
     expect(identity.deviceName, storedProfile.deviceName);
     expect(identity.devicePlatform, storedProfile.devicePlatform);
-    expect(identity.profile.build, AppDeviceProfiles.androidHd.build);
-    expect(identity.profile.mobiApp, AppDeviceProfiles.androidHd.mobiApp);
+    expect(identity.profile.build, AppDeviceProfiles.android.build);
+    expect(identity.profile.mobiApp, AppDeviceProfiles.android.mobiApp);
   });
 
   test(
@@ -245,7 +255,6 @@ void main() {
 
     final headers = LoginHttp.appHeaders(
       buvid: identity.buvid,
-      appKey: 'android_hd',
       userAgent: Constants.userAgent,
       identity: identity,
     );
@@ -272,8 +281,8 @@ void main() {
   });
 
   test('video and live app params read shared device profiles', () {
-    const hdProfile = AppDeviceProfiles.androidHd;
-    const appProfile = AppDeviceProfiles.androidApp;
+    const hdProfile = AppDeviceProfiles.android;
+    const appProfile = AppDeviceProfiles.android;
 
     final videoParams = VideoHttp.recommendAppQueryParameters(freshIdx: 7);
     final liveParams = LiveHttp.liveFeedIndexQueryParameters(

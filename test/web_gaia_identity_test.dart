@@ -79,7 +79,7 @@ void main() {
 
       final identity = RequestIdentityAdapter.fromAccount(
         account: account,
-        userAgent: Constants.userAgentApp,
+        userAgent: Constants.userAgent,
       );
 
       final videoHeaders = VideoHttp.recommendAppIdentityHeaders(account);

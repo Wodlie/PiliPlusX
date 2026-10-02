@@ -12,6 +12,7 @@ import 'package:PiliPlus/models/login/model.dart';
 import 'package:PiliPlus/pages/login/geetest/geetest_webview_dialog.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -44,9 +45,41 @@ class LoginPageController extends GetxController
   late final RxInt smsSendCooldown = 0.obs;
   late int smsSendTimestamp = 0;
 
+  /// 验证码下发通道：`sms` / `whatsapp`。
+  ///
+  /// 海外号有机会收到短信失败，可改由 WhatsApp 下发。服务端未必照办，
+  /// 实际通道以 /sms/send 响应里的 `actual_channel` 为准（见 [sendSmsCode]）。
+  late final RxString otpChannel = 'sms'.obs;
+
+  /// 本次「取码 → 登录」流程锁定的身份档案。
+  ///
+  /// 在**发码那一刻**按所选通道钉死（whatsapp → [AppDeviceProfiles.androidIntl]，
+  /// 即 `mobi_app=android_i`；其余 → 国内基线），登录复用同一个 ——
+  /// `captcha_key` 是那次发码签发的一次性凭据，中途换身份会把发码与登录拆成两个身份。
+  AppRequestProfile _smsFlowProfile = AppDeviceProfiles.android;
+
   // 定时器
   Timer? qrCodeTimer;
   Timer? smsSendCooldownTimer;
+
+  bool get isWhatsappChannel => otpChannel.value == 'whatsapp';
+
+  void switchOtpChannel() {
+    otpChannel.value = isWhatsappChannel ? 'sms' : 'whatsapp';
+  }
+
+  /// 官方规则：`cid == 86` 时手机号必须 11 位，其他区号只要求非空。
+  /// 返回错误文案，通过校验时返回 null。
+  String? validateTel() {
+    final tel = telTextController.text.trim();
+    if (tel.isEmpty) {
+      return '手机号不能为空';
+    }
+    if (selectedCountryCodeId.countryCode == 86 && tel.length != 11) {
+      return '中国大陆手机号应为 11 位';
+    }
+    return null;
+  }
 
   bool _isReq = false;
   RequestIdentityAdapter? _loginSessionIdentity;
@@ -495,8 +528,9 @@ class LoginPageController extends GetxController
 
   // 短信验证码登录
   Future<void> loginBySmsCode() async {
-    if (telTextController.text.isEmpty) {
-      SmartDialog.showToast('手机号不能为空');
+    final telError = validateTel();
+    if (telError != null) {
+      SmartDialog.showToast(telError);
       return;
     }
     if (captchaKey.isEmpty) {
@@ -524,9 +558,11 @@ class LoginPageController extends GetxController
       tel: telTextController.text,
       code: smsCodeTextController.text,
       captchaKey: captchaKey,
-      cid: selectedCountryCodeId.countryId,
+      cid: selectedCountryCodeId.countryCode,
       key: key,
       identity: identity,
+      // 与发码同身份（captcha_key 是那次发码签发的）
+      profile: _smsFlowProfile,
     );
     if (res['status']) {
       SmartDialog.showToast('登录成功');
@@ -545,8 +581,9 @@ class LoginPageController extends GetxController
 
   // app端验证码
   Future<void> sendSmsCode() async {
-    if (telTextController.text.isEmpty) {
-      SmartDialog.showToast('手机号不能为空');
+    final telError = validateTel();
+    if (telError != null) {
+      SmartDialog.showToast(telError);
       return;
     }
     // String? guestId;
@@ -591,10 +628,18 @@ class LoginPageController extends GetxController
     // SmartDialog.showToast("短信验证码已发送，请查收");
     // captchaKey = safeCenterSendSmsCodeRes['data']['captcha_key'];
 
+    final requestedChannel = otpChannel.value;
+    // 按所选通道钉死本次流程的身份：WhatsApp 发码是海外版能力，用 android_i 更稳。
+    // 签名 key 由 account_mgr 按请求里的 mobi_app 自动配套（同一个档案）。
+    _smsFlowProfile = requestedChannel == 'whatsapp'
+        ? AppDeviceProfiles.androidIntl
+        : AppDeviceProfiles.android;
     final res = await LoginHttp.sendSmsCode(
       tel: telTextController.text,
-      cid: selectedCountryCodeId.countryId,
+      cid: selectedCountryCodeId.countryCode,
       identity: _ensureLoginSessionIdentity(),
+      profile: _smsFlowProfile,
+      otpChannel: requestedChannel,
       // deviceTouristId: guestId,
       geeValidate: captchaData.validate,
       geeSeccode: captchaData.seccode,
@@ -602,7 +647,17 @@ class LoginPageController extends GetxController
       recaptchaToken: captchaData.token,
     );
     if (res['status']) {
-      SmartDialog.showToast('发送成功');
+      // 真发出去了才会走到这里；只有此时响应里才可能有 actual_channel。
+      final actualChannel = res['actualChannel'] as String?;
+      if (actualChannel != null) {
+        // 以服务端实际通道为准，否则按钮文案会一直和真实通道不一致。
+        otpChannel.value = actualChannel;
+      }
+      if (requestedChannel == 'whatsapp' && actualChannel == 'sms') {
+        SmartDialog.showToast('WhatsApp 发送失败，我们已改用短信发送');
+      } else {
+        SmartDialog.showToast('发送成功');
+      }
       smsSendTimestamp = DateTime.now().millisecondsSinceEpoch;
       smsSendCooldown.value = 60;
       captchaKey = res['data']['captcha_key'];
@@ -657,6 +712,9 @@ class LoginPageController extends GetxController
           getCaptcha(geeGt!, geeChallenge!, sendSmsCode);
           break;
         default:
+          // 这里也会收到 86104「请使用其它方式注册或登录」——那是号码/账号层面的拒绝
+          // （实测同号码换 otp_channel 返回逐字相同），与通道无关，
+          // 不要把它并进上面的极验分支，也不要因此改 otpChannel。
           SmartDialog.showToast(res['msg']);
           _clearLoginSessionIdentity();
           break;

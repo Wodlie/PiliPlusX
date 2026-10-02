@@ -1,3 +1,4 @@
+import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/http/api.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
@@ -243,10 +244,10 @@ abstract final class SearchHttp {
         'build': 8430300,
         'channel': 'master',
         'version': '8.43.0',
-        'c_locale': 'zh_CN',
+        'c_locale': Constants.cLocale,
         'mobi_app': 'android',
         'platform': 'android',
-        's_locale': 'zh_CN',
+        's_locale': Constants.sLocale,
         'from': 2,
       },
     );

@@ -8,6 +8,7 @@ import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/api_type.dart';
+import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/identity_core/identity_snapshot.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
@@ -70,9 +71,17 @@ class AccountManager extends Interceptor {
       return handler.next(options);
     }
 
-    options.headers
-      ..addAll(account.headers)
-      ..['referer'] ??= HttpString.baseUrl;
+    // 账号级公共头（env / app-key / x-bili-aurora-zone，登录号另有 x-bili-mid 等）。
+    //
+    // 用 putIfAbsent 而不是 addAll：**请求级已设的键优先**。app 请求的 header 由
+    // RequestIdentityAdapter 按 AppRequestProfile 派生，其中 `app-key` 必须与请求里的
+    // `mobi_app`（以及签名用的 appkey）同源；若在这里被 `Constants.baseHeaders` 的全局
+    // 值覆盖，就会出现「签名用 A 的 appkey、app-key 头写 B」的身份错位。
+    // web 请求不设这些键，仍然是账号级值生效（行为不变）。
+    for (final entry in account.headers.entries) {
+      options.headers.putIfAbsent(entry.key, () => entry.value);
+    }
+    options.headers['referer'] ??= HttpString.baseUrl;
 
     // app端不需要管理cookie
     if (isApp) {
@@ -84,7 +93,16 @@ class AccountManager extends Interceptor {
         if (!account.accessKey.isNullOrEmpty) {
           dataPtr['access_key'] = account.accessKey!;
         }
-        AppSign.appSign(dataPtr..remove('sign'));
+        // 签名 key 与请求里的 mobi_app 同源：显式走海外版的接口用海外版那一对，
+        // 其余用国内基线，避免「签名用 A 的 key、mobi_app 写 B」。
+        final profile = AppDeviceProfiles.forMobiApp(
+          dataPtr['mobi_app']?.toString(),
+        );
+        AppSign.appSign(
+          dataPtr..remove('sign'),
+          appkey: profile.appKey,
+          appsec: profile.appSec,
+        );
         // if (kDebugMode) debugPrint(dataPtr.toString());
       }
       return handler.next(options);

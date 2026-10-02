@@ -95,33 +95,46 @@ void main() {
       );
     });
 
-    test('device/local ids are owner-scoped and checksum-valid', () {
+    test('derived ids follow official semantics and stay owner-scoped', () {
       final guestBuvid = IdentityCoreGenerators.deriveBuvidFromSeed(
         'guest-seed',
       );
-      final accountBuvid = IdentityCoreGenerators.deriveBuvidFromSeed(
-        'account-seed',
+      const guestOwner = IdentityOwnerKey.guest();
+      final guestProfile = IdentityCoreGenerators.deriveProfile(
+        owner: guestOwner,
+        storedProfile: IdentityCoreProfile(
+          owner: guestOwner,
+          buvid: guestBuvid,
+        ),
       );
 
-      final guestDeviceId = IdentityCoreGenerators.generateDeviceLocalId(
-        owner: const IdentityOwnerKey.guest(),
-        buvid: guestBuvid,
-      );
-      final accountDeviceId = IdentityCoreGenerators.generateDeviceLocalId(
-        owner: IdentityOwnerKey.account(42),
-        buvid: accountBuvid,
+      final accountOwner = IdentityOwnerKey.account(42);
+      final accountProfile = IdentityCoreGenerators.deriveProfile(
+        owner: accountOwner,
+        storedProfile: IdentityCoreProfile(
+          owner: accountOwner,
+          buvid: IdentityCoreGenerators.deriveBuvidFromSeed('account-seed'),
+        ),
       );
 
+      // 官方 `PassportCommParams.getLocalId()` → `paramDelegate.getBuvid()`：
+      // local_id 就是 BUVID 本身。
+      expect(guestProfile.localId, guestBuvid);
       expect(
-        IdentityCoreGenerators.validateDeviceLocalId(guestDeviceId).isValid,
+        IdentityCoreGenerators.validateBuvid(guestProfile.localId).isValid,
         isTrue,
       );
+      // 官方 `getBiliLocalId()` → `BiliIds.buvidLocal()` → `fp_local`；
+      // device_id 按维护者约定也直接取 fp_local（不做设备级持久化）。
+      expect(guestProfile.biliLocalId, guestProfile.fpLocal);
+      expect(guestProfile.deviceId, guestProfile.fpLocal);
       expect(
-        IdentityCoreGenerators.validateDeviceLocalId(accountDeviceId).isValid,
+        IdentityCoreGenerators.validateFp(guestProfile.deviceId).isValid,
         isTrue,
       );
-      expect(guestDeviceId, isNot(accountDeviceId));
-      expect(guestDeviceId, isNot('0'));
+      // 仍然按 owner 隔离，不跨账号共享。
+      expect(guestProfile.deviceId, isNot(accountProfile.deviceId));
+      expect(guestProfile.localId, isNot(accountProfile.localId));
     });
 
     test(
@@ -156,9 +169,32 @@ void main() {
         isTrue,
       );
       expect(IdentityCoreGenerators.validateTraceId(traceId).isValid, isTrue);
+
+      // 官方 `Xl1/a.a()`：16 字节随机 + 末 4 字节写入**秒级时间戳（大端）**，
+      // 整体按 %02x 输出 —— 因此 body 必须是纯小写 hex。
+      final body = traceId.substring(0, 32);
+      expect(RegExp(r'^[0-9a-f]{32}$').hasMatch(body), isTrue);
+      final seconds = DateTime.utc(
+        2026,
+        5,
+        6,
+        12,
+        0,
+        0,
+      ).millisecondsSinceEpoch ~/ 1000;
+      expect(body.substring(24, 32), seconds.toRadixString(16).padLeft(8, '0'));
+      expect(traceId, '$body:${body.substring(16, 32)}:0:0');
+    });
+
+    test('session id is stable per scope inside one process', () {
+      // 官方是每进程一次（`Sa1.a` lazy）；本项目再按 owner 分桶以保持账号隔离。
       expect(
-        traceId,
-        isNot('11111111111111111111111111111111:1111111111111111:0:0'),
+        IdentityCoreGenerators.generateSessionId(scope: 'account:1'),
+        IdentityCoreGenerators.generateSessionId(scope: 'account:1'),
+      );
+      expect(
+        IdentityCoreGenerators.generateSessionId(scope: 'account:1'),
+        isNot(IdentityCoreGenerators.generateSessionId(scope: 'account:2')),
       );
     });
 

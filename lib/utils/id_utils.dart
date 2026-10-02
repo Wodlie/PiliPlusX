@@ -1,6 +1,6 @@
 // ignore_for_file: constant_identifier_names, non_constant_identifier_names
 
-import 'dart:convert' show ascii, base64;
+import 'dart:convert' show ascii, base64, base64Url;
 
 import 'package:PiliPlus/utils/accounts/identity_core/identity_generators.dart';
 
@@ -79,7 +79,17 @@ abstract final class IdUtils {
     return IdentityCoreGenerators.generateBuvid3();
   }
 
-  static String genAuroraEid(int uid) {
+  /// `x-bili-aurora-eid`：mid 的十进制串逐字节 XOR 密钥后 Base64。
+  ///
+  /// 保留 Base64 padding —— 官方两处实现**都带 `=`**：
+  /// - REST：`p087dm1/a.java:43` → `Wl1.a.a()` → `android.util.Base64.encodeToString(bytes, 10)`
+  ///   = `URL_SAFE | NO_WRAP`（**URL-safe 字母表**，带 padding）；
+  /// - gRPC：`kntr/base/net/comm/m.java:45` → Kotlin `Base64.Default`
+  ///   （**标准字母表**，带 padding）。
+  ///
+  /// 因此 [urlSafe] 区分两条路径（默认 false = gRPC 的标准字母表）。
+  /// 真机抓包 `UlEFQFcBAFgFWk9YWFcDQg==` 亦带 `==`。
+  static String genAuroraEid(int uid, {bool urlSafe = false}) {
     if (uid == 0) {
       return '';
     }
@@ -91,9 +101,7 @@ abstract final class IdUtils {
       midByte[i] ^= key.codeUnitAt(i % key.length);
     }
 
-    String base64Encoded = base64.encode(midByte).replaceAll('=', '');
-
-    return base64Encoded;
+    return urlSafe ? base64Url.encode(midByte) : base64.encode(midByte);
   }
 
   // https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/grpc_api/readme.md#x-bili-trace-id-生成算法
