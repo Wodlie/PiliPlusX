@@ -1,6 +1,6 @@
-import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/http/api.dart';
 import 'package:PiliPlus/http/init.dart';
+import 'package:PiliPlus/http/live.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/fav_order_type.dart';
 import 'package:PiliPlus/models_new/fav/fav_article/data.dart';
@@ -573,15 +573,9 @@ abstract final class FavHttp {
   static Future<LoadingState<List<SpaceFavData>?>> spaceFav({
     required int mid,
   }) async {
-    final params = {
-      'build': 8430300,
-      'version': '8.43.0',
-      'c_locale': Constants.cLocale,
-      'channel': 'master',
-      'mobi_app': 'android',
-      'platform': 'android',
-      's_locale': Constants.sLocale,
-      'statistics': Constants.statistics,
+    final account = Accounts.main;
+    final params = <String, dynamic>{
+      ...LiveHttp.appQueryFields(account.appRequestProfile, channel: true),
       'up_mid': mid,
     };
     final res = await Request().get(
@@ -590,8 +584,9 @@ abstract final class FavHttp {
       options: Options(
         headers: {
           'bili-http-engine': 'cronet',
-          'user-agent': Constants.userAgent,
+          ...LiveHttp.appRequestHeaders(account),
         },
+        extra: {'account': account},
       ),
     );
     if (res.data['code'] == 0) {

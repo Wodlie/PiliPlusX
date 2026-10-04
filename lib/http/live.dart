@@ -39,6 +39,34 @@ abstract final class LiveHttp {
 
   static Account get recommend => Accounts.get(AccountType.recommend);
 
+  /// 按账号档案构造 app 端公共字段（平台 + 设备）。
+  ///
+  /// 不要在同一请求里混用档案字段与 `Constants.*` 里的版本常量：那会生成一个
+  /// 自相矛盾的客户端（例如 `build=8.43.0` 配 9.13.0 的 UA）。字段一律取自
+  /// [Account.appRequestProfile]。
+  static Map<String, dynamic> appQueryFields(
+    AppRequestProfile profile, {
+    bool channel = false,
+    bool device = false,
+    bool forceDevice = false,
+  }) => {
+    'build': profile.build,
+    if (channel) 'channel': profile.channel,
+    'version': profile.versionName,
+    'c_locale': Constants.cLocale,
+    if (forceDevice || device) 'device': profile.requestDevice,
+    'mobi_app': profile.mobiApp,
+    'platform': profile.platform,
+    's_locale': Constants.sLocale,
+    'statistics': profile.statistics,
+  };
+
+  /// app 请求头（UA + 身份头），与参数同源于账号档案。
+  static Map<String, String> appRequestHeaders(Account account) => {
+    'user-agent': account.appRequestProfile.userAgent,
+    ...appIdentityHeaders(account),
+  };
+
   @visibleForTesting
   static Map<String, dynamic> liveFeedIndexQueryParameters({
     required Account account,
@@ -363,25 +391,43 @@ abstract final class LiveHttp {
     }
   }
 
-  static Future<LoadingState<List<AreaItem>>> getLiveFavTag() async {
-    final params = {
-      'access_key': ?Accounts.main.accessKey,
+  /// 直播收藏分区的公共参数。
+  ///
+  /// 凭证与客户端字段必须来自**同一个账号**：这两个接口是主账号的收藏操作
+  /// （[getLiveFavTag] / [setLiveFavTag]），不能拿主账号的 access_key 配上
+  /// 推荐账号的设备/平台档案 —— 那会让 access_key、mobi_app、app-key 头与
+  /// 签名 key 分属两套身份。
+  @visibleForTesting
+  static Map<String, dynamic> liveFavTagQueryParameters(Account account) {
+    final appProfile = account.appRequestProfile;
+    return {
+      'access_key': ?account.accessKey,
       'actionKey': 'appkey',
-      'build': _appProfile.build,
-      'channel': _appProfile.channel,
-      'version': _appProfile.versionName,
+      'build': appProfile.build,
+      'channel': appProfile.channel,
+      'version': appProfile.versionName,
       'c_locale': Constants.cLocale,
-      'device': _appProfile.requestDevice,
+      'device': appProfile.requestDevice,
       'disable_rcmd': 0,
-      'mobi_app': _appProfile.mobiApp,
-      'platform': _appProfile.platform,
+      'mobi_app': appProfile.mobiApp,
+      'platform': appProfile.platform,
       's_locale': Constants.sLocale,
-      'statistics': _appProfile.statistics,
+      'statistics': appProfile.statistics,
     };
+  }
+
+  static Future<LoadingState<List<AreaItem>>> getLiveFavTag() async {
+    final account = Accounts.main;
+    final params = liveFavTagQueryParameters(account);
     AppSign.appSign(params);
     final res = await Request().get(
       Api.getLiveFavTag,
       queryParameters: params,
+      options: Options(
+        headers: appRequestHeaders(account),
+        // 显式绑定发起账号，使 Cookie 注入/回写与上面的凭证、档案同源。
+        extra: {'account': account},
+      ),
     );
 
     if (res.data['code'] == 0) {
@@ -399,26 +445,20 @@ abstract final class LiveHttp {
   static Future<LoadingState<void>> setLiveFavTag({
     required String ids,
   }) async {
-    final data = {
+    final account = Accounts.main;
+    final data = <String, dynamic>{
       'tags': ids,
-      'access_key': Accounts.main.accessKey,
-      'actionKey': 'appkey',
-      'build': _appProfile.build,
-      'channel': _appProfile.channel,
-      'version': _appProfile.versionName,
-      'c_locale': Constants.cLocale,
-      'device': _appProfile.requestDevice,
-      'disable_rcmd': 0,
-      'mobi_app': _appProfile.mobiApp,
-      'platform': _appProfile.platform,
-      's_locale': Constants.sLocale,
-      'statistics': _appProfile.statistics,
+      ...liveFavTagQueryParameters(account),
     };
     AppSign.appSign(data);
     final res = await Request().post(
       Api.setLiveFavTag,
       data: data,
-      options: Options(contentType: Headers.formUrlEncodedContentType),
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        headers: appRequestHeaders(account),
+        extra: {'account': account},
+      ),
     );
 
     if (res.data['code'] == 0) {
@@ -774,19 +814,12 @@ abstract final class LiveHttp {
     String type, {
     int page = 1,
   }) async {
-    final params = {
-      'access_key': ?recommend.accessKey,
+    final account = recommend;
+    final params = <String, dynamic>{
+      'access_key': ?account.accessKey,
       'actionKey': 'appkey',
-      'build': 8430300,
-      'channel': 'master',
-      'c_locale': Constants.cLocale,
-      'device': 'android',
+      ...appQueryFields(account.appRequestProfile, channel: true, device: true),
       'disable_rcmd': 0,
-      'mobi_app': 'android',
-      'platform': 'android',
-      's_locale': Constants.sLocale,
-      'statistics': Constants.statistics,
-      'version': '8.43.0',
       'id': id,
       'id_type': type,
       'room_id': roomId,
@@ -797,6 +830,10 @@ abstract final class LiveHttp {
     final res = await Request().get(
       Api.liveFeedback,
       queryParameters: params,
+      options: Options(
+        headers: appRequestHeaders(account),
+        extra: {'account': account},
+      ),
     );
     if (res.data['code'] == 0) {
       return const Success(null);

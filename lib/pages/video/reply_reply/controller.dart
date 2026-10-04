@@ -1,11 +1,12 @@
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
-    show ReplyInfo, DetailListReply, Mode;
-import 'package:PiliPlus/grpc/reply.dart';
+    show ReplyInfo, DetailListReply, DialogListReply, Mode;
 import 'package:PiliPlus/grpc/fold_list_req_ext.dart';
+import 'package:PiliPlus/grpc/reply.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/reply/reply_sort_type.dart';
 import 'package:PiliPlus/pages/common/publish/publish_route.dart';
 import 'package:PiliPlus/pages/common/reply_controller.dart';
+import 'package:PiliPlus/pages/common/reply_fold_mixin.dart';
 import 'package:PiliPlus/pages/video/reply_new/view.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -16,8 +17,8 @@ import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
 
-class VideoReplyReplyController extends ReplyController
-    with GetSingleTickerProviderStateMixin {
+class VideoReplyReplyController extends ReplyController<DetailListReply>
+    with GetSingleTickerProviderStateMixin, ReplyFoldMixin<DetailListReply> {
   VideoReplyReplyController({
     required this.hasRoot,
     required this.id,
@@ -36,6 +37,11 @@ class VideoReplyReplyController extends ReplyController
 
   bool hasRoot = false;
   final firstFloor = Rxn<ReplyInfo>();
+
+  /// 官方折叠卡（来自 `DetailListReply.mixed_cards[11]`）。
+  /// 状态与拉取流程在 [ReplyFoldMixin]，这里只持有实例。
+  @override
+  final foldCard = Rxn<FoldCard>();
 
   final index = RxnInt();
 
@@ -62,30 +68,26 @@ class VideoReplyReplyController extends ReplyController
   }
 
   @override
-  List<ReplyInfo>? getDataList(response) {
-    return dialog != null ? response.replies : response.root.replies;
+  List<ReplyInfo>? getDataList(DetailListReply response) {
+    return response.root.replies;
   }
 
   @override
-  bool customHandleResponse(bool isRefresh, Success response) {
+  bool customHandleResponse(bool isRefresh, Success<DetailListReply> response) {
     final data = response.response;
-
+    // The base response hook accepts MainListReply, not nested reply messages.
     subjectControl = data.subjectControl;
     upMid ??= data.subjectControl.upMid;
     paginationReply = data.paginationReply;
     isEnd = data.cursor.isEnd;
 
-    // reply2Reply // isDialogue.not
-    if (data is DetailListReply) {
+    if (dialog != null) {
+      count.value = data.subjectControl.hasCount()
+          ? data.subjectControl.count.toInt()
+          : -1;
+    } else {
+      applyFoldCardFromDetail(data);
       count.value = data.root.count.toInt();
-      // 官方折叠卡（mixed_cards[11]）：拿到则记下，开启设置时自动把折叠回复并入列表
-      final fold = decodeFoldCardFromUnknown(data);
-      if (fold != null && fold.foldPagination.offset.isNotEmpty) {
-        foldCard.value = fold;
-        if (Pref.autoShowFoldedReply && !foldedLoaded) {
-          loadFoldedReplies();
-        }
-      }
       if (isRefresh && !hasRoot) {
         firstFloor.value ??= data.root;
       }
@@ -94,53 +96,28 @@ class VideoReplyReplyController extends ReplyController
         id = null;
       }
     }
-
     return false;
   }
 
-  /// 官方折叠卡（来自 DetailListReply.mixed_cards[11]）。
-  final Rxn<FoldCard> foldCard = Rxn<FoldCard>();
-
-  /// 由官方折叠渠道取回、已并入列表的评论 id（用于"已被 B 站折叠"标记）。
-  final foldedIds = <int>{};
-
-  bool foldedLoaded = false;
-
-  /// 设置关闭时，是否应在列表底部展示「显示被折叠评论 >」入口。
-  bool get canShowFoldEntry =>
-      !Pref.autoShowFoldedReply && foldCard.value != null && !foldedLoaded;
-
-  /// 用折叠卡里的游标调 Reply/FoldList，把官方折叠的回复并入列表并按当前排序重排。
-  Future<void> loadFoldedReplies() async {
-    final card = foldCard.value;
-    if (card == null || foldedLoaded) return;
-    foldedLoaded = true;
-    var offset = card.foldPagination.offset;
-    for (var page = 0; page < 3 && offset.isNotEmpty; page++) {
-      final res = await ReplyGrpc.foldList(
-        type: replyType,
-        oid: oid,
-        offset: offset,
-      );
-      if (res case Success(:final response)) {
-        final existing = loadingState.value.dataOrNull;
-        if (existing != null && response.replies.isNotEmpty) {
-          final seen = existing.map((e) => e.id).toSet();
-          final added = response.replies.where((e) => seen.add(e.id)).toList();
-          if (added.isNotEmpty) {
-            foldedIds.addAll(added.map((e) => e.id.toInt()));
-            existing.addAll(added);
-            sortByCurrentOrder(existing);
-            loadingState.refresh();
-          }
-        }
-        offset = response.paginationReply.nextOffset;
-      } else {
-        res.toast();
-        break;
-      }
-    }
+  @override
+  void checkIsEnd(int length) {
+    // Dialog totals may be absent or describe the whole subject, not this dialog.
+    if (dialog == null) super.checkIsEnd(length);
   }
+
+  /// 楼中楼按当前排序口径合入折叠回复（与列表本身的排序口径保持一致）。
+  @override
+  bool insertFoldedReplies(FoldListResp response) {
+    return absorbFoldedReplies(response, (existing, added) {
+      existing.addAll(added);
+      sortByCurrentOrder(existing);
+    });
+  }
+
+  /// 楼中楼同样走 `Reply/FoldList`，oid/type 取本页上下文。
+  @override
+  Future<LoadingState<FoldListResp>> fetchFoldList(String offset) =>
+      ReplyGrpc.foldList(type: replyType, oid: oid, offset: offset);
 
   /// 与当前排序口径保持一致：热度按点赞倒序，时间按发布时间升序。
   void sortByCurrentOrder(List<ReplyInfo> list) {
@@ -150,6 +127,7 @@ class VideoReplyReplyController extends ReplyController
       list.sort((a, b) => a.ctime.compareTo(b.ctime));
     }
   }
+
   bool setIndexById(Int64 id64, [List<ReplyInfo>? replies]) {
     final index = (replies ?? loadingState.value.data!).indexWhere(
       (item) => item.id == id64,
@@ -183,25 +161,49 @@ class VideoReplyReplyController extends ReplyController
   }
 
   @override
-  Future<LoadingState> customGetData() => dialog != null
-      ? ReplyGrpc.dialogList(
-          type: replyType,
-          oid: oid,
-          root: rpid,
-          dialog: dialog!,
-          offset: paginationReply?.nextOffset,
-        )
-      : ReplyGrpc.detailList(
-          type: replyType,
-          oid: oid,
-          root: rpid,
-          rpid: id ?? 0,
-          mode: mode,
-          offset: paginationReply?.nextOffset,
-        );
+  Future<LoadingState<DetailListReply>> customGetData() async {
+    if (dialog != null) {
+      final res = await ReplyGrpc.dialogList(
+        type: replyType,
+        oid: oid,
+        root: rpid,
+        dialog: dialog!,
+        offset: paginationReply?.nextOffset,
+      );
+      // `DialogListReply` 与 `DetailListReply` 是两条不同的消息：
+      // 这里的列表只消费 cursor / subject_control / pagination / 回复本身，
+      // 因此就地归一成 DetailListReply，调用方无需分支。
+      return switch (res) {
+        Success(:final response) => Success(_asDetailList(response)),
+        Error(:final code, :final errMsg) => Error(errMsg, code: code),
+        _ => const Error('dialogList: unexpected state'),
+      };
+    }
+    return ReplyGrpc.detailList(
+      type: replyType,
+      oid: oid,
+      root: rpid,
+      rpid: id ?? 0,
+      mode: mode,
+      offset: paginationReply?.nextOffset,
+    );
+  }
+
+  /// 把对话视图的响应归一为 [DetailListReply]（只搬运本页用到的字段）。
+  static DetailListReply _asDetailList(DialogListReply reply) =>
+      DetailListReply(
+        cursor: reply.cursor,
+        subjectControl: reply.subjectControl,
+        paginationReply: reply.paginationReply,
+        root: ReplyInfo(
+          count: reply.subjectControl.count,
+          replies: reply.replies,
+        ),
+      );
 
   @override
   Future<void> onReload() {
+    if (isClosed || isLoading) return Future<void>.value();
     if (loadingState.value.isSuccess) {
       index.value = null;
     }
@@ -271,4 +273,3 @@ class VideoReplyReplyController extends ReplyController
     super.dispose();
   }
 }
-

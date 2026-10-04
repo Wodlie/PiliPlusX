@@ -49,7 +49,7 @@ void main() {
   group('gRPC identity', () {
     test(
       'login metadata and device-bin use the owner-scoped identity source',
-      () async {
+      () {
         final account = _createLoginAccount(
           mid: 2101,
           buvid: IdentityCoreGenerators.deriveBuvidFromSeed(
@@ -59,7 +59,11 @@ void main() {
           accessKey: 'ACCESS_KEY_2101',
         )..activated = true;
 
-        await Accounts.set(AccountType.main, account);
+        // 只注册账号、不走 `Accounts.set`：后者会进入 LoginUtils.onLoginMain，
+        // 那里依赖 flutter_inappwebview 的平台实现（`InAppWebViewPlatform.instance`）
+        // 与 SmartDialog 上下文，单测宿主都没有。这些用例校验的是 gRPC metadata /
+        // REST 身份头的取值来源，与该登录副作用无关。
+        Accounts.accountMode[AccountType.main.index] = account;
 
         final grpcProfile = AppDeviceProfiles.defaultDeviceProfileForOwner(
           'account:2101',
@@ -217,7 +221,7 @@ void main() {
 
     test(
       'grpc and rest hd identity share one profile source for the same stored account',
-      () async {
+      () {
         final storedProfile = AppDeviceProfile(
           brand: 'Samsung',
           model: 'SM-S9280',
@@ -233,7 +237,11 @@ void main() {
           deviceProfile: storedProfile,
         )..activated = true;
 
-        await Accounts.set(AccountType.main, account);
+        // 只注册账号、不走 `Accounts.set`：后者会进入 LoginUtils.onLoginMain，
+        // 那里依赖 flutter_inappwebview 的平台实现（`InAppWebViewPlatform.instance`）
+        // 与 SmartDialog 上下文，单测宿主都没有。这些用例校验的是 gRPC metadata /
+        // REST 身份头的取值来源，与该登录副作用无关。
+        Accounts.accountMode[AccountType.main.index] = account;
 
         final restIdentity = RequestIdentityAdapter.fromAccount(
           account: account,
@@ -256,7 +264,7 @@ void main() {
 
     test(
       'grpc headers prefer stored login device profile when present',
-      () async {
+      () {
         final storedProfile = AppDeviceProfile(
           brand: 'HONOR',
           model: 'ELP-AN10',
@@ -272,7 +280,11 @@ void main() {
           deviceProfile: storedProfile,
         )..activated = true;
 
-        await Accounts.set(AccountType.main, account);
+        // 只注册账号、不走 `Accounts.set`：后者会进入 LoginUtils.onLoginMain，
+        // 那里依赖 flutter_inappwebview 的平台实现（`InAppWebViewPlatform.instance`）
+        // 与 SmartDialog 上下文，单测宿主都没有。这些用例校验的是 gRPC metadata /
+        // REST 身份头的取值来源，与该登录副作用无关。
+        Accounts.accountMode[AccountType.main.index] = account;
 
         final headers = Accounts.main.grpcHeaders;
         final device = Device.fromBuffer(

@@ -18,7 +18,7 @@ import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, visibleForTesting;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -53,9 +53,12 @@ class LoginPageController extends GetxController
 
   /// 本次「取码 → 登录」流程锁定的身份档案。
   ///
-  /// 在**发码那一刻**按所选通道钉死（whatsapp → [AppDeviceProfiles.androidIntl]，
-  /// 即 `mobi_app=android_i`；其余 → 国内基线），登录复用同一个 ——
+  /// **发码成功**时钉死（whatsapp → [AppDeviceProfiles.androidIntl]，即
+  /// `mobi_app=android_i`；其余 → 国内基线），短信登录复用同一个 ——
   /// `captcha_key` 是那次发码签发的一次性凭据，中途换身份会把发码与登录拆成两个身份。
+  ///
+  /// 它只描述**短信流程**。密码/扫码/Cookie 登录不读这个字段，落库时的平台由
+  /// [setAccount] 的显式入参决定，否则先试 WhatsApp 再改密码登录会把国内登录记成海外版。
   AppRequestProfile _smsFlowProfile = AppDeviceProfiles.android;
 
   // 定时器
@@ -148,6 +151,8 @@ class LoginPageController extends GetxController
               value['data'],
               value['data']['cookie_info']['cookies'],
               identity: identity,
+              // 扫码走国内基线（LoginHttp.getHDcode 固定 android），落库必须同源。
+              profile: AppDeviceProfiles.android,
             );
             Get.back();
           } else if (value['code'] == 86038) {
@@ -474,6 +479,9 @@ class LoginPageController extends GetxController
                     data['token_info'],
                     data['cookie_info']['cookies'],
                     identity: identity,
+                    // 密码登录的库内实现固定走国内基线；不能沿用短信流程
+                    // 可能留下的 android_i。
+                    profile: AppDeviceProfiles.android,
                   );
                   Get
                     ..back()
@@ -499,6 +507,7 @@ class LoginPageController extends GetxController
         data['token_info'],
         data['cookie_info']['cookies'],
         identity: identity,
+        profile: AppDeviceProfiles.android,
       );
       Get.back();
     } else {
@@ -547,22 +556,29 @@ class LoginPageController extends GetxController
       SmartDialog.showToast('验证码已过期，请重新获取');
       return;
     }
+    // 本次提交用的身份与档案快照：请求与落库必须同源。profile 取发码那一刻
+    // 钉死的 [_smsFlowProfile]（captcha_key 是那次发码签发的）—— 即使服务端把
+    // WhatsApp 静默降级成 SMS，这个验证码仍属于海外版流程，不能中途换身份。
+    final identity = _ensureLoginSessionIdentity();
+    final profile = _smsFlowProfile;
+    final submittedTel = telTextController.text;
+    final submittedCode = smsCodeTextController.text;
+    final submittedCaptchaKey = captchaKey;
+    final submittedCid = selectedCountryCodeId.countryCode;
     final webKeyRes = await LoginHttp.getWebKey();
     if (!webKeyRes['status']) {
       SmartDialog.showToast(webKeyRes['msg']);
       return;
     }
     String key = webKeyRes['data']['key'];
-    final identity = _ensureLoginSessionIdentity();
     final res = await LoginHttp.loginBySms(
-      tel: telTextController.text,
-      code: smsCodeTextController.text,
-      captchaKey: captchaKey,
-      cid: selectedCountryCodeId.countryCode,
+      tel: submittedTel,
+      code: submittedCode,
+      captchaKey: submittedCaptchaKey,
+      cid: submittedCid,
       key: key,
       identity: identity,
-      // 与发码同身份（captcha_key 是那次发码签发的）
-      profile: _smsFlowProfile,
+      profile: profile,
     );
     if (res['status']) {
       SmartDialog.showToast('登录成功');
@@ -571,6 +587,7 @@ class LoginPageController extends GetxController
         data['token_info'],
         data['cookie_info']['cookies'],
         identity: identity,
+        profile: profile,
       );
       Get.back();
     } else {
@@ -631,14 +648,15 @@ class LoginPageController extends GetxController
     final requestedChannel = otpChannel.value;
     // 按所选通道钉死本次流程的身份：WhatsApp 发码是海外版能力，用 android_i 更稳。
     // 签名 key 由 account_mgr 按请求里的 mobi_app 自动配套（同一个档案）。
-    _smsFlowProfile = requestedChannel == 'whatsapp'
+    // 只有**真正发出去了**（res['status'] 为真）才保留这个选择，见下面的赋值。
+    final profile = requestedChannel == 'whatsapp'
         ? AppDeviceProfiles.androidIntl
         : AppDeviceProfiles.android;
     final res = await LoginHttp.sendSmsCode(
       tel: telTextController.text,
       cid: selectedCountryCodeId.countryCode,
       identity: _ensureLoginSessionIdentity(),
-      profile: _smsFlowProfile,
+      profile: profile,
       otpChannel: requestedChannel,
       // deviceTouristId: guestId,
       geeValidate: captchaData.validate,
@@ -648,6 +666,11 @@ class LoginPageController extends GetxController
     );
     if (res['status']) {
       // 真发出去了才会走到这里；只有此时响应里才可能有 actual_channel。
+      //
+      // 只有在确认发码成功后才把通道写回状态：被极验/风控拦下时不应改动
+      // otpChannel，也不应该让一次失败的发码影响后续登录的平台绑定
+      // （失败时落库走的档案由 setAccount 的显式入参决定，与此无关）。
+      _smsFlowProfile = profile;
       final actualChannel = res['actualChannel'] as String?;
       if (actualChannel != null) {
         // 以服务端实际通道为准，否则按钮文案会一直和真实通道不一致。
@@ -728,30 +751,50 @@ class LoginPageController extends GetxController
         captchaData.token?.isNotEmpty == true;
   }
 
+  /// 按「本次登录实际使用的身份 + 档案」构造待落库账号。
+  ///
+  /// 抽成纯函数（不写库、不发请求、不弹窗）是为了让绑定契约可被单测直接验证：
+  /// [setAccount] 的全部落库路径都必须经过它。
+  /// - 设备取登录会话身份（[RequestIdentityAdapter.fromBuvid] 按 workflow 稳定选出的那台）；
+  /// - 平台取本次流程实际使用的档案（[profile]）。
+  @visibleForTesting
+  static LoginAccount buildLoginAccount(
+    Map tokenInfo,
+    List cookieInfo, {
+    required RequestIdentityAdapter identity,
+    required AppRequestProfile profile,
+  }) => LoginAccount(
+    BiliCookieJar.fromList(cookieInfo),
+    tokenInfo['access_token'],
+    tokenInfo['refresh_token'],
+    null,
+    identity.buvid,
+    // 设备取本次登录会话实际使用的那台（AppRequestProfile.deviceProfile 非空）；
+    // 平台取本次登录方法真正用过的档案。
+    identity.profile.deviceProfile,
+    profile.mobiApp,
+  );
+
   /// 登录成功后落库。
   ///
-  /// 这里把**本次登录实际使用的「设备 + 平台」绑定到账号**：
-  /// - 设备取登录会话身份（[RequestIdentityAdapter.fromBuvid] 按 workflow 稳定选出的那台）；
-  /// - 平台取本次流程用的档案（[profile]，缺省 [_smsFlowProfile]，WhatsApp 走 `android_i`）。
+  /// [identity] 与 [profile] 必须由调用方显式传入**该次登录方法真正用过的那一套**：
+  /// 控制器上还有短信验证码流程的状态（[_smsFlowProfile]，WhatsApp 发码时是
+  /// `android_i`），一旦在这里按它兜底，先试过 WhatsApp 再改用密码/扫码登录就会把
+  /// 国内登录记成海外版，之后该账号的签名 key、平台字段与 gRPC metadata 全部错位。
   ///
   /// 绑定后该账号的所有请求（参数、UA、身份头、gRPC metadata）都走这一套，
   /// 见 `Account.appRequestProfile`。
   Future<void> setAccount(
     Map tokenInfo,
     List cookieInfo, {
-    RequestIdentityAdapter? identity,
-    AppRequestProfile? profile,
+    required RequestIdentityAdapter identity,
+    required AppRequestProfile profile,
   }) async {
-    final loginIdentity = identity ?? _loginSessionIdentity;
-    final boundProfile = profile ?? _smsFlowProfile;
-    final account = LoginAccount(
-      BiliCookieJar.fromList(cookieInfo),
-      tokenInfo['access_token'],
-      tokenInfo['refresh_token'],
-      null,
-      loginIdentity?.buvid,
-      loginIdentity?.profile.deviceProfile ?? boundProfile.deviceProfile,
-      boundProfile.mobiApp,
+    final account = buildLoginAccount(
+      tokenInfo,
+      cookieInfo,
+      identity: identity,
+      profile: profile,
     );
     await Future.wait([?account.onChange(), AnonymousAccount().delete()]);
     for (int i = 0; i < AccountType.values.length; i++) {

@@ -311,24 +311,35 @@ class MixedCard extends $pb.GeneratedMessage {
   FoldCard ensureFold() => $_ensure(1);
 }
 
-/// 从已解析消息的 unknownFields 中取出 `mixed_cards`(字段 11) 里的折叠卡。
-/// 上游 proto 补上字段 11 后可直接用 `reply.mixedCards`，本函数即可删除。
-FoldCard? decodeFoldCardFromUnknown($pb.GeneratedMessage message) {
+/// Reparse FOLD(2) and fold(5), which the generated schema keeps as unknown fields.
+FoldCard? decodeFoldCardFromMixedCard($core.Object? message) {
+  if (message is! $pb.GeneratedMessage) return null;
+  return _decodeUsableFoldCard(message.writeToBuffer());
+}
+
+FoldCard? _decodeUsableFoldCard($core.List<$core.int> bytes) {
   try {
-    final field = message.unknownFields.getField(11);
-    if (field == null || field.lengthDelimited.isEmpty) return null;
-    for (final bytes in field.lengthDelimited) {
-      MixedCard card;
-      try {
-        card = MixedCard.fromBuffer(bytes);
-      } catch (_) {
-        continue;
-      }
-      if (card.hasType() && card.type == MixedCardType.FOLD && card.hasFold()) {
-        return card.fold;
-      }
+    final card = MixedCard.fromBuffer(bytes);
+    if (card.hasType() &&
+        card.type == MixedCardType.FOLD &&
+        card.hasFold() &&
+        card.fold.foldPagination.offset.isNotEmpty) {
+      return card.fold;
     }
-  } catch (_) {}
+  } catch (_) {
+    // Ignore a malformed card and allow the caller to try the next one.
+  }
+  return null;
+}
+
+/// Select the first usable card from DetailListReply's unknown mixed_cards(11).
+FoldCard? decodeFoldCardFromUnknown($pb.GeneratedMessage message) {
+  final field = message.unknownFields.getField(11);
+  if (field == null) return null;
+  for (final bytes in field.lengthDelimited) {
+    final card = _decodeUsableFoldCard(bytes);
+    if (card != null) return card;
+  }
   return null;
 }
 

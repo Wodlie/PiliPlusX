@@ -1,7 +1,8 @@
-import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/http/api.dart';
 import 'package:PiliPlus/http/init.dart';
+import 'package:PiliPlus/http/live.dart';
 import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/models/common/search/search_type.dart';
 import 'package:PiliPlus/models/search/result.dart';
 import 'package:PiliPlus/models/search/suggest.dart';
@@ -11,6 +12,7 @@ import 'package:PiliPlus/models_new/pgc/pgc_info_model/result.dart';
 import 'package:PiliPlus/models_new/search/search_rcmd/data.dart';
 import 'package:PiliPlus/models_new/search/search_trending/data.dart';
 import 'package:PiliPlus/models_new/video/video_detail/dimension.dart';
+import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
@@ -238,18 +240,18 @@ abstract final class SearchHttp {
   }
 
   static Future<LoadingState<SearchRcmdData>> searchRecommend() async {
+    // 端点路由到推荐账号（见 ApiType.apiTypeSet），参数与身份头同源于它。
+    final account = Accounts.get(AccountType.recommend);
     final res = await Request().get(
       Api.searchRecommend,
-      queryParameters: {
-        'build': 8430300,
-        'channel': 'master',
-        'version': '8.43.0',
-        'c_locale': Constants.cLocale,
-        'mobi_app': 'android',
-        'platform': 'android',
-        's_locale': Constants.sLocale,
+      queryParameters: <String, dynamic>{
+        ...LiveHttp.appQueryFields(account.appRequestProfile, channel: true),
         'from': 2,
       },
+      options: Options(
+        headers: LiveHttp.appRequestHeaders(account),
+        extra: {'account': account},
+      ),
     );
     if (res.data['code'] == 0) {
       return Success(SearchRcmdData.fromJson(res.data['data']));

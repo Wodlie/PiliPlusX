@@ -6,6 +6,7 @@ import 'package:PiliPlus/http/browser_ua.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/error_msg.dart';
 import 'package:PiliPlus/http/init.dart';
+import 'package:PiliPlus/http/live.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/member/archive_order_type_app.dart';
 import 'package:PiliPlus/models/common/member/archive_order_type_web.dart';
@@ -148,17 +149,12 @@ abstract final class MemberHttp {
     required int mid,
     required int page,
   }) async {
-    final params = {
-      'build': 8430300,
-      'channel': 'master',
-      'version': '8.43.0',
-      'c_locale': Constants.cLocale,
-      'mobi_app': 'android',
-      'platform': 'android',
+    // 端点路由到主账号，参数/UA/身份头一律取自它绑定的档案。
+    final account = Accounts.main;
+    final params = <String, dynamic>{
+      ...LiveHttp.appQueryFields(account.appRequestProfile, channel: true),
       'pn': page,
       'ps': 10,
-      's_locale': Constants.sLocale,
-      'statistics': Constants.statistics,
       'vmid': mid,
     };
     final res = await Request().get(
@@ -167,8 +163,9 @@ abstract final class MemberHttp {
       options: Options(
         headers: {
           'bili-http-engine': 'cronet',
-          'user-agent': Constants.userAgent,
+          ...LiveHttp.appRequestHeaders(account),
         },
+        extra: {'account': account},
       ),
     );
     if (res.data['code'] == 0) {
@@ -211,15 +208,10 @@ abstract final class MemberHttp {
     int? seriesId,
     bool? includeCursor,
   }) async {
-    final params = {
+    final account = Accounts.main;
+    final params = <String, dynamic>{
       'aid': ?aid,
-      'build': 8430300,
-      'version': '8.43.0',
-      'c_locale': Constants.cLocale,
-      'channel': 'master',
-      'mobi_app': 'android',
-      'platform': 'android',
-      's_locale': Constants.sLocale,
+      ...LiveHttp.appQueryFields(account.appRequestProfile, channel: true),
       'ps': 20,
       'pn': ?pn,
       'next': ?next,
@@ -229,7 +221,6 @@ abstract final class MemberHttp {
       'order': ?order?.name,
       'sort': ?sort?.name,
       'include_cursor': ?includeCursor,
-      'statistics': Constants.statistics,
       'vmid': mid,
     };
     final res = await Request().get(
@@ -238,8 +229,9 @@ abstract final class MemberHttp {
       options: Options(
         headers: {
           'bili-http-engine': 'cronet',
-          'user-agent': Constants.userAgent,
+          ...LiveHttp.appRequestHeaders(account),
         },
+        extra: {'account': account},
       ),
     );
     if (res.data['code'] == 0) {
@@ -337,16 +329,10 @@ abstract final class MemberHttp {
     int? mid,
     dynamic fromViewAid,
   }) async {
-    final params = {
-      'build': 8430300,
-      'version': '8.43.0',
-      'c_locale': Constants.cLocale,
-      'channel': 'master',
-      'mobi_app': 'android',
-      'platform': 'android',
-      's_locale': Constants.sLocale,
+    final account = Accounts.main;
+    final params = <String, dynamic>{
+      ...LiveHttp.appQueryFields(account.appRequestProfile, channel: true),
       'from_view_aid': ?fromViewAid,
-      'statistics': Constants.statistics,
       'vmid': mid,
     };
     final res = await Request().get(
@@ -355,8 +341,9 @@ abstract final class MemberHttp {
       options: Options(
         headers: {
           'bili-http-engine': 'cronet',
-          'user-agent': Constants.userAgent,
+          ...LiveHttp.appRequestHeaders(account),
         },
+        extra: {'account': account},
       ),
     );
     if (res.data['code'] == 0) {
@@ -895,18 +882,30 @@ abstract final class MemberHttp {
     }
   }
 
+  /// 空间商城：主账号的带货 tab。
+  ///
+  /// 客户端身份字段（`mobi_app`/`build`/`platform`/`statistics`/`device`）、UA 与
+  /// 身份头一律取自 [Account.appRequestProfile]，签名用同一档案的 appkey/appsec
+  /// **显式**签发 —— 商城域名不是 app 域名，`account_mgr` 不会替它重签，若这里
+  /// 不传给 [AppSign.appSign]，签名就会回落国内基线，出现「参数写 android_i、
+  /// 签名用国内 key」的身份错位。
+  ///
+  /// `mVersion` / `mallVersion` 是商城自己的协议版本，与客户端 build 无关，保持原值。
   static Future<LoadingState<SpaceShopData>> spaceShop({
     required int mid,
   }) async {
-    final params = {
-      'access_key': ?Accounts.main.accessKey,
+    final account = Accounts.main;
+    final profile = account.appRequestProfile;
+    final params = <String, dynamic>{
+      // 商城域名不是 app 域名，account_mgr 不会替它补 access_key，所以显式带上。
+      'access_key': ?account.accessKey,
+      ...LiveHttp.appQueryFields(profile, device: true),
       'actionKey': 'appkey',
-      'build': 8430300,
       'mVersion': 309,
       'mallVersion': 8430300,
-      'statistics': Constants.statistics,
     };
-    AppSign.appSign(params);
+    // 显式传 appkey/appsec：与上面参数里的 mobi_app 同源。
+    AppSign.appSign(params, appkey: profile.appKey, appsec: profile.appSec);
     final res = await Request().post(
       Api.spaceShop,
       queryParameters: params,
@@ -917,6 +916,10 @@ abstract final class MemberHttp {
         "pageSize": 8,
         "upMid": mid.toString(),
       },
+      options: Options(
+        headers: LiveHttp.appRequestHeaders(account),
+        extra: {'account': account},
+      ),
     );
     if (res.data['code'] == 0) {
       return Success(SpaceShopData.fromJson(res.data['data']));
