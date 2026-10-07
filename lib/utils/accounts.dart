@@ -3,10 +3,12 @@ import 'dart:collection';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/pages/mine/controller.dart';
+import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/identity_core/identity_snapshot.dart';
 import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:get/get.dart';
 import 'package:hive_ce/hive.dart';
 
 abstract final class Accounts {
@@ -107,7 +109,7 @@ abstract final class Accounts {
         persistAccounts.add(a);
       }
     }
-    _publish(nextAccounts);
+    _publish(nextAccounts, recheck: true);
     // Persist accounts whose BUVID was auto-generated (old Hive records
     // that lacked field 4). This closes the gap where a fresh BUVID was
     // computed transiently but never written back to durable storage.
@@ -158,7 +160,7 @@ abstract final class Accounts {
     switch (key) {
       case AccountType.main:
         await (account.isLogin
-            ? LoginUtils.onLoginMain()
+            ? LoginUtils.onLoginMain(account as LoginAccount)
             : LoginUtils.onLogoutMain());
         break;
       case AccountType.heartbeat:
@@ -174,7 +176,7 @@ abstract final class Accounts {
     return _state.accounts[key.index];
   }
 
-  static void _publish(List<Account> accounts) {
+  static void _publish(List<Account> accounts, {bool recheck = false}) {
     final nextAccounts = List<Account>.unmodifiable(
       List<Account>.from(accounts),
     );
@@ -192,6 +194,14 @@ abstract final class Accounts {
       }
     }
     _state = _AccountLifecycleState.fromAccounts(nextAccounts);
+    // 生命周期校验：启动恢复 / 切换角色 / 重新登录 / 导入都在这里发布，
+    // 由 AccountService 统一按凭证去重后检测（未注册服务时纯内存，无网络）。
+    if (Get.isRegistered<AccountService>()) {
+      Get.find<AccountService>().onAccountsPublished(
+        nextAccounts,
+        recheck: recheck,
+      );
+    }
   }
 
   static List<Account> _anonymousAccounts() => List<Account>.filled(

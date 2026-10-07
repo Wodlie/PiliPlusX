@@ -372,6 +372,17 @@ extension BiliCookieJar on DefaultCookieJar {
     return {for (final i in cookies.values) i.cookie.name: i.cookie.value};
   }
 
+  /// 凭证指纹的输入串。
+  ///
+  /// 只用于 `AccountHealthIdentity` 的摘要比较（cookie 轮换即视为凭证变化），
+  /// **不得**用于日志或持久化。按 cookie 名排序，保证同内容不同插入顺序得到
+  /// 相同结果。
+  String get digestSource {
+    final entries = toJson().entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return entries.map((e) => '${e.key}=${e.value}').join('\u0000');
+  }
+
   List<Cookie> toList() =>
       domainCookies['bilibili.com']?['/']?.entries
           .map((i) => i.value.cookie)

@@ -1,12 +1,11 @@
 import 'dart:async' show FutureOr;
 import 'dart:io' show Platform;
 
-import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/http/user.dart';
 import 'package:PiliPlus/main.dart' show webViewEnvironment;
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/account_health.dart';
 import 'package:PiliPlus/utils/accounts/identity_core/identity_generators.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
@@ -59,22 +58,30 @@ abstract final class LoginUtils {
     );
   }
 
-  static Future<void> onLoginMain() async {
-    final account = Accounts.main;
-    final res = await UserHttp.userInfo();
-    if (res case Success(:final response)) {
-      setWebCookie(account);
+  /// 主账号切换/登录后的收尾。
+  ///
+  /// cookie 有效性不再由这里单独发 nav 请求：账号发布时 `AccountService` 已经
+  /// 统一校验（cookie / access token / 游客），这里只消费那份结果，避免同一
+  /// 账号被重复查询。token 失效与 cookie 失效是两件事，前者不注销账号。
+  static Future<void> onLoginMain([LoginAccount? account]) async {
+    final selected = account ?? Accounts.main;
+    if (selected is! LoginAccount) return;
+    final service = Get.find<AccountService>();
+    final pending = service.pendingFor(selected);
+    final health = pending != null
+        ? await pending
+        : service.healthFor(selected);
+    // 等待期间账号可能再次被切换：过时结果不写展示状态。
+    if (!health.identity.matches(Accounts.main)) return;
+
+    if (health.cookie == CookieHealth.valid) {
+      setWebCookie(selected);
       RequestUtils.syncHistoryStatus();
-      if (response.isLogin == true) {
-        final accountService = Get.find<AccountService>()
-          ..face.value = response.face!;
-
-        if (accountService.isLogin.value) {
-          accountService.isLogin.refresh();
-        } else {
-          accountService.isLogin.value = true;
-        }
-
+      final response = health.cookieInfo;
+      // 头像 / 登录态 / 金币由 `AccountService` 按**凭证指纹**统一投影：
+      // 这里不再重复写 `face` / `isLogin`，否则等待期间的账号切换会被
+      // 这份过时结果覆盖回上一个账号的展示。
+      if (response != null) {
         SmartDialog.showToast('main登录成功');
         if (response != Pref.userInfoCache) {
           await GStorage.userInfo.put('userInfoCache', response);
@@ -83,18 +90,14 @@ abstract final class LoginUtils {
           Pref.setAccountUname(response.mid!, response.uname!);
         }
       }
+    } else if (health.cookie == CookieHealth.invalid) {
+      SmartDialog.showNotify(
+        msg: '登录失败，请检查cookie是否正确，账号未登录',
+        notifyType: .warning,
+      );
     } else {
-      // 获取用户信息失败
-      final errMsg = res.toString();
-      if (errMsg == '账号未登录') {
-        await Accounts.deleteAll({account});
-        SmartDialog.showNotify(
-          msg: '登录失败，请检查cookie是否正确，$errMsg',
-          notifyType: .warning,
-        );
-      } else {
-        SmartDialog.showToast(errMsg);
-      }
+      // 校验未完成/网络异常：不注销账号，也不谎报成功。
+      SmartDialog.showToast('账号信息校验失败，请稍后重试');
     }
   }
 

@@ -1,10 +1,38 @@
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/init.dart';
+import 'package:PiliPlus/utils/accounts/account_manager/account_mgr.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
 class HkApiRetryInterceptor extends Interceptor {
+  /// 提示出口。默认走 `SmartDialog.showToast`；测试可注入捕获出口，从而对
+  /// **真实管线**产生的文案做断言，而不是把 helper 重算一遍。
+  @visibleForTesting
+  static void Function(String message)? debugToastSink;
+
+  static void _notify(String message) {
+    final sink = debugToastSink;
+    if (sink != null) {
+      sink(message);
+      return;
+    }
+    SmartDialog.showToast(message);
+  }
+
+  /// 港澳台重试失败的提示文案。
+  ///
+  /// 普通请求保持原样（便于诊断）。账号校验请求可能带 `access_key`，因此只给
+  /// 中性提示、不回显 URL 与响应体 —— 港澳台重试本身照常执行，只是失败提示
+  /// 不再携带凭证。
+  static String hkFailureToast(RequestOptions options, Object? body) {
+    if (AccountManager.isAuthProbe(options)) {
+      return '港澳台解析失败（账号校验请求，已省略详情）';
+    }
+    return '港澳台解析失败 url:${options.uri} body: $body';
+  }
+
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) async {
     String apiHKUrl = Pref.apiHKUrl;
@@ -36,9 +64,7 @@ class HkApiRetryInterceptor extends Interceptor {
           );
           return handler.resolve(newResponse);
         } catch (e) {
-          SmartDialog.showToast(
-            '港澳台解析失败 url:${originalOptions.uri} body: ${response.data}',
-          );
+          _notify(hkFailureToast(originalOptions, response.data));
           return handler.next(response);
         }
       }

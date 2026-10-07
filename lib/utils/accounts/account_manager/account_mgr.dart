@@ -7,6 +7,7 @@ import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/account_health.dart';
 import 'package:PiliPlus/utils/accounts/api_type.dart';
 import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
 import 'package:PiliPlus/utils/accounts/identity_core/identity_snapshot.dart';
@@ -27,6 +28,21 @@ class AccountManager extends Interceptor {
   AccountManager();
 
   static String blockServer = Pref.blockServer;
+
+  /// 生命周期账号校验请求标记。
+  ///
+  /// 由 `AccountService` / `UserHttp` 的 probe 函数设置，普通请求不含这些键，
+  /// 因此行为完全不变。
+  static const authProbeExtra = 'pili.authProbe';
+
+  /// token-only：请求该实例不带任何 cookie（普通 retry/HK 仍然生效）。
+  static const tokenOnlyExtra = 'pili.tokenOnly';
+
+  /// 发送前核对「发起校验的账号」是否仍然是当前选中的那个账号。
+  static const expectedIdentityExtra = 'pili.expectedAccountIdentity';
+
+  static bool isAuthProbe(RequestOptions options) =>
+      options.extra[authProbeExtra] == true;
 
   static String getCookies(List<Cookie> cookies) {
     // Sort cookies by path (longer path first).
@@ -53,6 +69,16 @@ class AccountManager extends Interceptor {
     final account = resolved.account;
 
     if (account is NoAccount || _skipCookie(path)) return handler.next(options);
+
+    // 代际核对：发起校验的账号若已被替换（同 mid 重新登录换 key/设备/cookie，
+    // 或角色被切到别的账号），不能拿旧身份继续发这次请求。
+    final expected = options.extra[expectedIdentityExtra];
+    if (expected is AccountHealthIdentity && !expected.matches(account)) {
+      return handler.reject(
+        DioException.requestCancelled(requestOptions: options, reason: null),
+        false,
+      );
+    }
 
     if (!identity.isLogin && path == Api.heartBeat) {
       return handler.reject(
@@ -106,6 +132,15 @@ class AccountManager extends Interceptor {
         // if (kDebugMode) debugPrint(dataPtr.toString());
       }
       return handler.next(options);
+    } else if (options.extra[tokenOnlyExtra] == true) {
+      // token-only 校验：保留所选账号的公共身份头，但**不带任何 cookie**。
+      // 否则「cookie 有效 + access_key 已失效」会被 cookie 洗成有效，
+      // 从而错误地对根评论使用 gRPC。NoAccount / 空 cookie 头都做不到这一点
+      // ——NoAccount 会先被归一成 Anonymous 并注入匿名 jar。
+      options.headers.removeWhere(
+        (key, _) => key.toLowerCase() == HttpHeaders.cookieHeader,
+      );
+      return handler.next(options);
     } else {
       account.cookieJar
           .loadForRequest(officialUri)
@@ -140,6 +175,7 @@ class AccountManager extends Interceptor {
     final options = response.requestOptions;
     final path = options.path;
     if (options.extra['account'] is NoAccount ||
+        isAuthProbe(options) ||
         officializeUri(
           options.uri,
         ).toString().startsWith(HttpString.appBaseUrl) ||
@@ -170,8 +206,13 @@ class AccountManager extends Interceptor {
     if (options.responseType == ResponseType.stream) {
       return handler.next(err);
     }
-    if (err.requestOptions.method != 'POST') {
+    if (err.requestOptions.method != 'POST' &&
+        !isAuthProbe(err.requestOptions)) {
       toast(err);
+    }
+    // 校验请求不得把 Set-Cookie 写回 jar：校验过程本身不能改动被检查的凭证。
+    if (isAuthProbe(err.requestOptions)) {
+      return handler.next(err);
     }
     if (err.response != null &&
         !officializeUri(
@@ -195,6 +236,8 @@ class AccountManager extends Interceptor {
   }
 
   static void toast(DioException err) {
+    // 校验请求可能带着 access_key，绝不进入 toast/debug 输出。
+    if (isAuthProbe(err.requestOptions)) return;
     const skipShow = [
       'heartbeat',
       'history/report',
@@ -221,6 +264,8 @@ class AccountManager extends Interceptor {
   }
 
   Future<void> _saveCookies(Response response) async {
+    // 校验过程中的 Set-Cookie 不写回：检查凭证不能顺手改动凭证。
+    if (isAuthProbe(response.requestOptions)) return;
     final Account account = Accounts.canonicalize(
       response.requestOptions.extra['account'] ??
           _findAccount(response.requestOptions.path),

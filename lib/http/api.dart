@@ -166,6 +166,10 @@ abstract final class Api {
   // https://api.bilibili.com/x/v2/reply/main?csrf=6e22efc1a47225ea25f901f922b5cfdd&mode=3&oid=254175381&pagination_str=%7B%22offset%22:%22%22%7D&plat=1&seek_rpid=0&type=11
   static const String replyList = '/x/v2/reply';
 
+  /// 根评论列表（offset 分页）。无 app access token 或 token 失效时用它回退，
+  /// 见 `AGENTS.md` 的根评论路由说明。
+  static const String replyMain = '$replyList/main';
+
   // 楼中楼
   static const String replyReplyList = '/x/v2/reply/reply';
 
@@ -200,6 +204,9 @@ abstract final class Api {
 
   // 获取用户信息
   static const String userInfo = '/x/web-interface/nav';
+
+  /// 空间个人资料：`data.is_tourist` 判断选中账号是否为游客（`0` = 正式账号）。
+  static const String spaceMyInfo = '/x/space/myinfo';
 
   // 获取当前用户状态
   static const String userStatOwner = '/x/web-interface/nav/stat';

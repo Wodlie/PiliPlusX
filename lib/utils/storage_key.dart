@@ -301,6 +301,13 @@ abstract final class SettingBoxKey {
       imageBlockHashList = 'imageBlockHashList',
       commonFuncs = 'commonFuncs',
       appFont = 'appFont';
+
+  /// 账号 cookie/access token 健康状态的最长复用时间（小时）。
+  ///
+  /// 只影响「是否重新校验」，不改变任何请求的身份；校验本身仍只在启动、
+  /// 切换账号、重新登录/导入这些生命周期节点触发。
+  static const String accountHealthRecheckIntervalHours =
+      'accountHealthRecheckIntervalHours';
 }
 
 abstract final class LocalCacheKey {
@@ -321,4 +328,3 @@ abstract final class VideoBoxKey {
       speedsList = 'speedsList',
       cacheVideoFit = 'cacheVideoFit';
 }
-

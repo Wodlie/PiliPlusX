@@ -5,6 +5,8 @@ import 'package:PiliPlus/grpc/fold_list_req_ext.dart';
 import 'package:PiliPlus/grpc/grpc_req.dart';
 import 'package:PiliPlus/grpc/url.dart';
 import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/account_health.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:fixnum/fixnum.dart';
@@ -344,6 +346,10 @@ abstract final class ReplyGrpc {
     required String? offset,
     required Int64? cursorNext,
     int autoLoadDepth = 0,
+    Account? account,
+    AccountHealthIdentity? expectedIdentity,
+    bool filter = true,
+    bool autoPaginate = true,
   }) async {
     final res = await GrpcReq.request(
       GrpcUrl.mainList,
@@ -359,56 +365,24 @@ abstract final class ReplyGrpc {
         // pagination: offset == null ? null : FeedPagination(offset: offset),
       ),
       MainListReply.fromBuffer,
+      account: account,
+      expectedIdentity: expectedIdentity,
     );
     if (res case Success(:final response)) {
-      // UP 置顶评论过滤
-      if (response.hasUpTop()) {
-        final reason = checkBlockReason(response.upTop);
-        if (reason != null) {
-          if (showBlockedReplyBanner) {
-            _blockedReasons[response.upTop.id.toInt()] = reason;
-            // 不 clearUpTop — 让控制器插入 replies[0]，渲染为横幅
-          } else {
-            response.clearUpTop(); // 移除模式：保持原行为
-          }
-        }
-      }
-
-      // 主评论列表过滤
-      if (response.replies.isNotEmpty) {
-        if (showBlockedReplyBanner) {
-          // 标记模式：不移除，标记被屏蔽的评论
-          for (final reply in response.replies) {
-            final reason = checkBlockReason(reply);
-            if (reason != null) {
-              _blockedReasons[reply.id.toInt()] = reason;
-            }
-            // 标记嵌套子评论
-            for (final subReply in reply.replies) {
-              final subReason = checkBlockReason(subReply);
-              if (subReason != null) {
-                _blockedReasons[subReply.id.toInt()] = subReason;
-              }
-            }
-          }
-        } else {
-          // 移除模式：保持原行为
-          response.replies.removeWhere((item) {
-            final hasMatch = needRemoveGrpc(item);
-            if (!hasMatch && item.replies.isNotEmpty) {
-              item.replies.removeWhere(needRemoveGrpc);
-            }
-            return hasMatch;
-          });
-        }
-      }
+      if (filter) filterMainList(response);
 
       // When all replies on this page were filtered out but the server
       // indicates more pages exist, automatically load the next page so
       // the user is not stuck with an empty comment section.
       // Limit consecutive auto-loads to avoid excessive API calls.
       // Banner mode: 不自动翻页（列表非空，含横幅评论）
-      if (!showBlockedReplyBanner &&
+      //
+      // `autoPaginate: false` 时调用方（根评论会话）自己负责追页：它需要
+      // 每条链各自的游标语义（REST offset / gRPC cursor 严格分开），
+      // 并且必须能在飞行中重新核对账号与健康状态。
+      if (autoPaginate &&
+          filter &&
+          !showBlockedReplyBanner &&
           response.replies.isEmpty &&
           !response.cursor.isEnd &&
           autoLoadDepth < 5 &&
@@ -421,6 +395,8 @@ abstract final class ReplyGrpc {
           offset: response.paginationReply.nextOffset,
           cursorNext: response.cursor.next,
           autoLoadDepth: autoLoadDepth + 1,
+          account: account,
+          expectedIdentity: expectedIdentity,
         );
         if (nextRes case Success(response: final nextResponse)) {
           // Update cursor/pagination to reflect the furthest page fetched,
@@ -428,10 +404,61 @@ abstract final class ReplyGrpc {
           response.cursor = nextResponse.cursor;
           response.paginationReply = nextResponse.paginationReply;
           response.replies.addAll(nextResponse.replies);
+        } else {
+          // 自动追页失败必须向上传递：吞掉鉴权错误会让整页变成「空成功」。
+          return nextRes;
         }
       }
     }
     return res;
+  }
+
+  /// 根评论后处理：UP 置顶 + 主列表 + 嵌套子回复的屏蔽规则。
+  ///
+  /// 从 [mainList] 原样抽出，gRPC 与 REST 回退共用同一套判定（关键词、等级、
+  /// 带货、@、黑名单与横幅原因表），避免两套过滤逐渐分叉。
+  static void filterMainList(MainListReply response) {
+    // UP 置顶评论过滤
+    if (response.hasUpTop()) {
+      final reason = checkBlockReason(response.upTop);
+      if (reason != null) {
+        if (showBlockedReplyBanner) {
+          _blockedReasons[response.upTop.id.toInt()] = reason;
+          // 不 clearUpTop — 让控制器插入 replies[0]，渲染为横幅
+        } else {
+          response.clearUpTop(); // 移除模式：保持原行为
+        }
+      }
+    }
+
+    // 主评论列表过滤
+    if (response.replies.isNotEmpty) {
+      if (showBlockedReplyBanner) {
+        // 标记模式：不移除，标记被屏蔽的评论
+        for (final reply in response.replies) {
+          final reason = checkBlockReason(reply);
+          if (reason != null) {
+            _blockedReasons[reply.id.toInt()] = reason;
+          }
+          // 标记嵌套子评论
+          for (final subReply in reply.replies) {
+            final subReason = checkBlockReason(subReply);
+            if (subReason != null) {
+              _blockedReasons[subReply.id.toInt()] = subReason;
+            }
+          }
+        }
+      } else {
+        // 移除模式：保持原行为
+        response.replies.removeWhere((item) {
+          final hasMatch = needRemoveGrpc(item);
+          if (!hasMatch && item.replies.isNotEmpty) {
+            item.replies.removeWhere(needRemoveGrpc);
+          }
+          return hasMatch;
+        });
+      }
+    }
   }
 
   static Future<LoadingState<DetailListReply>> detailList({
@@ -533,6 +560,7 @@ abstract final class ReplyGrpc {
     }
     return res;
   }
+
   static Future<LoadingState<SearchItemReply>> searchItem({
     required int page,
     required SearchItemType itemType,
@@ -571,4 +599,3 @@ abstract final class ReplyGrpc {
     );
   }
 }
-

@@ -11,6 +11,7 @@ import 'package:PiliPlus/pages/common/common_data_controller.dart';
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/account_health.dart';
 import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -95,39 +96,62 @@ class MineController extends CommonDataController<FavFolderData, FavFolderData>
     return true;
   }
 
+  /// 账号资料。
+  ///
+  /// cookie 校验统一由 `AccountService` 在生命周期节点完成（启动/切换/重登），
+  /// 这里只消费那份结果：避免「我的」页面再发一次 nav，也避免用 cookie 结果
+  /// 覆盖 access token 的判定。cookie 明确失效只更新未登录展示，不在这里删除
+  /// 账号；网络异常保留已有资料。
   Future<void> queryUserInfo() async {
-    final res = await UserHttp.userInfo();
-    if (res case Success(:final response)) {
-      if (response.isLogin == true) {
-        userInfo.value = response;
-        if (response != Pref.userInfoCache) {
-          GStorage.userInfo.put('userInfoCache', response);
-        }
-        if (response.mid != null && response.uname != null) {
-          Pref.setAccountUname(response.mid!, response.uname!);
-        }
-        accountService
-          ..face.value = response.face!
-          ..isLogin.value = true;
-      } else {
-        _onLogoutMain();
-        return;
-      }
-    } else {
-      final errMsg = res.toString();
-      SmartDialog.showToast(errMsg);
-      if (errMsg == '账号未登录') {
-        _onLogoutMain();
-        return;
-      }
+    final selected = Accounts.main;
+    if (selected is! LoginAccount) {
+      accountService.isLogin.value = false;
+      return;
     }
-    queryUserStatOwner();
+    final service = accountService;
+    final pending = service.pendingFor(selected);
+    if (pending != null) await pending;
+    final health = service.healthFor(selected);
+    if (!health.identity.matches(Accounts.main)) return;
+    final res = health.cookieResult;
+    // 展示资料只在 cookie **明确有效**时采用：`cookieResult` 只是「有资料」，
+    // 非空资料配 isLogin=false（畸形/截断响应）绝不能把账号显示成已登录。
+    // 登录态的发布由 AccountService 按凭证投影负责，这里不反向覆盖它。
+    if (res case Success(:final response)
+        when health.cookie == CookieHealth.valid) {
+      userInfo.value = response;
+      if (response != Pref.userInfoCache) {
+        GStorage.userInfo.put('userInfoCache', response);
+      }
+      if (response.mid != null && response.uname != null) {
+        Pref.setAccountUname(response.mid!, response.uname!);
+      }
+      service.face.value = response.face ?? service.face.value;
+    } else if (health.cookie == CookieHealth.invalid) {
+      // cookie 明确失效：只改展示态，不删除存储账号（token 失效是另一回事）。
+      service.isLogin.value = false;
+      userInfo.value = UserInfoData();
+    }
+    // 明确失效时不发统计请求（必然 401，且没有意义）；其余情况等待完成，
+    // 让 `queryUserInfo()` 的 async 语义完整（调用方 await 后状态已就绪）。
+    if (health.cookie != CookieHealth.invalid) {
+      await queryUserStatOwner();
+    }
   }
 
-  void _onLogoutMain() => Accounts.deleteAll({Accounts.main});
-
+  /// 账号统计。
+  ///
+  /// 绑定发起时的账号与凭证指纹：账号在中途被切换（或同 mid 换 key）时，
+  /// 响应不会被写回，避免上一个账号的统计覆盖新账号的展示。
   Future<void> queryUserStatOwner() async {
-    final res = await UserHttp.userStatOwner();
+    final selected = Accounts.main;
+    if (selected is! LoginAccount) return;
+    final identity = AccountHealthIdentity.capture(selected);
+    final res = await UserHttp.userStatOwner(
+      account: selected,
+      expectedIdentity: identity,
+    );
+    if (!identity.matches(Accounts.main)) return;
     if (res case Success(:final response)) {
       userStat.value = response;
     }

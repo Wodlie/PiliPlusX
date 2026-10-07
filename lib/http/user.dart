@@ -17,6 +17,8 @@ import 'package:PiliPlus/models_new/user_real_name/data.dart';
 import 'package:PiliPlus/models_new/video/video_tag/data.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/account_health.dart';
+import 'package:PiliPlus/utils/accounts/account_manager/account_mgr.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
 import 'package:PiliPlus/utils/global_data.dart';
@@ -37,19 +39,123 @@ abstract final class UserHttp {
   //   }
   // }
 
-  static Future<LoadingState<UserInfoData>> userInfo() async {
-    final res = await Request().get(Api.userInfo);
-    if (res.data['code'] == 0) {
-      UserInfoData data = UserInfoData.fromJson(res.data['data']);
-      GlobalData().coins = data.money;
-      return Success(data);
-    } else {
-      return Error(res.data['message']);
+  /// cookie nav。
+  ///
+  /// 返回原始结果 `(info, code)`：`info` 为 null 且带 `code` 时表示「服务端明确
+  /// 拒绝/未登录」，`code` 为 null 才是解析失败/网络错误 —— 账号健康校验必须
+  /// 区分这两种情况（[expectedIdentity] 也会阻止过时结果写回全局状态）。
+  static Future<({UserInfoData? info, int? code})> userInfo({
+    Account? account,
+    AccountHealthIdentity? expectedIdentity,
+    bool updateGlobalState = true,
+  }) async {
+    final selected = account ?? Accounts.main;
+    final res = await Request().get(
+      Api.userInfo,
+      options: Options(
+        extra: {
+          'account': selected,
+          AccountManager.authProbeExtra: true,
+          AccountManager.expectedIdentityExtra: ?expectedIdentity,
+        },
+      ),
+    );
+    final data = res.data;
+    if (data is! Map || data['code'] != 0 || data['data'] is! Map) {
+      return (
+        info: null,
+        code: data is Map && data['code'] is int ? data['code'] as int : null,
+      );
     }
+    final UserInfoData info = UserInfoData.fromJson(
+      Map<String, dynamic>.from(data['data'] as Map),
+    );
+    // 过时/非主账号的结果不能改动全局金币与展示状态。
+    final isCurrentMain =
+        expectedIdentity == null || expectedIdentity.matches(Accounts.main);
+    if (updateGlobalState && isCurrentMain) {
+      GlobalData().coins = info.money;
+    }
+    return (info: info, code: 0);
   }
 
-  static Future<LoadingState<UserStat>> userStatOwner() async {
-    final res = await Request().get(Api.userStatOwner);
+  /// `x/space/myinfo` 的原始响应，用于判定选中账号是否为游客
+  /// （`data.is_tourist` 明确 `0` = 正式账号，`1` = 游客）。
+  ///
+  /// 走普通 Request/账号拦截器：cookie 由账号 jar 注入，允许 HK 与 retry；
+  /// 结果分类（含 `-101`、缺字段、mid 不符）由 `AccountService` 负责。
+  static Future<Map<String, dynamic>?> spaceMyInfo({
+    required Account account,
+    AccountHealthIdentity? expectedIdentity,
+  }) => _probe(
+    endpoint: Api.spaceMyInfo,
+    account: account,
+    expectedIdentity: expectedIdentity,
+  );
+
+  /// Cookie 隔离的 `nav?access_key=`：只发 access_key，不带任何 cookie，
+  /// 否则「cookie 有效 + token 已过期」会被 cookie 洗成有效。
+  static Future<Map<String, dynamic>?> tokenOnlyUserInfo({
+    required Account account,
+    required AccountHealthIdentity expectedIdentity,
+    required String accessKey,
+  }) => _probe(
+    endpoint: Api.userInfo,
+    account: account,
+    expectedIdentity: expectedIdentity,
+    tokenOnly: true,
+    queryParameters: {'access_key': accessKey},
+  );
+
+  static Future<Map<String, dynamic>?> _probe({
+    required String endpoint,
+    required Account account,
+    AccountHealthIdentity? expectedIdentity,
+    bool tokenOnly = false,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final profile = account.appRequestProfile;
+    final identity = RequestIdentityAdapter.fromAccount(
+      account: account,
+      userAgent: profile.userAgent,
+    );
+    final res = await Request().get(
+      endpoint,
+      queryParameters: queryParameters,
+      options: Options(
+        headers: identity.appHeaders(userAgent: profile.userAgent),
+        extra: {
+          'account': account,
+          AccountManager.authProbeExtra: true,
+          if (tokenOnly) AccountManager.tokenOnlyExtra: true,
+          AccountManager.expectedIdentityExtra: ?expectedIdentity,
+        },
+      ),
+    );
+    final data = res.data;
+    // 只认真正的 B 站 envelope（一定带整数 code）。`Request().get` 会把
+    // DioException 包成 `{'message': ...}` 的合成响应，那不是服务端结论。
+    if (data is! Map || data['code'] is! int) return null;
+    return Map<String, dynamic>.from(data);
+  }
+
+  /// 账号统计（「我的」页）。
+  ///
+  /// 绑定 [account] 与 [expectedIdentity]：账号在中途被切换 / 同 mid 换 key
+  /// 时请求会被代际核对拦下，避免把旧账号的统计写进新账号的展示。
+  static Future<LoadingState<UserStat>> userStatOwner({
+    Account? account,
+    AccountHealthIdentity? expectedIdentity,
+  }) async {
+    final res = await Request().get(
+      Api.userStatOwner,
+      options: Options(
+        extra: {
+          if (account != null) 'account': account,
+          AccountManager.expectedIdentityExtra: ?expectedIdentity,
+        },
+      ),
+    );
     if (res.data['code'] == 0) {
       return Success(UserStat.fromJson(res.data['data']));
     } else {

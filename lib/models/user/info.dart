@@ -84,7 +84,10 @@ class UserInfoData {
   int? isSeniorMember;
 
   UserInfoData.fromJson(Map<String, dynamic> json) {
-    isLogin = json['isLogin'] ?? false;
+    // 必须保留「字段是否存在」：`?? false` 会把畸形/截断的 nav 响应
+    // （没有 isLogin 字段）变成「明确未登录」，账号校验会据此把账号误判为
+    // cookie 失效。缺字段时保持 null，由 AccountService 归类为 unknown。
+    isLogin = json['isLogin'] is bool ? json['isLogin'] as bool : null;
     emailVerified = json['email_verified'];
     face = json['face'];
     levelInfo = json['level_info'] != null

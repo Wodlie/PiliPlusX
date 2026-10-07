@@ -6,6 +6,9 @@ import 'package:PiliPlus/http/api_hosts.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/account_health.dart';
+import 'package:PiliPlus/utils/accounts/account_manager/account_mgr.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:archive/archive.dart';
 import 'package:dio/dio.dart';
@@ -59,6 +62,8 @@ abstract final class GrpcReq {
     GeneratedMessage request,
     T Function(Uint8List) grpcParser, {
     bool isolate = false,
+    Account? account,
+    AccountHealthIdentity? expectedIdentity,
   }) async {
     final baseUrl =
         (Pref.enableCustomApiHost &&
@@ -69,7 +74,16 @@ abstract final class GrpcReq {
     final response = await Request().post<Uint8List>(
       baseUrl + url,
       data: compressProtobuf(request.writeToBuffer()),
-      options: options,
+      // 共享的 static Options 不能改：只有显式绑定账号的调用才复制一份带
+      // extra 的 Options，其余 wrapper 行为完全不变。
+      options: (account == null)
+          ? options
+          : options.copyWith(
+              extra: {
+                'account': account,
+                AccountManager.expectedIdentityExtra: ?expectedIdentity,
+              },
+            ),
     );
 
     if (response.data case final Map map) {

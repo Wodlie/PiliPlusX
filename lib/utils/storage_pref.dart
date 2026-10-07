@@ -601,6 +601,12 @@ abstract final class Pref {
   static int get retryCount =>
       _setting.get(SettingBoxKey.retryCount, defaultValue: 2);
 
+  /// 账号健康状态（cookie / access token / 游客）的最长复用时间。
+  static int get accountHealthRecheckIntervalHours => _setting.get(
+    SettingBoxKey.accountHealthRecheckIntervalHours,
+    defaultValue: 6,
+  );
+
   static int get retryDelay =>
       _setting.get(SettingBoxKey.retryDelay, defaultValue: 500);
 
@@ -1356,4 +1362,3 @@ abstract final class Pref {
   static bool get enableEmoteTooltip =>
       _setting.get(SettingBoxKey.enableEmoteTooltip, defaultValue: false);
 }
-

@@ -4,12 +4,14 @@ import 'dart:io';
 
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/http/api.dart';
+import 'package:PiliPlus/http/auth_probe_log_interceptor.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/custom_host_interceptor.dart';
 import 'package:PiliPlus/http/hk_api_retry_interceptor.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/retry_interceptor.dart';
 import 'package:PiliPlus/http/user.dart';
+import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/account_manager/account_mgr.dart';
@@ -25,6 +27,7 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:dio_http2_adapter/dio_http2_adapter.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, listEquals;
+import 'package:get/get.dart';
 
 class Request {
   static const _gzipDecoder = GZipDecoder();
@@ -43,6 +46,9 @@ class Request {
   static Future<void> setCookie() async {
     accountManager = AccountManager();
     dio.interceptors.add(accountManager);
+    // 账号健康校验（cookie / access token / 游客）只在生命周期节点触发：
+    // 这里启用后，`Accounts.refresh()` 的账号发布即启动首轮检测。
+    Get.find<AccountService>().enableValidation();
     await Accounts.refresh();
     LoginUtils.setWebCookie();
 
@@ -244,14 +250,14 @@ class Request {
     dio.interceptors.add(HkApiRetryInterceptor());
 
     // 日志拦截器 输出请求、响应内容
+    //
+    // 不能直接用 Dio 的 `LogInterceptor`：Dio 5 起 `requestUrl`、`responseUrl`
+    // 与 `error` 默认都是 true，`request: false` 只关掉方法/头/体，账号校验的
+    // `?access_key=...` 仍会经 requestUrl / responseUrl / DioException 打进日志。
+    // `AuthProbeLogInterceptor` 沿用同一组开关（普通请求日志逐字节不变），
+    // 只把校验请求整条静音。
     if (kDebugMode) {
-      dio.interceptors.add(
-        LogInterceptor(
-          request: false,
-          requestHeader: false,
-          responseHeader: false,
-        ),
-      );
+      dio.interceptors.add(AuthProbeLogInterceptor());
     }
 
     dio
