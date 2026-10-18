@@ -152,13 +152,14 @@ pili_release.json
 
 dist
 
-.sisyphus/
 test*
 !test/
 !test/**
 AGENTS.md
 
-reverse-output/
-
-# Reverse-engineering workspace (APK samples, dex, jadx/apktool output, captures)
-.probe/
+# AI-agent artifacts: reports, reverse-engineering workspace (APK samples, dex,
+# jadx/apktool output), dev plans/evidence and investigation scratch.
+# Layout + old->new path mapping: .ai/README.md
+.ai/*
+!.ai/README.md
+!.ai/research/

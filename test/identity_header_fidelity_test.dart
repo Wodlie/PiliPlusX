@@ -12,8 +12,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// 对照官方国内客户端（`tv.danmaku.bili` 9.13.0）核过的逐字段保真测试。
 ///
-/// 依据：`reverse-output/device-fields/REPORT.md`（§1–§7）与
-/// `reverse-output/device-fields/evidence/official/`。
+/// 依据：`.ai/reverse-output/device-fields/REPORT.md`（§1–§7）与
+/// `.ai/reverse-output/device-fields/evidence/official/`。
 ///
 /// 这些用例都是**纯函数级**的（不碰 `Pref`/`Hive`/网络），
 /// 用来把"取值语义"钉住，防止以后被无意改回去。

@@ -79,7 +79,7 @@ final class IdentityDerivedProfile {
   final String fpRemote;
 
   /// 官方 `PassportCommParams.getBiliLocalId()` → `BiliIds.buvidLocal()`
-  /// → BLKV `fp_local`（见 `reverse-output/device-fields/` §7.1）。
+  /// → BLKV `fp_local`（见 `.ai/reverse-output/device-fields/` §7.1）。
   String get biliLocalId => fpLocal;
 
   /// 官方 `PassportCommParams.getLocalId()` → `paramDelegate.getBuvid()`，

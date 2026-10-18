@@ -276,7 +276,7 @@ abstract final class AppDeviceProfiles {
   /// 国内版基线（`tv.danmaku.bili` 9.13.0 / versionCode 9130500，`MOBI_APP=android`）。
   ///
   /// 全部接口默认走这一档：参数、header、签名 key 都由同一个档案派生，身份自洽。
-  /// appkey/appsec 与 `mobi_app=android` 配套（见 `reverse-output/domestic-profile/`）。
+  /// appkey/appsec 与 `mobi_app=android` 配套（见 `.ai/reverse-output/domestic-profile/`）。
   static const AppRequestProfile android = AppRequestProfile(
     deviceProfile: _sharedDevice,
     mobiApp: 'android',

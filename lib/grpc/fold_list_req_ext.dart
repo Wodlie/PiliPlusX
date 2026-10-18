@@ -1,5 +1,5 @@
 // 临时诊断用：手写 FoldListReq（非生成物，查完可整文件删除）
-// 依据 reverse-output/apk-reply-fold/REPORT.md §8 + evidence/15_foldlist_rpc.txt
+// 依据 .ai/reverse-output/apk-reply-fold/REPORT.md §8 + evidence/15_foldlist_rpc.txt
 //   FoldListReq { int64 oid = 1; int64 type = 2; string extra = 3; FeedPagination pagination = 4; }
 // 响应可用 ReplyInfo.fromBuffer 解析（FoldListResp.replies=1 与 ReplyInfo.replies=1 同构），
 // 因此这里不必手写 FoldListResp。
