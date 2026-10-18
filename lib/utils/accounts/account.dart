@@ -360,16 +360,34 @@ _resolveLoginAccountIdentity(
 
 extension BiliCookie on Cookie {
   void setBiliDomain([String domain = '.bilibili.com']) {
-    this.domain = domain;
-    httpOnly = false;
-    path = '/';
+    this.domain ??= domain;
+    path ??= '/';
+    if (name == 'SESSDATA' || name == 'bili_jct' || name == 'DedeUserID') {
+      httpOnly = true;
+    }
   }
 }
 
 extension BiliCookieJar on DefaultCookieJar {
-  Map<String, String> toJson() {
-    final cookies = domainCookies['bilibili.com']?['/'] ?? const {};
-    return {for (final i in cookies.values) i.cookie.name: i.cookie.value};
+  Map<String, dynamic> toJson() {
+    final cookies = <String, dynamic>{};
+    for (final paths in domainCookies.values) {
+      for (final entries in paths.values) {
+        for (final entry in entries.entries) {
+          final cookie = entry.value.cookie;
+          cookies[entry.key] = {
+            'name': cookie.name,
+            'value': cookie.value,
+            'domain': cookie.domain,
+            'path': cookie.path,
+            'httpOnly': cookie.httpOnly,
+            'secure': cookie.secure,
+            'expires': cookie.expires,
+          };
+        }
+      }
+    }
+    return cookies;
   }
 
   /// 凭证指纹的输入串。
@@ -383,11 +401,11 @@ extension BiliCookieJar on DefaultCookieJar {
     return entries.map((e) => '${e.key}=${e.value}').join('\u0000');
   }
 
-  List<Cookie> toList() =>
-      domainCookies['bilibili.com']?['/']?.entries
-          .map((i) => i.value.cookie)
-          .toList() ??
-      [];
+  List<Cookie> toList() => [
+    for (final paths in domainCookies.values)
+      for (final entries in paths.values)
+        for (final cookie in entries.values) cookie.cookie,
+  ];
 
   void setBuvid3() {
     (domainCookies['bilibili.com'] ??= {
@@ -397,16 +415,27 @@ extension BiliCookieJar on DefaultCookieJar {
     );
   }
 
-  static DefaultCookieJar fromJson(Map json) =>
-      DefaultCookieJar(ignoreExpires: true)
-        ..domainCookies['bilibili.com'] = {
-          '/': {
-            for (final i in json.entries)
-              i.key: SerializableCookie(
-                Cookie(i.key, i.value)..setBiliDomain(),
-              ),
-          },
-        };
+  static DefaultCookieJar fromJson(Map json) {
+    final jar = DefaultCookieJar(ignoreExpires: true);
+    for (final entry in json.entries) {
+      final raw = entry.value;
+      final Cookie cookie;
+      if (raw is Map) {
+        cookie = Cookie(raw['name'] ?? entry.key, raw['value'] ?? '')
+          ..domain = raw['domain'] as String?
+          ..path = raw['path'] as String?
+          ..httpOnly = raw['httpOnly'] == true
+          ..secure = raw['secure'] == true
+          ..expires = raw['expires'] is DateTime ? raw['expires'] as DateTime : null;
+      } else {
+        cookie = Cookie(entry.key, raw.toString());
+      }
+      cookie.setBiliDomain();
+      final domain = (cookie.domain ?? '.bilibili.com').replaceFirst('.', '');
+      ((jar.domainCookies[domain] ??= {})[cookie.path ?? '/'] ??= {})[cookie.name] = SerializableCookie(cookie);
+    }
+    return jar;
+  }
 
   static DefaultCookieJar fromList(List cookies) =>
       DefaultCookieJar(ignoreExpires: true)

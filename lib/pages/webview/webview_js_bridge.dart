@@ -45,6 +45,19 @@ typedef JsCallback = ({String callbackId, Object? payload});
 ///
 /// 安全：仅 `*.bilibili.com` 域页面允许调用（对应官方 JsbControllerManager 白名单）。
 abstract final class WebviewJsBridge {
+  static final Map<InAppWebViewController, int> _generations =
+      Map<InAppWebViewController, int>.identity();
+
+  static int navigationStarted(InAppWebViewController controller) {
+    final generation = (_generations[controller] ?? 0) + 1;
+    _generations[controller] = generation;
+    return generation;
+  }
+
+  static void detach(InAppWebViewController controller) {
+    _generations.remove(controller);
+  }
+
   /// 注册到 WebView 的 JavaScript handler 名称（V1 协议）。
   static const String handlerName = 'biliInject';
 
@@ -57,7 +70,7 @@ abstract final class WebviewJsBridge {
   static UserScript get polyfillUserScript => UserScript(
     source: _polyfillSource,
     injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
-    forMainFrameOnly: false,
+    forMainFrameOnly: true,
   );
 
   /// 解析 H5 传来的消息，返回 method / data / callbackId。
@@ -178,9 +191,12 @@ abstract final class WebviewJsBridge {
         : null;
     final message = parseMessage(raw);
     if (message == null) return null;
+    final generation = _generations[controller] ?? 0;
 
     final WebUri? currentUrl = await controller.getUrl();
-    if (!isAllowedHost(currentUrl?.host)) {
+    if (_generations[controller] != generation ||
+        currentUrl?.scheme != 'https' ||
+        !isAllowedHost(currentUrl?.host)) {
       if (message.callbackId != null) {
         await callbackToJs(
           controller,
@@ -197,6 +213,13 @@ abstract final class WebviewJsBridge {
     }
 
     final result = await _dispatch(message, isV2: isV2);
+    if (_generations[controller] != generation) return null;
+    final resultUrl = await controller.getUrl();
+    if (_generations[controller] != generation ||
+        resultUrl?.scheme != 'https' ||
+        !isAllowedHost(resultUrl?.host)) {
+      return null;
+    }
     for (final r in result) {
       await callbackToJs(
         controller,
@@ -282,19 +305,19 @@ abstract final class WebviewJsBridge {
         return _reply(message, await _abilityOpenScheme(data));
       case 'ability.currentThemeType':
         return _reply(message, _abilityCurrentThemeType());
-      // net.* 走 native 网络代理（老 callNative 协议：callback("ok") +
-      // onLoad(数据) 双回调），页面不会降级到浏览器 fetch。
       case 'net.request':
       case 'net.requestV2':
       case 'net.requestWithSign':
       case 'net.requestWithSignV2':
       case 'net.requestWithoutParams':
-        return _netRequest(message);
       case 'net.uploadImage':
       case 'net.uploadImageV2':
-        return _reply(message, 'error: upload not supported');
       case 'net.getCsrf':
-        return _reply(message, _netGetCsrf());
+        return _reply(message, {
+          'ok': false,
+          'error_code': -403,
+          'error_msg': 'native network bridge disabled',
+        });
       default:
         return _reply(message, {
           'ok': false,
@@ -418,9 +441,7 @@ abstract final class WebviewJsBridge {
 
   // ── net（native 网络代理，老 callNative 协议）─────────────
 
-  /// 代理页面网络请求：老协议要求 `callback("ok")`（状态）+ `onLoad(数据)`
-  /// 双回调；数据格式 `{response, httpStatus, headers}` 供页面构造 Response。
-  /// 仅允许代理 bilibili 域请求（安全白名单）。
+  /// Native network requests are intentionally unavailable to page scripts.
   static Future<List<JsCallback>> _netRequest(JsbMessage message) async {
     final data = message.data;
     final cb = message.callbackId;

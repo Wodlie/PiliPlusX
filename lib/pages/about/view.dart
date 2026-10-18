@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:PiliPlus/build_config.dart';
 import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/grpc/reply.dart';
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
 import 'package:PiliPlus/common/widgets/dialog/export_import.dart';
@@ -24,6 +25,8 @@ import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:PiliPlus/utils/update.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -292,6 +295,18 @@ Commit Hash: ${BuildConfig.commitHash}''',
                           GStorage.setting.clear(),
                           GStorage.video.clear(),
                         ]);
+                        ReplyGrpc.antiGoodsReply = Pref.antiGoodsReply;
+                        ReplyGrpc.showBlockedReplyBanner =
+                            Pref.showBlockedReplyBanner;
+                        ReplyGrpc.minLevelForReply = Pref.minLevelForReply;
+                        ReplyGrpc.replyRegExp = RegExp(
+                          Pref.banWordForReply,
+                          caseSensitive: false,
+                        );
+                        ReplyGrpc.enableFilter =
+                            Pref.banWordForReply.isNotEmpty;
+                        ThemeUtils.themeMode = Pref.themeMode;
+                        Get.forceAppUpdate();
                         SmartDialog.showToast('重置成功');
                       },
                       child: const Text('重置可导出的设置', style: style),

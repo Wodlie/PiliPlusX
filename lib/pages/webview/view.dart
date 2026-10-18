@@ -62,6 +62,9 @@ class _WebviewPageState extends State<WebviewPage> with RouteAware {
     _currentUrl = (widget.url ?? parameters['url']!).http2https;
     _title = _currentUrl.obs;
     userAgent = _buildFakeUa();
+    if (Platform.isLinux && LinuxCookieManager.isBiliDomain(_currentUrl)) {
+      LinuxCookieManager.setCookies();
+    }
     if (Get.arguments case final Map map) {
       _inApp = map['inApp'] ?? false;
       _off = map['off'] ?? false;
@@ -94,6 +97,8 @@ class _WebviewPageState extends State<WebviewPage> with RouteAware {
 
   @override
   void dispose() {
+    final controller = _webViewController;
+    if (controller != null) WebviewJsBridge.detach(controller);
     if (Platform.isAndroid) routeObserver.unsubscribe(this);
     _linuxController?.dispose();
     _linuxController = null;
@@ -245,10 +250,7 @@ class _WebviewPageState extends State<WebviewPage> with RouteAware {
         if (Platform.isLinux) {
           final currentUrl = _linuxController?.currentUrl ?? _currentUrl;
           if (LinuxCookieManager.isBiliDomain(currentUrl)) {
-            final js = LinuxCookieManager.generateCookieInjectionJs();
-            if (js.isNotEmpty) {
-              await _linuxController?.evaluateJavaScript(js);
-            }
+            await LinuxCookieManager.setCookies();
           }
           _linuxController?.reload();
           SmartDialog.showToast('设置成功，正在刷新网页', alignment: Alignment.topCenter);
@@ -261,18 +263,7 @@ class _WebviewPageState extends State<WebviewPage> with RouteAware {
   }
 
   List<Map<String, dynamic>> _getLinuxUserScripts() {
-    final shouldInjectCookie = LinuxCookieManager.isBiliDomain(_currentUrl);
-    final cookieJs = shouldInjectCookie
-        ? LinuxCookieManager.generateCookieInjectionJs()
-        : '';
-
     return [
-      if (cookieJs.isNotEmpty)
-        {
-          'source': cookieJs,
-          'injectionTime': 0, // start
-          'forAllFrames': true,
-        },
       if (_currentUrl.startsWith('https://www.bilibili.com/h5/note-app'))
         const {
           'source': """
@@ -446,6 +437,7 @@ document.addEventListener('click', function(e) {
                 ),
                 onWebViewCreated: (InAppWebViewController controller) {
                   _webViewController = controller;
+                  WebviewJsBridge.navigationStarted(controller);
                   WebviewJsBridge.attach(controller);
                   controller
                     ..addJavaScriptHandler(
@@ -466,6 +458,12 @@ document.addEventListener('click', function(e) {
                         }
                       },
                     );
+                },
+                onLoadStart: (controller, uri) {
+                  WebviewJsBridge.navigationStarted(controller);
+                },
+                onUpdateVisitedHistory: (controller, uri, isReload) {
+                  WebviewJsBridge.navigationStarted(controller);
                 },
                 onProgressChanged: (controller, progress) {
                   _progress.value = progress / 100;

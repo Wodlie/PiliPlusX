@@ -163,7 +163,9 @@ class Request {
               ..idleTimeout = const Duration(seconds: 15)
               ..autoUncompress = false
               ..findProxy = ((_) => 'PROXY $systemProxyHost:$systemProxyPort')
-              ..badCertificateCallback = (cert, host, port) => true
+              ..badCertificateCallback = Pref.badCertificateCallback
+                  ? (cert, host, port) => true
+                  : null
           : () => HttpClient()
               ..idleTimeout = const Duration(seconds: 15)
               ..autoUncompress = false, // Http2Adapter没有自动解压, 统一行为
@@ -179,7 +181,9 @@ class Request {
                       host: systemProxyHost,
                       port: systemProxyPort,
                     )
-                    ..onBadCertificate = (_) => true
+                    ..onBadCertificate = Pref.badCertificateCallback
+                        ? (_) => true
+                        : null
                 : Pref.badCertificateCallback
                 ? (_, config) => config.onBadCertificate = (_) => true
                 : null,

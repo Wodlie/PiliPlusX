@@ -362,29 +362,45 @@ class AccountManager extends Interceptor {
   /// 同时还原自定义主机的路径前缀（如 https://mirror.example.com/bili/...），
   /// 使 [ApiType.loginApi]/[ApiType.apiTypeSet] 的官方路径匹配恢复生效。
   static Uri officializeUri(Uri uri) {
+    ApiHostEntry? selected;
+    Uri? selectedOfficial;
+    var selectedPrefix = '';
     for (final entry in apiHostEntries) {
       final custom =
           GStorage.setting.get(entry.settingKey, defaultValue: '') as String;
       if (custom.isEmpty || !isValidCustomHost(custom)) continue;
       final customUri = Uri.parse(custom);
-      if (customUri.host != uri.host) continue;
-      final official = Uri.parse(entry.defaultHost);
-      var path = uri.path;
+      if (customUri.scheme != uri.scheme ||
+          customUri.host != uri.host ||
+          customUri.port != uri.port) {
+        continue;
+      }
       final prefix = customUri.path.endsWith('/')
           ? customUri.path.substring(0, customUri.path.length - 1)
           : customUri.path;
-      if (prefix.isNotEmpty && prefix != '/' && path.startsWith(prefix)) {
-        path = path.substring(prefix.length);
-        if (!path.startsWith('/')) path = '/$path';
+      if (prefix.isNotEmpty &&
+          prefix != '/' &&
+          uri.path != prefix &&
+          !uri.path.startsWith('$prefix/')) {
+        continue;
       }
-      return uri.replace(
-        scheme: official.scheme,
-        host: official.host,
-        port: official.port,
-        path: path,
-      );
+      if (selected != null && prefix.length <= selectedPrefix.length) continue;
+      selected = entry;
+      selectedOfficial = Uri.parse(entry.defaultHost);
+      selectedPrefix = prefix == '/' ? '' : prefix;
     }
-    return uri;
+    if (selected == null || selectedOfficial == null) return uri;
+    var path = uri.path;
+    if (selectedPrefix.isNotEmpty) {
+      path = path.substring(selectedPrefix.length);
+      if (path.isEmpty) path = '/';
+    }
+    return uri.replace(
+      scheme: selectedOfficial.scheme,
+      host: selectedOfficial.host,
+      port: selectedOfficial.port,
+      path: path,
+    );
   }
 
   /// path 官方化：全 URL 还原官方 host；相对路径原样返回。

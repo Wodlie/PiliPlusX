@@ -129,10 +129,11 @@ abstract final class Accounts {
   }
 
   static Future<void> clear() async {
+    await LoginUtils.onLogoutMain();
     await account.clear();
     _publish(_anonymousAccounts());
     await AnonymousAccount().delete();
-    Request.buvidActive(AnonymousAccount());
+    await Request.buvidActive(AnonymousAccount());
   }
 
   static Future<void> deleteAll(Set<Account> accounts) async {

@@ -5,6 +5,7 @@ import 'package:PiliPlus/plugin/linux_webview.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
+import 'package:flutter_inappwebview/flutter_inappwebview.dart' as web;
 
 abstract final class LinuxCookieManager {
   static bool isBiliDomain(String url) {
@@ -28,6 +29,24 @@ abstract final class LinuxCookieManager {
         debugPrint('LinuxCookieManager: deleteAllCookies failed: $e');
       }
     }
+  }
+
+  static Future<void> setCookies([Account? account]) async {
+    if (!Platform.isLinux) return;
+    final manager = web.CookieManager.instance();
+    await Future.wait(
+      getCookies(account).map(
+        (cookie) => manager.setCookie(
+          url: web.WebUri('https://bilibili.com'),
+          name: cookie.name,
+          value: cookie.value,
+          domain: cookie.domain ?? '.bilibili.com',
+          path: cookie.path ?? '/',
+          isSecure: cookie.secure,
+          isHttpOnly: cookie.httpOnly,
+        ),
+      ),
+    );
   }
 
   static String generateCookieInjectionJs([List<Cookie>? cookieList]) {
