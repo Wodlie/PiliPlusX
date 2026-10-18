@@ -52,7 +52,26 @@ abstract final class WbiSign {
     13,
   ];
 
-  static Future<String>? _future;
+  static Future<String?>? _future;
+  static DateTime? _failedAt;
+  static int _failureCount = 0;
+
+  /// 连续失败后的退避步长；首次失败立即允许重试，避免把一次网络抖动放大成
+  /// 「本进程不再重取」（F08）。
+  static const Duration _backoffStep = Duration(seconds: 5);
+  static const Duration _maxBackoff = Duration(seconds: 60);
+
+  static Duration get _retryBackoff {
+    final int seconds = _backoffStep.inSeconds * (_failureCount - 1);
+    if (seconds <= 0) {
+      return Duration.zero;
+    }
+    return Duration(
+      seconds: seconds < _maxBackoff.inSeconds
+          ? seconds
+          : _maxBackoff.inSeconds,
+    );
+  }
 
   // 对 imgKey 和 subKey 进行字符顺序打乱编码
   static String getMixinKey(String orig) {
@@ -89,49 +108,75 @@ abstract final class WbiSign {
     params['dm_img_inter'] ??= '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}';
   }
 
-  static Future<String> _getWbiKeys() async {
-    final resp = await Request().get(Api.userInfo);
+  /// 当日已缓存的 mixinKey；跨日或缺失时返回 null（跨日不复用旧 key）。
+  static String? _cachedKeyOfDay(DateTime nowDate) {
+    final timeStamp = DateTime.fromMillisecondsSinceEpoch(
+      _localCache.get(LocalCacheKey.timeStamp, defaultValue: 0) as int,
+    );
+    if (timeStamp.day != nowDate.day) return null;
+    final key = _localCache.get(LocalCacheKey.mixinKey);
+    return (key is String && key.isNotEmpty) ? key : null;
+  }
+
+  static Future<String?> _getWbiKeys() async {
     try {
+      final resp = await Request().get(Api.userInfo);
       final wbiUrls = resp.data['data']['wbi_img'];
 
       final mixinKey = getMixinKey(
         Utils.getFileName(wbiUrls['img_url'], fileExt: false) +
             Utils.getFileName(wbiUrls['sub_url'], fileExt: false),
       );
+      if (mixinKey.isEmpty) {
+        throw const FormatException('empty wbi mixin key');
+      }
 
-      _localCache.put(LocalCacheKey.mixinKey, mixinKey);
+      // 只在取到当日 key 后才落盘（时间戳同写）：失败时不推进日期，
+      // 否则跨日失败会把昨日 key 当今日 key 复用。
+      _localCache
+        ..put(LocalCacheKey.mixinKey, mixinKey)
+        ..put(
+          LocalCacheKey.timeStamp,
+          DateTime.now().millisecondsSinceEpoch,
+        );
 
+      _failureCount = 0;
+      _failedAt = null;
       return mixinKey;
-    } catch (_) {
-      return '';
+    } catch (e) {
+      debugPrint('WBI sign error: $e');
+      _failureCount++;
+      _failedAt = DateTime.now();
+      return null;
     }
   }
 
-  static FutureOr<String> getWbiKeys() {
+  /// 取当日的 mixinKey。不可用时返回 null —— 调用方必须跳过签名，
+  /// 不得用空 key 生成 w_rid。失败不会被进程缓存：退避窗口一过即重取。
+  static FutureOr<String?> getWbiKeys() {
     final nowDate = DateTime.now();
-    if (DateTime.fromMillisecondsSinceEpoch(
-          _localCache.get(LocalCacheKey.timeStamp, defaultValue: 0) as int,
-        ).day ==
-        nowDate.day) {
-      final String? mixinKey = _localCache.get(LocalCacheKey.mixinKey);
-      if (mixinKey != null) return mixinKey;
-      return _future ??= _getWbiKeys();
-    } else {
-      return _future = _localCache
-          .put(LocalCacheKey.timeStamp, nowDate.millisecondsSinceEpoch)
-          .then((_) => _getWbiKeys())
-          .catchError((e) {
-            debugPrint('WBI sign error: $e');
-            return '';
-          });
+    final String? cached = _cachedKeyOfDay(nowDate);
+    if (cached != null) return cached;
+
+    if (_future case final future?) return future;
+
+    final failedAt = _failedAt;
+    if (failedAt != null && nowDate.difference(failedAt) < _retryBackoff) {
+      return null;
     }
+    return _future = _getWbiKeys().whenComplete(() => _future = null);
   }
 
   static Future<Map<String, Object>> makSign(
     Map<String, Object> params,
   ) async {
     // params 为需要加密的请求参数
-    final String mixinKey = await getWbiKeys();
+    final String? mixinKey = await getWbiKeys();
+    if (mixinKey == null || mixinKey.isEmpty) {
+      // 无 key 时不生成签名：空 key 算出的 w_rid 只会被服务端判成风控请求
+      debugPrint('WBI sign skipped: mixin key unavailable');
+      return params;
+    }
     encWbi(params, mixinKey);
     return params;
   }

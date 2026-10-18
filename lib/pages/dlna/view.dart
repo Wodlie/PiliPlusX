@@ -37,6 +37,8 @@ class _DLNAPageState extends State<DLNAPage> {
     _isSearching = true;
     if (!isInit && mounted) {
       _lastDevice = null;
+      // 同时清 key：否则刷新后重选同一设备会因 isCurr 直接 return（F40）
+      _lastDeviceKey = null;
       _deviceList.clear();
       setState(() {});
     }

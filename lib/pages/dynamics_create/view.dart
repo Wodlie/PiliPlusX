@@ -521,26 +521,21 @@ class _CreateDynPanelState extends CommonRichTextPubPageState<CreateDynPanel> {
                       ),
                     );
                     if (selectedTime != null) {
-                      if (selectedDate.day == nowDate.day) {
-                        if (selectedTime.hour < nowTime.hour) {
-                          SmartDialog.showToast('时间设置错误，至少选择6分钟之后');
-                          return;
-                        } else if (selectedTime.hour == nowTime.hour) {
-                          if (selectedTime.minute < nowTime.minute + 6) {
-                            if (selectedDate.day == nowDate.day) {
-                              SmartDialog.showToast('时间设置错误，至少选择6分钟之后');
-                            }
-                            return;
-                          }
-                        }
-                      }
-                      _publishTime.value = DateTime(
+                      final publishTime = DateTime(
                         selectedDate.year,
                         selectedDate.month,
                         selectedDate.day,
                         selectedTime.hour,
                         selectedTime.minute,
                       );
+                      // 用完整 DateTime 差值判断「至少 6 分钟之后」，
+                      // 跨小时也要成立（10:56 选 11:00 只差 4 分钟，F42）
+                      if (publishTime.difference(DateTime.now()).inMinutes <
+                          6) {
+                        SmartDialog.showToast('时间设置错误，至少选择6分钟之后');
+                        return;
+                      }
+                      _publishTime.value = publishTime;
                     }
                   }
                 },

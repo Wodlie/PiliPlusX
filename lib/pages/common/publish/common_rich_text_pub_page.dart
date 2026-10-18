@@ -5,6 +5,7 @@ import 'package:PiliPlus/common/widgets/button/icon_button.dart';
 import 'package:PiliPlus/common/widgets/button/toolbar_icon_button.dart';
 import 'package:PiliPlus/common/widgets/flutter/text_field/controller.dart';
 import 'package:PiliPlus/common/widgets/flutter/text_field/text_field.dart';
+import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/msg.dart';
 import 'package:PiliPlus/models/common/image_preview_type.dart';
 import 'package:PiliPlus/models/common/publish_panel_type.dart';
@@ -193,10 +194,16 @@ abstract class CommonRichTextPubPageState<T extends CommonRichTextPubPage>
         path = e.path;
       case OpusPicModel e:
         SmartDialog.showLoading();
-        path = (await CacheManager.manager.getSingleFile(
-          e.url.http2https,
-        )).path;
-        await SmartDialog.dismiss();
+        try {
+          path = (await CacheManager.manager.getSingleFile(
+            e.url.http2https,
+          )).path;
+        } catch (_) {
+          SmartDialog.showToast('图片获取失败，无法裁剪');
+          return;
+        } finally {
+          SmartDialog.dismiss();
+        }
     }
     if (!mounted || path.isEmpty) return;
     late final colorScheme = ColorScheme.of(context);
@@ -513,25 +520,29 @@ abstract class CommonRichTextPubPageState<T extends CommonRichTextPubPage>
                   biz: 'new_dyn',
                   cancelToken: cancelToken,
                 );
-                final data = result.data;
-                return {
-                  'img_width': data.imageWidth,
-                  'img_height': data.imageHeight,
-                  'img_size': data.imgSize,
-                  'img_src': data.imageUrl,
-                };
+                if (result case Success(:final response)) {
+                  return {
+                    'img_width': response.imageWidth,
+                    'img_height': response.imageHeight,
+                    'img_size': response.imgSize,
+                    'img_src': response.imageUrl,
+                  };
+                }
+                // Error/Loading 都按失败处理，文案取服务端返回
+                throw HttpException(result.toString());
               case OpusPicModel e:
                 return e.toJson();
             }
           }),
           eagerError: true,
         );
-        SmartDialog.dismiss();
-      } on HttpException catch (e) {
+      } catch (e) {
         cancelToken.cancel();
-        SmartDialog.dismiss();
-        SmartDialog.showToast(e.message);
+        // 失败保留草稿与已选图片，只做提示
+        SmartDialog.showToast(e is HttpException ? e.message : '$e');
         return;
+      } finally {
+        SmartDialog.dismiss();
       }
     }
     return onCustomPublish(pictures: pictures);

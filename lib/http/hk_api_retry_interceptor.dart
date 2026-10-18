@@ -7,6 +7,17 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
 class HkApiRetryInterceptor extends Interceptor {
+  /// 一次性重试标记：港澳台重试请求本身不再参与重试，避免把 HK host 也再重试一遍。
+  static const String retryExtraKey = 'hkApiRetried';
+
+  /// [HttpString.apiBaseUrl] 是完整 URL（含 scheme），与 [Uri.host] 比较前必须只取 host。
+  static final String _apiBaseHost = _hostOf(HttpString.apiBaseUrl);
+
+  static String _hostOf(String url) {
+    final host = Uri.parse(url).host;
+    return host.isEmpty ? url : host;
+  }
+
   /// 提示出口。默认走 `SmartDialog.showToast`；测试可注入捕获出口，从而对
   /// **真实管线**产生的文案做断言，而不是把 helper 重算一遍。
   @visibleForTesting
@@ -37,7 +48,9 @@ class HkApiRetryInterceptor extends Interceptor {
   void onResponse(Response response, ResponseInterceptorHandler handler) async {
     String apiHKUrl = Pref.apiHKUrl;
     final originalOptions = response.requestOptions;
-    if ((originalOptions.method == 'GET') && (apiHKUrl.isNotEmpty)) {
+    if ((originalOptions.method == 'GET') &&
+        (apiHKUrl.isNotEmpty) &&
+        originalOptions.extra[retryExtraKey] != true) {
       final data = response.data;
       if (data is Map && ((data['code'] == -404) || (data['code'] == -10403))) {
         try {
@@ -46,7 +59,7 @@ class HkApiRetryInterceptor extends Interceptor {
           if (originalOptions.path.startsWith('http')) {
             final originalUri = Uri.parse(originalOptions.path);
 
-            if (originalUri.host != HttpString.apiBaseUrl) {
+            if (originalUri.host != _apiBaseHost) {
               return handler.next(response);
             }
 
@@ -81,7 +94,7 @@ class HkApiRetryInterceptor extends Interceptor {
       method: originalOptions.method,
       sendTimeout: originalOptions.sendTimeout,
       receiveTimeout: originalOptions.receiveTimeout,
-      extra: originalOptions.extra,
+      extra: {...originalOptions.extra, retryExtraKey: true},
       headers: originalOptions.headers,
       responseType: originalOptions.responseType,
       contentType: originalOptions.contentType,
