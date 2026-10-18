@@ -48,10 +48,12 @@ class _BarSetPageState extends State<BarSetPage> with ReorderMixin {
   }
 
   void saveEdit() {
-    GStorage.setting.put(
-      key,
-      list.where((e) => e.second).map((e) => e.first.index).toList(),
-    );
+    final selected = list.where((e) => e.second).toList();
+    if (selected.isEmpty) {
+      SmartDialog.showToast('至少保留一个选项');
+      return;
+    }
+    GStorage.setting.put(key, selected.map((e) => e.first.index).toList());
     SmartDialog.showToast('保存成功，下次启动时生效');
   }
 

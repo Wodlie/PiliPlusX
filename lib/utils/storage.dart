@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:PiliPlus/models/common/home_tab_type.dart';
+import 'package:PiliPlus/models/common/nav_bar_config.dart';
 import 'package:PiliPlus/models/model_owner.dart';
 import 'package:PiliPlus/models/user/danmaku_rule_adapter.dart';
 import 'package:PiliPlus/models/user/info.dart';
@@ -88,13 +90,90 @@ abstract final class GStorage {
   static Future<void> importAllSettings(String data) =>
       importAllJsonSettings(jsonDecode(data));
 
-  static Future<List<void>> importAllJsonSettings(
-    Map<String, dynamic> map,
-  ) {
-    return Future.wait([
-      setting.clear().then((_) => setting.putAll(map[setting.name])),
-      video.clear().then((_) => video.putAll(map[video.name])),
-    ]);
+  static Future<void> importAllJsonSettings(Object? input) async {
+    if (input is! Map) throw const FormatException('设置文件顶层必须是对象');
+    final settingMap = _validateSettingsBox(input, setting.name);
+    final videoMap = _validateSettingsBox(input, video.name);
+    final settingSnapshot = Map<dynamic, dynamic>.from(setting.toMap());
+    final videoSnapshot = Map<dynamic, dynamic>.from(video.toMap());
+    try {
+      await setting.clear();
+      await setting.putAll(settingMap);
+      await video.clear();
+      await video.putAll(videoMap);
+    } catch (error) {
+      try {
+        await Future.wait([
+          _restoreBox(setting, settingSnapshot),
+          _restoreBox(video, videoSnapshot),
+        ]);
+      } catch (restoreError) {
+        throw FormatException('设置导入失败，恢复原设置失败: $restoreError');
+      }
+      throw FormatException('设置导入失败，已恢复原设置: $error');
+    }
+  }
+
+  static Map<dynamic, dynamic> _validateSettingsBox(Map input, String name) {
+    final value = input[name];
+    if (value is! Map) throw FormatException('$name 必须是对象');
+    final result = Map<dynamic, dynamic>.from(value);
+    final box = name == setting.name ? setting : video;
+    for (final entry in result.entries) {
+      final current = box.get(entry.key);
+      if (current != null && !_matchesSettingType(current, entry.value)) {
+        throw FormatException('$name.${entry.key} 类型无效');
+      }
+    }
+    _validateListIndex(result, 'tabBarSort', HomeTabType.values.length);
+    _validateListIndex(result, 'navBarSort', NavigationBarType.values.length);
+    _validateIndex(result, 'defaultHomePage', NavigationBarType.values.length);
+    for (final key in result.keys) {
+      if (key.toString().contains('banWord')) {
+        final pattern = result[key];
+        if (pattern is! String) {
+          throw FormatException('$name.$key 必须是字符串');
+        }
+        try {
+          RegExp(pattern, caseSensitive: false);
+        } on FormatException {
+          throw FormatException('$name.$key 正则格式无效');
+        }
+      }
+    }
+    return result;
+  }
+
+  static bool _matchesSettingType(Object current, Object? value) {
+    if (current is List) return value is List;
+    if (current is Map) return value is Map;
+    if (current is String) return value is String;
+    if (current is bool) return value is bool;
+    if (current is int) return value is int;
+    if (current is double) return value is double;
+    return current.runtimeType == value.runtimeType;
+  }
+
+  static void _validateListIndex(Map map, String key, int length) {
+    final value = map[key];
+    if (value != null &&
+        (value is! List ||
+            value.isEmpty ||
+            value.any((item) => item is! int || item < 0 || item >= length))) {
+      throw FormatException('$key 包含无效值');
+    }
+  }
+
+  static void _validateIndex(Map map, String key, int length) {
+    final value = map[key];
+    if (value != null && (value is! int || value < 0 || value >= length)) {
+      throw FormatException('$key 包含无效值');
+    }
+  }
+
+  static Future<void> _restoreBox(Box box, Map<dynamic, dynamic> snapshot) async {
+    await box.clear();
+    await box.putAll(snapshot);
   }
 
   static void regAdapter() {

@@ -256,9 +256,18 @@ abstract final class ImageBlockService {
   static List<ImageHash> getParsedBlockList() {
     if (_blockListCache != null) return _blockListCache!;
     final rawList = Pref.imageBlockHashList;
-    _blockListCache = rawList.map((entry) {
-      return ImageHash.fromHex(entry['pHash'] as String);
-    }).toList();
+    _blockListCache = <ImageHash>[];
+    for (final entry in rawList) {
+      final hex = entry['pHash'];
+      if (hex is! String || !RegExp(r'^[0-9a-fA-F]{16}$').hasMatch(hex)) {
+        continue;
+      }
+      try {
+        _blockListCache!.add(ImageHash.fromHex(hex));
+      } catch (_) {
+        continue;
+      }
+    }
     return _blockListCache!;
   }
 
@@ -330,7 +339,13 @@ abstract final class ImageBlockService {
     int minDistance = 64;
 
     for (final variantHashHex in imageVariantHashes) {
-      final variantHash = ImageHash.fromHex(variantHashHex);
+      if (!RegExp(r'^[0-9a-fA-F]{16}$').hasMatch(variantHashHex)) continue;
+      late final ImageHash variantHash;
+      try {
+        variantHash = ImageHash.fromHex(variantHashHex);
+      } catch (_) {
+        continue;
+      }
       for (final blockedHash in parsedList) {
         final distance = variantHash - blockedHash;
         if (distance < minDistance) {
