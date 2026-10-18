@@ -2616,10 +2616,9 @@ class EditableTextState extends State<EditableText>
     // After the paste, the cursor should be collapsed and located after the
     // pasted content.
     final TextSelection selection = textEditingValue.selection;
-    final int lastSelectionIndex = math.max(
-      selection.baseOffset,
-      selection.extentOffset,
-    );
+    // PiliPlus: stock TextEditingValue.replaced puts the caret after the
+    // pasted text, i.e. at the replacement start plus the inserted length.
+    final int pastedOffset = selection.start + text.length;
     // bggRGjQaUbCoE _pasteText
     widget.controller.syncRichText(
       selection.isCollapsed
@@ -2627,14 +2626,14 @@ class EditableTextState extends State<EditableText>
               oldText: textEditingValue.text,
               textInserted: text,
               insertionOffset: selection.baseOffset,
-              selection: TextSelection.collapsed(offset: lastSelectionIndex),
+              selection: TextSelection.collapsed(offset: pastedOffset),
               composing: TextRange.empty,
             )
           : TextEditingDeltaReplacement(
               oldText: textEditingValue.text,
               replacementText: text,
               replacedRange: selection,
-              selection: TextSelection.collapsed(offset: lastSelectionIndex),
+              selection: TextSelection.collapsed(offset: pastedOffset),
               composing: TextRange.empty,
             ),
     );

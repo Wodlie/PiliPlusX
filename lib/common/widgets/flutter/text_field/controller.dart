@@ -690,6 +690,11 @@ class RichTextEditingController extends TextEditingController {
         items.remove(item);
       }
     }
+
+    // PiliPlus: never adopt a delta selection that points past the new text.
+    if (newSelection.end > plainText.length) {
+      newSelection = TextSelection.collapsed(offset: plainText.length);
+    }
   }
 
   static bool _isSelectionValid(TextSelection selection, int length) {
