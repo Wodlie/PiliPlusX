@@ -6,18 +6,21 @@ import 'package:PiliPlus/common/widgets/view_sliver_safe_area.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
     show ReplyInfo;
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
+import 'package:PiliPlus/pages/video/reply_reply/view.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
+import 'package:PiliPlus/utils/bili_utils.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
+import 'package:PiliPlus/utils/reply_scheme_helper.dart';
 import 'package:PiliPlus/utils/reply_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:PiliPlus/utils/waterfall.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:waterfall_flow/waterfall_flow.dart';
 
 class MyReply extends StatefulWidget {
   const MyReply({super.key});
@@ -47,7 +50,7 @@ class _MyReplyState extends State<MyReply> with DynMixin {
       appBar: AppBar(
         title: const Text('我的评论'),
         actions: [
-          if (kDebugMode)
+          if (kDebugMode) ...[
             IconButton(
               tooltip: 'Clear',
               onPressed: () => showConfirmDialog(
@@ -61,6 +64,12 @@ class _MyReplyState extends State<MyReply> with DynMixin {
               ),
               icon: const Icon(Icons.clear_all),
             ),
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: () => setState(_initReply),
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
           IconButton(
             tooltip: '导出',
             onPressed: _showExportDialog,
@@ -79,7 +88,8 @@ class _MyReplyState extends State<MyReply> with DynMixin {
         slivers: [
           _replies.isNotEmpty
               ? ViewSliverSafeArea(
-                  sliver: SliverWaterfallFlow(
+                  sliver: SliverMasonryGrid(
+                    crossAxisSpacing: 4,
                     gridDelegate: dynGridDelegate,
                     delegate: SliverChildBuilderDelegate(
                       childCount: _replies.length,
@@ -101,11 +111,22 @@ class _MyReplyState extends State<MyReply> with DynMixin {
   }
 
   void _replyReply(ReplyInfo replyInfo, int? rpid) {
-    switch (replyInfo.type.toInt()) {
+    int? rootRpId, secondRpId;
+    final id = replyInfo.id.toInt();
+    if (replyInfo.hasRoot()) {
+      rootRpId = replyInfo.root.toInt();
+      secondRpId = id;
+    } else {
+      rootRpId = id;
+    }
+    final type = replyInfo.type.toInt();
+    switch (type) {
       case 1:
         PiliScheme.videoPush(
           replyInfo.oid.toInt(),
           null,
+          rootRpId: rootRpId,
+          secondRpId: secondRpId,
         );
       case 12:
         PageUtils.toDupNamed(
@@ -114,12 +135,28 @@ class _MyReplyState extends State<MyReply> with DynMixin {
             'id': replyInfo.oid.toString(),
             'type': 'read',
           },
+          arguments: {
+            rootRpIdKey: rootRpId,
+            secondRpIdKey: ?secondRpId,
+          },
         );
       case _:
-        PageUtils.pushDynFromId(
-          rid: replyInfo.oid.toString(),
-          type: replyInfo.type,
-        );
+        if (BiliUtils.isDynOrArticle(type)) {
+          PageUtils.pushDynFromId(
+            rid: replyInfo.oid.toString(),
+            type: type,
+            rootRpId: rootRpId,
+            secondRpId: secondRpId,
+          );
+        } else {
+          // TODO:
+          VideoReplyReplyPanel.toReply(
+            oid: replyInfo.oid.toInt(),
+            rootId: rootRpId,
+            rpId: secondRpId,
+            type: type,
+          );
+        }
     }
   }
 

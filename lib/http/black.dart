@@ -20,7 +20,7 @@ abstract final class BlackHttp {
       return Success(BlackListData(list: list, total: mids.length));
     }
     final res = await Request().get(
-      Api.blackLst,
+      Api.blackList,
       queryParameters: {
         'pn': pn,
         'ps': ps,

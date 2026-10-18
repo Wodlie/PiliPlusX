@@ -3,6 +3,7 @@ import 'package:PiliPlus/common/widgets/radio_widget.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/reply.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:PiliPlus/common/widgets/dialog/report_v2.dart';
 import 'package:PiliPlus/utils/accounts.dart';
@@ -33,6 +34,8 @@ Future<void> autoWrapReportDialog(
   Future<void> Function(List<String> imageUrls)? onBlockImages,
   Object? targetMid,
   int? scene,
+  ValueGetter<int>? mid,
+  VoidCallback? onRemove,
   String? reportUrl,
   ReasonCheck withContent = _kReportCheck,
   ReasonCheck contentRequired = _kReportCheck,
@@ -338,6 +341,15 @@ Future<void> autoWrapReportDialog(
                   );
                 },
                 child: const Text('使用新版举报方式'),
+              ),
+            if (mid != null)
+              TextButton(
+                onPressed: () {
+                  Get.back();
+                  Pref.setBlackMid(mid());
+                  onRemove?.call();
+                },
+                child: const Text('本地屏蔽'),
               ),
             TextButton(
               onPressed: Get.back,

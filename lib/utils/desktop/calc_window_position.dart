@@ -1,38 +1,42 @@
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/rendering.dart' show Offset, Rect, Size;
+import 'package:nativeapi/nativeapi.dart' as nativeapi;
 import 'package:screen_retriever/screen_retriever.dart';
 
-Future<Offset> calcWindowPosition(Size windowSize) async {
-  final allDisplays = screenRetriever.getAllDisplays();
-  final cursorScreenPoint = await screenRetriever.getCursorScreenPoint();
+const _displayManager = nativeapi.DisplayManager.instance;
+
+nativeapi.Rectangle calcWindowBounds() {
+  final windowSize = Pref.windowSize;
+  final offset = calcWindowPosition(windowSize);
+  return nativeapi.Rectangle(
+    x: offset.dx,
+    y: offset.dy,
+    width: windowSize.width,
+    height: windowSize.height,
+  );
+}
+
+Offset calcWindowPosition(Size windowSize) {
+  final displays = _displayManager.getAll();
+  final cursorPosition = _displayManager.getCursorPosition().toOffset();
 
   final currentDisplay =
-      (await allDisplays).firstWhereOrNull(
-        (display) => (display.visiblePosition! & display.size).contains(
-          cursorScreenPoint,
-        ),
+      displays.firstWhereOrNull(
+        (display) => (display.position.toOffset() & display.size.toSize())
+            .contains(cursorPosition),
       ) ??
-      await screenRetriever.getPrimaryDisplay();
+      _displayManager.getPrimary();
 
-  final double visibleWidth;
-  final double visibleHeight;
-  if (currentDisplay.visibleSize case final size?) {
-    visibleWidth = size.width;
-    visibleHeight = size.height;
-  } else {
-    visibleWidth = currentDisplay.size.width;
-    visibleHeight = currentDisplay.size.height;
-  }
+  if (currentDisplay == null) return .zero;
 
-  final double visibleStartX;
-  final double visibleStartY;
-  if (currentDisplay.visiblePosition case final offset?) {
-    visibleStartX = offset.dx;
-    visibleStartY = offset.dy;
-  } else {
-    visibleStartX = visibleStartY = 0;
-  }
+  final workArea = currentDisplay.workArea.toRect();
+
+  final double visibleWidth = workArea.width;
+  final double visibleHeight = workArea.height;
+
+  final double visibleStartX = workArea.left;
+  final double visibleStartY = workArea.top;
 
   // 完整工作区矩形：含显示器原点（右侧副屏为正、左侧/上方副屏可能为负），
   // 不能只拿宽高当边界（F39）。

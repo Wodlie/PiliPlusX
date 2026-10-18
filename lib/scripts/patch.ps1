@@ -101,6 +101,8 @@ $MouseCursorPatch = "lib/scripts/mouse_cursor.patch"
 
 $GeetestIOSPatch = "lib/scripts/geetest_ios.patch"
 
+$DoubleTapGesturePatch = "lib/scripts/double_tap_gesture.patch"
+
 # `git apply` fails when the target files are already patched. That happens when
 # the Flutter SDK comes from the GitHub Actions cache: subosito/flutter-action
 # saves its cache in the post step — i.e. AFTER the job ran this script and
@@ -272,7 +274,8 @@ $patches = @($ModalBarrierPatch, $TextSelectionPatch, $MouseCursorPatch,
             $SelectableRegionPatch, $EditableTextPatch, $TextFieldPatch,
             $ScrollPositionPatch, $ScrollablePatch, $ScrollableGesturePatch,
             $DraggableScrollableSheetPatch, $ScaffoldPatch, $TextPatch,
-            $TextPainterPatch, $SliverPatch, $RefreshIndicatorPatch)
+            $TextPainterPatch, $SliverPatch, $RefreshIndicatorPatch,
+            $DoubleTapGesturePatch)
 
 switch ($platform.ToLower()) {
     "android" {

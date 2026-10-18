@@ -9,6 +9,7 @@
 <div align="center">
     
 
+中文 | [English](README.en.md)
 </div>
     <p>使用Flutter开发的BiliBili第三方客户端</p>
     
@@ -60,7 +61,7 @@
 
 - 当前版本：`1.2.1+5468`（以 `pubspec.yaml` 为准）
 - 当前主开发分支：`dev`；`main` 用于稳定版本/上游同步
-- Flutter：`3.44.4`（`.fvmrc` 与 `pubspec.yaml` 同步）；Dart SDK：`>=3.12.0`
+- Flutter：`3.47.7`（`.fvmrc` 与 `pubspec.yaml` 同步）；Dart SDK：`>=3.13.0`
 - CI 会构建 Android、iOS、macOS、Windows x64、Linux x64；Release 产物由 GitHub Actions 生成草稿预发布
 - 版本与发布元数据由 `lib/scripts/build.ps1` 生成，Flutter SDK 补丁由 `lib/scripts/patch.ps1` 按平台应用
 - 测试集中在账号/身份/BUVID、gRPC identity、AI 视频总结等模块：`flutter test`

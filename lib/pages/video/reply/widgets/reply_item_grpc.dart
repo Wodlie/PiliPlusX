@@ -884,13 +884,10 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                             ),
                             const TextSpan(text: ' '),
                           ],
-                          TextSpan(
-                            text: childReply.root == childReply.parent
-                                ? ': '
-                                : childReply.mid == widget.upMid
-                                ? ''
-                                : ' ',
-                          ),
+                          if (childReply.root == childReply.parent)
+                            const TextSpan(text: ': ')
+                          else if (childReply.mid != widget.upMid)
+                            const TextSpan(text: ' '),
                           _buildMessage(
                             context,
                             colorScheme,
@@ -1387,7 +1384,23 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               leading: Icon(Icons.delete_outlined, color: errorColor, size: 19),
               title: Text('删除', style: style.copyWith(color: errorColor)),
             ),
-          if (ownerMid != Int64.ZERO)
+          if (ownerMid == Int64.ZERO)
+            ListTile(
+              onTap: () {
+                Get.back();
+                Pref.setBlackMid(item.mid.toInt());
+                onDelete();
+                SmartDialog.showToast('屏蔽成功');
+                return;
+              },
+              minLeadingWidth: 0,
+              leading: Icon(Icons.error_outline, color: errorColor, size: 19),
+              title: Text(
+                '屏蔽',
+                style: TextStyle(fontSize: 14, color: errorColor),
+              ),
+            )
+          else
             ListTile(
               onTap: () {
                 Get.back();
@@ -1401,6 +1414,8 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
 
                 autoWrapReportDialog(
                   context,
+                  onRemove: onDelete,
+                  mid: () => item.mid.toInt(),
                   ReportOptions.commentReport,
                   withContent: ReportOptions.withContentReply,
                   contentRequired: ReportOptions.contentRequiredReply,

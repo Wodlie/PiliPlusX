@@ -98,6 +98,7 @@ abstract final class ApiType {
       Api.ugcUrl,
       Api.pgcUrl,
       Api.pugvUrl,
+      Api.ogvUrl,
       Api.tvPlayUrl,
       Api.videoshot,
     },
@@ -111,7 +112,7 @@ abstract final class ApiType {
       Api.replySubjectModify,
     },
     AccountType.blacklist: {
-      Api.blackLst,
+      Api.blackList,
       Api.relationMod,
     },
     // 举报

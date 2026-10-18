@@ -8,10 +8,23 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
 const _iconSize = 20.0;
+
+void showPgcCover({
+  required String? title,
+  required String? cover,
+  dynamic aid,
+  String? bvid,
+}) => imageSaveDialog(
+  title: title,
+  cover: cover,
+  aid: aid,
+  bvid: bvid,
+  orientation: .portrait,
+  aspectRatio: Style.aspectRatio3x4,
+);
 
 void imageSaveDialog({
   required String? title,
@@ -19,6 +32,8 @@ void imageSaveDialog({
   dynamic aid,
   String? bvid,
   bool autoAddToWatchLater = false,
+  Orientation orientation = .landscape,
+  double aspectRatio = Style.aspectRatio16x9,
 }) {
   // 如果设置了自动添加到稍后再看且有aid或bvid，则直接添加
   if ((Pref.defaultAddWatchLater || autoAddToWatchLater) &&
@@ -30,13 +45,20 @@ void imageSaveDialog({
     }
   }
 
-  final double imgWidth = MediaQuery.sizeOf(Get.context!).shortestSide - 16;
   SmartDialog.show(
     animationType: .centerScale_otherSlide,
     builder: (context) {
       final colorScheme = ColorScheme.of(context);
-      final imgWidth = MediaQuery.sizeOf(context).shortestSide - 16;
-      final height = imgWidth / Style.aspectRatio16x9;
+      final double width, height;
+      switch (orientation) {
+        case .portrait:
+          height = MediaQuery.sizeOf(context).shortestSide * 0.8;
+          width = height * aspectRatio;
+        case .landscape:
+          width = MediaQuery.sizeOf(context).shortestSide - 16;
+          height = width / aspectRatio;
+      }
+
       return Padding(
         padding: const .symmetric(horizontal: Style.safeSpace),
         child: DecoratedBox(
@@ -46,7 +68,7 @@ void imageSaveDialog({
             borderRadius: const .all(Style.imgRadius),
           ),
           child: SizedBox(
-            width: imgWidth,
+            width: width,
             child: Column(
               mainAxisSize: .min,
               children: [
@@ -54,7 +76,7 @@ void imageSaveDialog({
                   child: NetworkImgLayer(
                     src: cover,
                     quality: 100,
-                    width: imgWidth,
+                    width: width,
                     height: height,
                     borderRadius: const .vertical(top: Style.imgRadius),
                   ),
