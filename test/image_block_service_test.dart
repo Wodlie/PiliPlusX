@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:PiliPlus/utils/image_block_service.dart';
@@ -494,29 +493,39 @@ void main() {
 
   // ── benchmark: thumbnail vs full-res computeHashes ─────────────────────
 
-  group('benchmark', () {
-    test('thumbnail computeHashes is faster than full-res', () {
+  group('pHash computation', () {
+    test('full-res and thumbnail hashes satisfy the blocking contract', () {
       final fullBytes = File('test/fixtures/image_full.png').readAsBytesSync();
       final thumbBytes = File(
         'test/fixtures/image_thumb_100w_q10.jpg',
       ).readAsBytesSync();
 
-      final swFull = Stopwatch()..start();
-      computeImageHashes([fullBytes, true, true]);
-      final fullTime = swFull.elapsedMilliseconds;
+      final fullHashes = computeImageHashes([fullBytes, true, true]);
+      final thumbnailHashes = computeImageHashes([thumbBytes, true, true]);
+      final hashFormat = RegExp(r'^[0-9a-f]{16}$');
 
-      final swThumb = Stopwatch()..start();
-      computeImageHashes([thumbBytes, true, true]);
-      final thumbTime = swThumb.elapsedMilliseconds;
+      expect(fullHashes, hasLength(5));
+      expect(thumbnailHashes, hasLength(5));
+      for (final hash in [...fullHashes, ...thumbnailHashes]) {
+        expect(hash, matches(hashFormat));
+        expect(ImageHash.fromHex(hash).toHex(), equals(hash));
+      }
 
-      // Thumbnail should be at least 2x faster (but allow 1.5x margin for CI)
-      debugPrint(
-        '[pHash benchmark] full-res: ${fullTime}ms, thumbnail: ${thumbTime}ms',
+      Pref.imageBlockHashList = [
+        {'pHash': fullHashes.first, 'url': 'fixture://full'},
+      ];
+      ImageBlockService.invalidateResultCache();
+
+      // Timing is scheduler-dependent; this replaces the old speed assertion
+      // with deterministic format and blocking-consumer coverage.
+      bool evaluate() => ImageBlockService.isBlocked(
+        [...fullHashes, ...thumbnailHashes],
+        Pref.imageBlockHashList,
+        0,
       );
-      expect(thumbTime, lessThan(fullTime));
-      // Assert at least 1.0x speedup (relaxed from 1.5x because computeImageHashes
-      // internally resizes to 128px, making decode the only variable).
-      expect(fullTime / math.max(thumbTime, 1), greaterThan(1.0));
+
+      expect(evaluate(), isTrue);
+      expect(evaluate(), isTrue);
     });
   });
 

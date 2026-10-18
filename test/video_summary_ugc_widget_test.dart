@@ -2,7 +2,7 @@ import 'package:PiliPlus/models_new/video/video_ai_conclusion/model_result.dart'
 import 'package:PiliPlus/models_new/video/video_ai_conclusion/outline.dart';
 import 'package:PiliPlus/models_new/video/video_ai_conclusion/part_outline.dart';
 import 'package:PiliPlus/pages/video/ai_conclusion/view.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,19 +1,23 @@
+import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart' show ReplyInfo;
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('BlockedReplyBanner rendering', () {
     testWidgets('shows blocked text and expand link', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
-            body: BlockedReplyBanner(onExpand: _noop),
+            body: BlockedReplyBanner(
+              onExpand: _noop,
+              replyItem: ReplyInfo(),
+            ),
           ),
         ),
       );
 
-      expect(find.text('此评论已被屏蔽。'), findsOneWidget);
+      expect(find.textContaining('此评论已被屏蔽'), findsOneWidget);
       expect(find.text('查看评论'), findsOneWidget);
       expect(find.byIcon(Icons.block_outlined), findsOneWidget);
     });
@@ -24,7 +28,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: BlockedReplyBanner(onExpand: () => expanded = true),
+            body: BlockedReplyBanner(
+              onExpand: () => expanded = true,
+              replyItem: ReplyInfo(),
+            ),
           ),
         ),
       );
