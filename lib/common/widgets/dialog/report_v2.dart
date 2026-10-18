@@ -24,6 +24,10 @@ Future<void> showNewReportDialog(
     return;
   }
 
+  // 选项数据只取一次并复用：放在 build 里时，每次 radio/scene 的 setState 都会
+  // 新建 future，FutureBuilder 回到 waiting 并用 spinner 替换整个理由列表。
+  final optionsFuture = MemberHttp.getReportOptions();
+
   await showDialog(
     context: context,
     builder: (ctx) => StatefulBuilder(
@@ -109,7 +113,7 @@ Future<void> showNewReportDialog(
                     ],
                     // Reason list from API
                     FutureBuilder<LoadingState<List<ReportReasonV2>>>(
-                      future: MemberHttp.getReportOptions(),
+                      future: optionsFuture,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {

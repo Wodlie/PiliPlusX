@@ -244,7 +244,8 @@ mixin FavMixin on TripleMixin {
             this.hasFav.toggle();
             SmartDialog.showToast('${hasFav ? '取消' : ''}收藏成功');
           } else {
-            res.toast();
+            // 收藏/取消收藏失败的原因在 result 里，外层 res 只是查询成功。
+            result.toast();
           }
         } else {
           SmartDialog.dismiss();

@@ -15,9 +15,20 @@ abstract class CommonWhisperController<R>
   Future<void> onRemove(int index, int talkerId) async {
     final res = await MsgHttp.removeMsg(talkerId);
     if (res.isSuccess) {
-      loadingState
-        ..value.data!.removeAt(index)
-        ..refresh();
+      // 会话列表会因新消息/置顶重排：按 talkerId 重新定位，找不到就只刷新。
+      final list = loadingState.value.dataOrNull;
+      final target = list == null
+          ? -1
+          : indexWhereStable(
+              list,
+              (e) => e.id.privateId.talkerUid.toInt() == talkerId,
+            );
+      if (target < 0) {
+        loadingState.refresh();
+        return;
+      }
+      list!.removeAt(target);
+      loadingState.refresh();
       SmartDialog.showToast('删除成功');
     } else {
       res.toast();
@@ -35,10 +46,14 @@ abstract class CommonWhisperController<R>
         : await ImGrpc.pinSession(sessionId: sessionId);
 
     if (res.isSuccess) {
-      List<Session> list = loadingState.value.data!;
       item.isPinned = isTop ? false : true;
-      if (!isTop) {
-        list.insert(0, list.removeAt(index));
+      final list = loadingState.value.dataOrNull;
+      if (list != null && !isTop) {
+        // 等待期间列表可能已被新消息重排：按对象身份重新定位。
+        final target = indexOfIdentity(list, item);
+        if (target > 0) {
+          list.insert(0, list.removeAt(target));
+        }
       }
       loadingState.refresh();
       SmartDialog.showToast('${isTop ? '移除' : ''}置顶成功');

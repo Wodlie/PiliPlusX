@@ -174,12 +174,14 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
         );
       case Success(:final response):
         if (response != null && response.isNotEmpty) {
-          var count = response.length + 1;
           final voteCard = _videoReplyController.voteCard;
           final hasVote = voteCard != null;
-          if (hasVote) {
-            count++;
-          }
+          // 折叠入口与普通分页各自占一个 slot：关闭自动加载折叠回复后，
+          // 根评论仍能继续分页，不必先点开折叠内容。
+          final showFoldEntry = _videoReplyController.canShowFoldEntry;
+          final foldIndex = showFoldEntry ? response.length : -1;
+          final footerIndex = response.length + (showFoldEntry ? 1 : 0);
+          final count = footerIndex + 1 + (hasVote ? 1 : 0);
           return SliverList.builder(
             itemBuilder: (context, index) {
               if (hasVote) {
@@ -189,77 +191,67 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                   index--;
                 }
               }
-              if (index == response.length) {
-                if (_videoReplyController.canShowFoldEntry) {
-                    return InkWell(
-                      onTap: _videoReplyController.loadFoldedReplies,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                _videoReplyController.foldText,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: colorScheme.primary,
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              Icons.keyboard_arrow_right,
-                              size: 16,
+              if (index == foldIndex) {
+                return InkWell(
+                  onTap: _videoReplyController.loadFoldedReplies,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _videoReplyController.foldText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
                               color: colorScheme.primary,
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    );
-                  }
-                  _videoReplyController.onLoadMore();
-                return Container(
-                  height: 125,
-                  alignment: .center,
-                  margin: .only(bottom: bottom),
-                  child: Text(
-                    _videoReplyController.isEnd ? '没有更多了' : '加载中...',
-                    textAlign: .center,
-                    style: TextStyle(fontSize: 12, color: colorScheme.outline),
+                        Icon(
+                          Icons.keyboard_arrow_right,
+                          size: 16,
+                          color: colorScheme.primary,
+                        ),
+                      ],
+                    ),
                   ),
-                );
-              } else {
-                final replyItem = response[index];
-                final rpid = replyItem.id;
-                final translated =
-                    _videoReplyController.translatedReplies[rpid];
-                return ReplyItemGrpc(
-                  replyItem: replyItem,
-                  replyLevel: widget.replyLevel,
-                  replyReply: replyReply,
-                  onReply: _videoReplyController.onReply,
-                  onDelete: (item, subIndex) =>
-                      _videoReplyController.onRemove(index, item, subIndex),
-                  upMid: _videoReplyController.upMid,
-                  getTag: () => heroTag,
-                  onCheckReply: _videoReplyController.onCheckReply,
-                  onToggleTop: (item) => _videoReplyController.onToggleTop(
-                    item,
-                    index,
-                    _videoReplyController.aid,
-                    _videoReplyController.videoType.replyType,
-                  ),
-                  translatedText: translated != null && translated.isNotEmpty
-                      ? translated
-                      : null,
-                  isTranslating: translated != null && translated.isEmpty,
-                  isOfficialFolded: _videoReplyController.foldedIds.contains(rpid.toInt()),
-                  onTranslate: () =>
-                      _videoReplyController.translateReply(replyItem),
                 );
               }
+              if (index == footerIndex) {
+                return _buildReplyFooter(colorScheme);
+              }
+              final replyItem = response[index];
+              final rpid = replyItem.id;
+              final translated = _videoReplyController.translatedReplies[rpid];
+              return ReplyItemGrpc(
+                replyItem: replyItem,
+                replyLevel: widget.replyLevel,
+                replyReply: replyReply,
+                onReply: _videoReplyController.onReply,
+                onDelete: (item, subIndex) =>
+                    _videoReplyController.onRemove(index, item, subIndex),
+                upMid: _videoReplyController.upMid,
+                getTag: () => heroTag,
+                onCheckReply: _videoReplyController.onCheckReply,
+                onToggleTop: (item) => _videoReplyController.onToggleTop(
+                  item,
+                  index,
+                  _videoReplyController.aid,
+                  _videoReplyController.videoType.replyType,
+                ),
+                translatedText: translated != null && translated.isNotEmpty
+                    ? translated
+                    : null,
+                isTranslating: translated != null && translated.isEmpty,
+                isOfficialFolded: _videoReplyController.foldedIds.contains(
+                  rpid.toInt(),
+                ),
+                onTranslate: () =>
+                    _videoReplyController.translateReply(replyItem),
+              );
             },
             itemCount: count,
           );
@@ -286,6 +278,49 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
           onReload: _videoReplyController.onReload,
         );
     }
+  }
+
+  /// 列表末尾 slot：续页失败时给可操作重试，其余情况照常自动加载。
+  Widget _buildReplyFooter(ColorScheme colorScheme) {
+    final errMsg = _videoReplyController.loadMoreError.value;
+    if (errMsg != null) {
+      return InkWell(
+        onTap: _videoReplyController.onLoadMoreRetry,
+        child: Container(
+          height: 125,
+          alignment: .center,
+          margin: .only(bottom: bottom),
+          child: Column(
+            mainAxisSize: .min,
+            children: [
+              Text(
+                errMsg,
+                textAlign: .center,
+                style: TextStyle(fontSize: 12, color: colorScheme.error),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '点击重试',
+                style: TextStyle(fontSize: 12, color: colorScheme.primary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (!_videoReplyController.isEnd) {
+      _videoReplyController.onLoadMore();
+    }
+    return Container(
+      height: 125,
+      alignment: .center,
+      margin: .only(bottom: bottom),
+      child: Text(
+        _videoReplyController.isEnd ? '没有更多了' : '加载中...',
+        textAlign: .center,
+        style: TextStyle(fontSize: 12, color: colorScheme.outline),
+      ),
+    );
   }
 
   // 展示二级回复

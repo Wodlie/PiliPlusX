@@ -20,6 +20,7 @@ import 'package:PiliPlus/grpc/reply.dart';
 import 'package:PiliPlus/utils/bili_utils.dart';
 import 'package:PiliPlus/http/reply.dart';
 import 'package:PiliPlus/http/video.dart';
+import 'package:PiliPlus/pages/common/common_list_controller.dart';
 import 'package:PiliPlus/pages/dynamics/widgets/vote.dart';
 import 'package:PiliPlus/pages/member/widget/medal_widget.dart';
 import 'package:PiliPlus/pages/save_panel/view.dart';
@@ -829,7 +830,12 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     return morePanel(
                       context: context,
                       item: childReply,
-                      onDelete: () => widget.onDelete?.call(widget.replyItem, index),
+                      // 传模型下标（按子回复对象重新定位），而不是 visibleReplies 的
+                      // 渲染下标：横幅模式保留被屏蔽子回复，两者并不相同。
+                      onDelete: () => widget.onDelete?.call(
+                        widget.replyItem,
+                        indexOfIdentity(widget.replyItem.replies, childReply),
+                      ),
                       isSubReply: true,
                     );
                   },

@@ -42,30 +42,43 @@ class CreateReserveController extends GetxController {
     }
   }
 
+  /// 提交在途锁：连点/慢网会发出多次创建请求，多个成功回调都会 Get.back，
+  /// 把下层的发布页一起关掉。
+  bool _submitting = false;
+
   Future<void> onCreate() async {
+    if (_submitting) return;
+    _submitting = true;
     final livePlanStartTime = date.value.millisecondsSinceEpoch ~/ 1000;
-    final res = sid == null
-        ? await DynamicsHttp.createReserve(
+    try {
+      final res = sid == null
+          ? await DynamicsHttp.createReserve(
+              title: title.value,
+              subType: subType.value,
+              livePlanStartTime: livePlanStartTime,
+            )
+          : await DynamicsHttp.updateReserve(
+              sid: sid!,
+              subType: subType.value,
+              title: title.value,
+              livePlanStartTime: livePlanStartTime,
+            );
+      if (res case Success(:final response)) {
+        // 本页是 Navigator.push 的匿名路由（无路由名可比），用控制器生命周期
+        // 核对归属：已关闭说明页面栈早就变了，不能再 pop 别人。
+        if (isClosed) return;
+        Get.back(
+          result: ReserveInfoData(
+            id: response,
             title: title.value,
-            subType: subType.value,
             livePlanStartTime: livePlanStartTime,
-          )
-        : await DynamicsHttp.updateReserve(
-            sid: sid!,
-            subType: subType.value,
-            title: title.value,
-            livePlanStartTime: livePlanStartTime,
-          );
-    if (res case Success(:final response)) {
-      Get.back(
-        result: ReserveInfoData(
-          id: response,
-          title: title.value,
-          livePlanStartTime: livePlanStartTime,
-        ),
-      );
-    } else {
-      res.toast();
+          ),
+        );
+      } else {
+        res.toast();
+      }
+    } finally {
+      _submitting = false;
     }
   }
 }

@@ -41,9 +41,17 @@ class AtMeController extends CommonListController<MsgAtData, MsgAtItem> {
     try {
       final res = await MsgHttp.delMsgfeed(2, id);
       if (res.isSuccess) {
-        loadingState
-          ..value.data!.removeAt(index)
-          ..refresh();
+        // 请求期间列表可能已刷新/删除过其它项：按稳定 id 重新定位。
+        final list = loadingState.value.dataOrNull;
+        final target = list == null
+            ? -1
+            : indexWhereStable(list, (e) => e.id == id);
+        if (target < 0) {
+          loadingState.refresh();
+          return;
+        }
+        list!.removeAt(target);
+        loadingState.refresh();
         SmartDialog.showToast('删除成功');
       } else {
         res.toast();

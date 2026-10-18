@@ -5,6 +5,7 @@ import 'package:PiliPlus/http/video.dart';
 import 'package:PiliPlus/models_new/blacklist/data.dart';
 import 'package:PiliPlus/models_new/blacklist/list.dart';
 import 'package:PiliPlus/pages/common/common_list_controller.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -39,10 +40,21 @@ class BlackListController
       onConfirm: () async {
         final result = await VideoHttp.relationMod(mid: mid, act: 6, reSrc: 11);
         if (result.isSuccess) {
-          loadingState
-            ..value.data!.removeAt(index)
-            ..refresh();
+          // 请求期间列表可能已翻页/重排：按稳定 mid 重新定位。
+          final list = loadingState.value.dataOrNull;
+          final target = list == null
+              ? -1
+              : indexWhereStable(list, (e) => e.mid == mid);
+          if (target < 0) {
+            loadingState.refresh();
+            return;
+          }
+          list!.removeAt(target);
+          loadingState.refresh();
           total.value -= 1;
+          // 增量维护本地过滤缓存：页面数据可能只是分页的一部分，
+          // 全网替换留给「确认已拿到全集」的退出路径。
+          if (mid is int) Pref.removeBlackMid(mid);
           SmartDialog.showToast('移除成功');
         }
       },

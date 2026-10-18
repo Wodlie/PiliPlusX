@@ -26,10 +26,16 @@ class _BlackListPageState extends State<BlackListPage> {
 
   @override
   void dispose() {
-    if (_blackListController.loadingState.value case Success(:final response)) {
-      final blackMids = response?.map((e) => e.mid!).toSet() ?? {};
-      GlobalData().blackMids = blackMids;
-      Pref.blackMids = blackMids;
+    // 只有确认已拿到全集（服务端列表已翻到末尾 / 本地名单）才整体替换本地
+    // 过滤缓存；分页未走完时页面数据只是全集的一部分，整体替换会让未加载
+    // 的用户从本地过滤源消失（移除操作已按 mid 增量维护缓存）。
+    if (_blackListController.isEnd) {
+      if (_blackListController.loadingState.value
+          case Success(:final response)) {
+        final blackMids = response?.map((e) => e.mid!).toSet() ?? {};
+        GlobalData().blackMids = blackMids;
+        Pref.blackMids = blackMids;
+      }
     }
     super.dispose();
   }

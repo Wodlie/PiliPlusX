@@ -224,10 +224,27 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
         );
   }
 
+  /// [subIndex] 必须是 item.replies 里的**模型下标**（由子回复对象重新定位得到），
+  /// 不能用渲染时过滤后的可见下标：横幅模式会保留被屏蔽的子回复。
   void onRemove(int index, ReplyInfo item, int? subIndex) {
+    final list = loadingState.value.dataOrNull;
+    if (list == null) {
+      loadingState.refresh();
+      return;
+    }
     if (subIndex == null) {
-      loadingState.value.data!.removeAt(index);
+      final target = indexOfIdentity(list, item);
+      if (target < 0) {
+        // 列表已换代（刷新/排序/过滤）：不落旧操作，只按当前数据刷新。
+        loadingState.refresh();
+        return;
+      }
+      list.removeAt(target);
     } else {
+      if (subIndex < 0 || subIndex >= item.replies.length) {
+        loadingState.refresh();
+        return;
+      }
       item
         ..count -= 1
         ..replies.removeAt(subIndex);
@@ -260,11 +277,17 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
     );
     if (res.isSuccess) {
       item.replyControl.isUpTop = !isUpTop;
-      if (!isUpTop && index != 0) {
-        final list = loadingState.value.data!;
-        list
-          ..first.replyControl.isUpTop = false
-          ..insert(0, list.removeAt(index));
+      if (!isUpTop) {
+        // 按对象身份重新定位：等待期间列表可能已刷新/追加，旧下标会移动错项。
+        final list = loadingState.value.dataOrNull;
+        if (list != null) {
+          final target = indexOfIdentity(list, item);
+          if (target > 0) {
+            list
+              ..first.replyControl.isUpTop = false
+              ..insert(0, list.removeAt(target));
+          }
+        }
       }
       loadingState.refresh();
       SmartDialog.showToast('${isUpTop ? '取消' : ''}置顶成功');

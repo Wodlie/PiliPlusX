@@ -67,6 +67,48 @@ abstract final class MemberHttp {
     }
   }
 
+  /// 举报选项缓存键：原始 JSON + 写入时间（TTL 用，选项会随灰度/活动变化）。
+  static const _reportOptionsCacheKey = 'report_options_v2';
+  static const _reportOptionsCacheAtKey = 'report_options_v2_at';
+  static const _reportOptionsCacheTtl = Duration(days: 7);
+
+  /// 解析缓存里的选项列表。
+  ///
+  /// Hive 读回的嵌套 Map 不保证是 `Map<String, dynamic>`（防御性逐层 Map.from；
+  /// 是否真的会发生转型失败仍是待验证项），并按 schema 校验，任何一条不合规
+  /// 都视为整份缓存失效，交给网络重新拉取。
+  static List<ReportReasonV2>? _decodeCachedReportOptions(Object? cached) {
+    if (cached is! List) return null;
+    final reasons = <ReportReasonV2>[];
+    for (final entry in cached) {
+      if (entry is! Map) return null;
+      final json = Map<String, dynamic>.from(entry);
+      final reason = json['reason'];
+      final reasonText = json['reason_text'];
+      final rawScenes = json['scene_list'];
+      if (reason is! int || reasonText is! String || rawScenes is! List) {
+        return null;
+      }
+      final scenes = <ReasonSceneV2>[];
+      for (final rawScene in rawScenes) {
+        if (rawScene is! Map) return null;
+        final sceneJson = Map<String, dynamic>.from(rawScene);
+        final scene = sceneJson['scene'];
+        final sceneText = sceneJson['scene_text'];
+        if (scene is! int || sceneText is! String) return null;
+        scenes.add(ReasonSceneV2(scene: scene, sceneText: sceneText));
+      }
+      reasons.add(
+        ReportReasonV2(
+          reason: reason,
+          reasonText: reasonText,
+          sceneList: scenes,
+        ),
+      );
+    }
+    return reasons.isEmpty ? null : reasons;
+  }
+
   /// Fetch report options from API, cache in Hive localCache.
   /// Falls back to hardcoded options on failure.
   static Future<LoadingState<List<ReportReasonV2>>> getReportOptions({
@@ -74,16 +116,15 @@ abstract final class MemberHttp {
   }) async {
     // Check cache first (unless forceRefresh)
     if (!forceRefresh) {
-      final cached = GStorage.localCache.get('report_options_v2');
-      if (cached != null && cached is List) {
-        try {
-          final reasons = cached
-              .map((e) => ReportReasonV2.fromJson(e as Map<String, dynamic>))
-              .toList();
-          return Success(reasons);
-        } catch (_) {
-          // cached data corrupted, refetch
-        }
+      final cached = GStorage.localCache.get(_reportOptionsCacheKey);
+      final cachedAt = GStorage.localCache.get(_reportOptionsCacheAtKey);
+      final fresh =
+          cachedAt is int &&
+          DateTime.now().millisecondsSinceEpoch - cachedAt <
+              _reportOptionsCacheTtl.inMilliseconds;
+      if (fresh) {
+        final reasons = _decodeCachedReportOptions(cached);
+        if (reasons != null) return Success(reasons);
       }
     }
     try {
@@ -97,10 +138,9 @@ abstract final class MemberHttp {
             .map((e) => ReportReasonV2.fromJson(e as Map<String, dynamic>))
             .toList();
         // Store parsed JSON in Hive localCache
-        GStorage.localCache.put(
-          'report_options_v2',
-          reasons.map((e) => e.toJson()).toList(),
-        );
+        GStorage.localCache
+          ..put(_reportOptionsCacheKey, reasons.map((e) => e.toJson()).toList())
+          ..put(_reportOptionsCacheAtKey, DateTime.now().millisecondsSinceEpoch);
         return Success(reasons);
       } else {
         // API returned non-success; use hardcoded fallback

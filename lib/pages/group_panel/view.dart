@@ -48,22 +48,33 @@ class _GroupPanelState extends State<GroupPanel> {
     });
   }
 
+  /// 提交在途锁：连点会重复保存，且多个成功回调都会 Get.back。
+  bool _saving = false;
+
   Future<void> onSave() async {
+    if (_saving) return;
     if (!loadingState.isSuccess) {
       Get.back();
       return;
     }
     feedBack();
-    // 保存
-    final res = await MemberHttp.addUsers(
-      widget.mid.toString(),
-      tags.isEmpty ? '0' : tags.join(','),
-    );
-    if (res.isSuccess) {
-      SmartDialog.showToast('保存成功');
-      Get.back(result: tags);
-    } else {
-      res.toast();
+    _saving = true;
+    try {
+      // 保存
+      final res = await MemberHttp.addUsers(
+        widget.mid.toString(),
+        tags.isEmpty ? '0' : tags.join(','),
+      );
+      // 面板可能已被关闭：此时既不提示也不 pop 别的路由。
+      if (!mounted) return;
+      if (res.isSuccess) {
+        SmartDialog.showToast('保存成功');
+        Get.back(result: tags);
+      } else {
+        res.toast();
+      }
+    } finally {
+      _saving = false;
     }
   }
 

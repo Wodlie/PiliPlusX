@@ -37,6 +37,9 @@ class _CreateFavPageState extends State<CreateFavPage> {
   String? _errMsg;
   int? _attr;
 
+  /// 提交在途锁：连点会重复创建收藏夹，且多个成功回调都会 Get.back。
+  bool _saving = false;
+
   @override
   void initState() {
     super.initState();
@@ -79,19 +82,22 @@ class _CreateFavPageState extends State<CreateFavPage> {
         title: Text(_mediaId != null ? '编辑' : '创建'),
         actions: [
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              if (_saving) return;
               if (_titleController.text.isEmpty) {
                 SmartDialog.showToast('名称不能为空');
                 return;
               }
-              FavHttp.addOrEditFolder(
-                isAdd: _mediaId == null,
-                mediaId: _mediaId,
-                title: _titleController.text,
-                privacy: _isPublic ? 0 : 1,
-                cover: _cover ?? '',
-                intro: _introController.text,
-              ).then((res) {
+              _saving = true;
+              try {
+                final res = await FavHttp.addOrEditFolder(
+                  isAdd: _mediaId == null,
+                  mediaId: _mediaId,
+                  title: _titleController.text,
+                  privacy: _isPublic ? 0 : 1,
+                  cover: _cover ?? '',
+                  intro: _introController.text,
+                );
                 if (res case Success(:final response)) {
                   SmartDialog.showToast('${_mediaId != null ? '编辑' : '创建'}成功');
                   if (mounted) {
@@ -100,7 +106,9 @@ class _CreateFavPageState extends State<CreateFavPage> {
                 } else {
                   res.toast();
                 }
-              });
+              } finally {
+                _saving = false;
+              }
             },
             child: const Text('完成'),
           ),

@@ -40,9 +40,17 @@ mixin BaseFavController
       delIds: mediaId.toString(),
     );
     if (res.isSuccess) {
-      loadingState
-        ..value.data!.removeAt(index)
-        ..refresh();
+      // 请求期间列表可能已刷新/排序/追加：按稳定 id 重新定位，找不到就只刷新。
+      final list = loadingState.value.dataOrNull;
+      final target = list == null
+          ? -1
+          : indexWhereStable(list, (e) => e.id == id && e.type == type);
+      if (target < 0) {
+        loadingState.refresh();
+        return;
+      }
+      list!.removeAt(target);
+      loadingState.refresh();
       updateCount?.call(1);
       SmartDialog.showToast('取消收藏');
     } else {

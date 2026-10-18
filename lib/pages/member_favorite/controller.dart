@@ -28,6 +28,29 @@ class MemberFavoriteCtr
   final RxBool subEnd = true.obs;
   final Rx<SpaceFavData> subState = SpaceFavData().obs;
 
+  /// 两条「查看更多」各自的在途锁：连点只会发一次请求。
+  bool _favLoading = false;
+  bool _subLoading = false;
+
+  /// 列表代次：刷新后旧请求的结果不能再落到新列表上。
+  int _gen = 0;
+
+  /// 追加时按 id 去重：重复请求同一页或服务端重排都不该出现重复卡片。
+  void _appendOnce(
+    List<SpaceFavItemModel>? target,
+    List<SpaceFavItemModel> added,
+  ) {
+    if (target == null || added.isEmpty) return;
+    final seen = target.map((e) => e.id).toSet();
+    target.addAll(added.where((e) => seen.add(e.id)));
+  }
+
+  List<SpaceFavItemModel> _parseItems(Object? raw) =>
+      (raw as List<dynamic>?)
+          ?.map((item) => SpaceFavItemModel.fromJson(item))
+          .toList() ??
+      const [];
+
   bool isExpand(bool isFav) {
     return isFav ? _favExpand : _subExpand;
   }
@@ -53,6 +76,7 @@ class MemberFavoriteCtr
   Future<void> onRefresh() {
     favPage = 2;
     subPage = 2;
+    _gen++;
     return super.onRefresh();
   }
 
@@ -80,27 +104,31 @@ class MemberFavoriteCtr
   }
 
   Future<void> userFavFolder() async {
+    if (_favLoading) return;
+    _favLoading = true;
+    final gen = _gen;
+    final requestedPage = favPage;
     try {
       final res = await Request().get(
         Api.userFavFolder,
         queryParameters: {
-          'pn': favPage,
+          'pn': requestedPage,
           'ps': 20,
           'up_mid': mid,
         },
       );
+      // 期间刷新过：这一页属于旧列表，丢弃且不推进页码。
+      if (gen != _gen) return;
       if (res.data['code'] == 0) {
-        favPage++;
         final data = res.data['data'];
+        // 只有本次请求页成功落地后才推进页码，避免跳页/重复页。
+        favPage = requestedPage + 1;
         if (data != null) {
           favEnd.value = data['has_more'] == false;
-          final list = (data['list'] as List<dynamic>?)
-              ?.map((item) => SpaceFavItemModel.fromJson(item))
-              .toList();
-          if (list != null && list.isNotEmpty) {
-            favState
-              ..value.mediaListResponse!.list!.addAll(list)
-              ..refresh();
+          final list = _parseItems(data['list']);
+          if (list.isNotEmpty) {
+            _appendOnce(favState.value.mediaListResponse?.list, list);
+            favState.refresh();
           } else {
             favEnd.value = true;
           }
@@ -112,32 +140,38 @@ class MemberFavoriteCtr
       }
     } catch (e) {
       SmartDialog.showToast(e.toString());
+    } finally {
+      _favLoading = false;
     }
   }
 
   Future<void> userSubFolder() async {
+    if (_subLoading) return;
+    _subLoading = true;
+    final gen = _gen;
+    final requestedPage = subPage;
     try {
       final res = await Request().get(
         Api.userSubFolder,
         queryParameters: {
           'up_mid': mid,
           'ps': 20,
-          'pn': subPage,
+          'pn': requestedPage,
           'platform': 'web',
         },
       );
+      // 期间刷新过：这一页属于旧列表，丢弃且不推进页码。
+      if (gen != _gen) return;
       if (res.data['code'] == 0) {
-        subPage++;
         final data = res.data['data'];
+        // 只有本次请求页成功落地后才推进页码，避免跳页/重复页。
+        subPage = requestedPage + 1;
         if (data != null) {
           subEnd.value = data['has_more'] == false;
-          final list = (data['list'] as List<dynamic>?)
-              ?.map((item) => SpaceFavItemModel.fromJson(item))
-              .toList();
-          if (list != null && list.isNotEmpty) {
-            subState
-              ..value.mediaListResponse!.list!.addAll(list)
-              ..refresh();
+          final list = _parseItems(data['list']);
+          if (list.isNotEmpty) {
+            _appendOnce(subState.value.mediaListResponse?.list, list);
+            subState.refresh();
           } else {
             subEnd.value = true;
           }
@@ -149,6 +183,8 @@ class MemberFavoriteCtr
       }
     } catch (e) {
       SmartDialog.showToast(e.toString());
+    } finally {
+      _subLoading = false;
     }
   }
 

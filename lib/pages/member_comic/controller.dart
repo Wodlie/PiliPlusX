@@ -32,10 +32,14 @@ class MemberComicController
     return response.item;
   }
 
+  // 漫画投稿走 /x/v2/space/comic 的 pn/ps 分页（与 /x/v2/space/bangumi 同族），
+  // 不带 pn 会每次重复取默认页并 append 重复卡片。
+  // TODO(需接口验证)：漫画端点是否也支持 next 游标。
   @override
   Future<LoadingState<SpaceArchiveData>> customGetData() =>
       MemberHttp.spaceArchive(
         type: ContributeType.comic,
         mid: mid,
+        pn: page,
       );
 }
