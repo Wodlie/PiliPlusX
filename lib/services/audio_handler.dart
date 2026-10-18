@@ -284,11 +284,15 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
       clear();
       return;
     }
+    // 仍有其它 owner 在用：只把通知切到剩余 owner 的 item，不能 stop()。
+    // BaseAudioHandler.stop() 会先 add processingState.idle 再 await idle，
+    // 那会把还在播放的其它 owner 瞬时置 idle（Android 侧会移除通知）。
+    _lastPos = null;
+    _lastConfig = null;
     playbackState.add(
       playbackState.value.copyWith(processingState: .ready, playing: false),
     );
     setMediaItem(_item.last);
-    stop();
   }
 
   void clear() {
