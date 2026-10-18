@@ -782,6 +782,8 @@ class VideoDetailController extends GetxController
   }
 
   bool isQuerying = false;
+  int _playUrlGeneration = 0;
+  ({bool fromReset, bool autoFullScreenFlag})? _pendingPlayUrlQuery;
 
   final languages = Rxn<List<LanguageItem>>();
   final currLang = Rxn<String>();
@@ -795,26 +797,58 @@ class VideoDetailController extends GetxController
     queryVideoUrl(fromReset: true);
   }
 
-  Future<LoadingState<PlayUrlModel>> _getVideoUrl(int quality) {
+  Future<LoadingState<PlayUrlModel>> _getVideoUrl(
+    int quality, {
+    int? cidSnapshot,
+    String? bvidSnapshot,
+    int? epIdSnapshot,
+    int? seasonIdSnapshot,
+    VideoType? videoTypeSnapshot,
+    String? languageSnapshot,
+  }) {
     return VideoHttp.videoUrl(
-      cid: cid.value,
-      bvid: bvid,
+      cid: cidSnapshot ?? cid.value,
+      bvid: bvidSnapshot ?? bvid,
       qn: quality,
-      epid: epId,
-      seasonId: seasonId,
+      epid: epIdSnapshot ?? epId,
+      seasonId: seasonIdSnapshot ?? seasonId,
       tryLook: plPlayerController.tryLook,
-      videoType: _actualVideoType ?? videoType,
-      language: currLang.value,
+      videoType: videoTypeSnapshot ?? _actualVideoType ?? videoType,
+      language: languageSnapshot ?? currLang.value,
       voiceBalance: plPlayerController.enableAudioNormalization,
     );
   }
 
-  Future<void> _supplementVideoQualities() async {
-    final quality = data.missingVideoQualityBelowHighest;
+  Future<void> _supplementVideoQualities(int generation) async {
+    final source = data;
+    final requestCid = cid.value;
+    final requestBvid = bvid;
+    final requestEpId = epId;
+    final requestSeasonId = seasonId;
+    final requestVideoType = _actualVideoType ?? videoType;
+    final requestLanguage = currLang.value;
+    final quality = source.missingVideoQualityBelowHighest;
     if (quality == -1) return;
-    final result = await _getVideoUrl(quality);
+    final result = await _getVideoUrl(
+      quality,
+      cidSnapshot: requestCid,
+      bvidSnapshot: requestBvid,
+      epIdSnapshot: requestEpId,
+      seasonIdSnapshot: requestSeasonId,
+      videoTypeSnapshot: requestVideoType,
+      languageSnapshot: requestLanguage,
+    );
+    if (isClosed ||
+        generation != _playUrlGeneration ||
+        cid.value != requestCid ||
+        bvid != requestBvid ||
+        epId != requestEpId ||
+        seasonId != requestSeasonId ||
+        !identical(data, source)) {
+      return;
+    }
     if (result case Success(:final response)) {
-      data.dash!.video!.merge(response.dash?.video);
+      source.dash?.video?.merge(response.dash?.video);
     }
   }
 
@@ -830,18 +864,35 @@ class VideoDetailController extends GetxController
       return _initPlayerIfNeeded(autoFullScreenFlag);
     }
     if (isQuerying) {
+      _pendingPlayUrlQuery = (
+        fromReset: fromReset,
+        autoFullScreenFlag: autoFullScreenFlag,
+      );
       return;
     }
     isQuerying = true;
+    final generation = ++_playUrlGeneration;
     try {
-      await _queryVideoUrl(fromReset, autoFullScreenFlag);
+      await _queryVideoUrl(fromReset, autoFullScreenFlag, generation);
     } finally {
       isQuerying = false;
+      final pending = _pendingPlayUrlQuery;
+      _pendingPlayUrlQuery = null;
+      if (pending != null && !isClosed) {
+        queryVideoUrl(
+          fromReset: pending.fromReset,
+          autoFullScreenFlag: pending.autoFullScreenFlag,
+        );
+      }
     }
   }
 
   @pragma('vm:prefer-inline')
-  Future<void> _queryVideoUrl(bool fromReset, bool autoFullScreenFlag) async {
+  Future<void> _queryVideoUrl(
+    bool fromReset,
+    bool autoFullScreenFlag,
+    int generation,
+  ) async {
     if (plPlayerController.enableSponsorBlock && isBlock && !fromReset) {
       querySponsorBlock(bvid: bvid, cid: cid.value);
     }
@@ -857,11 +908,35 @@ class VideoDetailController extends GetxController
       preferCodecs = isWiFi ? Pref.preferCodecs : Pref.preferCodecsCellular;
     }
 
-    final result = await _getVideoUrl(VideoQuality.hdrVivid.code);
+    final requestCid = cid.value;
+    final requestBvid = bvid;
+    final requestEpId = epId;
+    final requestSeasonId = seasonId;
+    final requestVideoType = _actualVideoType ?? videoType;
+    final requestLanguage = currLang.value;
+    final result = await _getVideoUrl(
+      VideoQuality.hdrVivid.code,
+      cidSnapshot: requestCid,
+      bvidSnapshot: requestBvid,
+      epIdSnapshot: requestEpId,
+      seasonIdSnapshot: requestSeasonId,
+      videoTypeSnapshot: requestVideoType,
+      languageSnapshot: requestLanguage,
+    );
+    if (isClosed ||
+        generation != _playUrlGeneration ||
+        cid.value != requestCid) {
+      return;
+    }
 
     if (result case Success(:final response)) {
       data = response;
-      if (data.dash != null) await _supplementVideoQualities();
+      if (data.dash != null) await _supplementVideoQualities(generation);
+      if (isClosed ||
+          generation != _playUrlGeneration ||
+          cid.value != requestCid) {
+        return;
+      }
 
       languages.value = data.language?.items;
       currLang.value = data.curLanguage;

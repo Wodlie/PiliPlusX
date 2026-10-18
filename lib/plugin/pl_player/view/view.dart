@@ -136,9 +136,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   late AnimationController _animationController;
   late VideoController videoController;
-  late final CommonIntroController introController = widget.introController!;
-  late final VideoDetailController videoDetailController =
-      widget.videoDetailController!;
+  CommonIntroController? get introController => widget.introController;
+  VideoDetailController? get videoDetailController =>
+      widget.videoDetailController;
 
   final _playerKey = GlobalKey();
   final _videoKey = GlobalKey();
@@ -400,6 +400,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     VideoDetailController videoDetailController,
     bool isLandscape,
   ) {
+    final introController = this.introController;
+    if (introController == null) return const SizedBox.shrink();
     final videoDetail = introController.videoDetail.value;
     bool isStein = false;
     try {
@@ -534,13 +536,14 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       /// 分段信息
       BottomControlType.viewPoints => Obx(
         () {
-          if (videoDetailController.viewPointList.isNotEmpty) {
+          final controller = videoDetailController;
+          if (controller.viewPointList.isNotEmpty) {
             return ComBtn(
               width: widgetWidth,
               height: 30,
               tooltip: '分段信息',
               icon: DisabledIcon(
-                disable: !videoDetailController.showVP.value,
+                disable: !controller.showVP.value,
                 child: const Icon(
                   CustomIcons.view_headline_rotate_90,
                   size: 22,
@@ -550,7 +553,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
               onTap: widget.showViewPoints,
               onLongPress: () {
                 Feedback.forLongPress(context);
-                videoDetailController.showVP.toggle();
+                controller.showVP.toggle();
               },
               onSecondaryTap: PlatformUtils.isMobile
                   ? null
@@ -1419,6 +1422,20 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     }
   }
 
+  /// 直播场景没有 VideoDetailController, 此时不构建默认底部控制条
+  Widget _defaultBottomControl(double maxWidth, double maxHeight) {
+    final detailController = videoDetailController;
+    if (detailController == null) return const SizedBox.shrink();
+    return BottomControl(
+      maxWidth: maxWidth,
+      isFullScreen: isFullScreen,
+      controller: plPlayerController,
+      videoDetailController: detailController,
+      buildBottomControl: () =>
+          buildBottomControl(detailController, maxWidth > maxHeight),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     maxWidth = widget.maxWidth;
@@ -1697,16 +1714,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                     removeSafeArea: plPlayerController.removeSafeArea,
                     child:
                         widget.bottomControl ??
-                        BottomControl(
-                          maxWidth: maxWidth,
-                          isFullScreen: isFullScreen,
-                          controller: plPlayerController,
-                          videoDetailController: videoDetailController,
-                          buildBottomControl: () => buildBottomControl(
-                            videoDetailController,
-                            maxWidth > maxHeight,
-                          ),
-                        ),
+                        _defaultBottomControl(maxWidth, maxHeight),
                   ),
                 ],
               ),
@@ -1825,42 +1833,45 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                           thumbRadius: 2.5,
                         ),
                       ),
-                      if (plPlayerController.enableBlock &&
-                          videoDetailController.segmentProgressList.isNotEmpty)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0.75,
-                          child: SegmentProgressBar(
-                            segments: videoDetailController.segmentProgressList,
+                      if (videoDetailController
+                          case final detailController?) ...[
+                        if (plPlayerController.enableBlock &&
+                            detailController.segmentProgressList.isNotEmpty)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0.75,
+                            child: SegmentProgressBar(
+                              segments: detailController.segmentProgressList,
+                            ),
                           ),
-                        ),
-                      if (plPlayerController.showViewPoints &&
-                          videoDetailController.viewPointList.isNotEmpty &&
-                          videoDetailController.showVP.value)
-                        Padding(
-                          padding: const .only(bottom: 4.25),
-                          child: ViewPointSegmentProgressBar(
-                            segments: videoDetailController.viewPointList,
-                            onSeek: PlatformUtils.isMobile
-                                ? (position) {
-                                    if (!plPlayerController
-                                        .controlsLock
-                                        .value) {
-                                      plPlayerController.seekTo(
-                                        position,
-                                        isSeek: false,
-                                      );
+                        if (plPlayerController.showViewPoints &&
+                            detailController.viewPointList.isNotEmpty &&
+                            detailController.showVP.value)
+                          Padding(
+                            padding: const .only(bottom: 4.25),
+                            child: ViewPointSegmentProgressBar(
+                              segments: detailController.viewPointList,
+                              onSeek: PlatformUtils.isMobile
+                                  ? (position) {
+                                      if (!plPlayerController
+                                          .controlsLock
+                                          .value) {
+                                        plPlayerController.seekTo(
+                                          position,
+                                          isSeek: false,
+                                        );
+                                      }
                                     }
-                                  }
-                                : null,
+                                  : null,
+                            ),
                           ),
-                        ),
-                      if (plPlayerController.showDmChart &&
-                          videoDetailController.showDmTrendChart.value)
-                        if (videoDetailController.dmTrend.value?.dataOrNull
-                            case final list?)
-                          buildDmChart(primary, list, videoDetailController),
+                        if (plPlayerController.showDmChart &&
+                            detailController.showDmTrendChart.value)
+                          if (detailController.dmTrend.value?.dataOrNull
+                              case final list?)
+                            buildDmChart(primary, list, detailController),
+                      ],
                     ],
                   ),
                 );
@@ -2146,6 +2157,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   Future<void> _screenshotWebp() async {
+    final videoDetailController = this.videoDetailController;
+    // 直播/无视频详情时不支持画质选择
+    if (videoDetailController == null) return;
     final videoInfo = videoDetailController.data;
     final ids = videoInfo.dash!.video!.availableVideoQualities;
     final video = videoDetailController.findVideoByQa(ids.min);
@@ -2323,10 +2337,12 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   static final _timeRegExp = RegExp(r'(?:\d+[:：])?\d+[:：][0-5]?\d(?!\d)');
 
   int? _getValidOffset(String data) {
+    final controller = videoDetailController;
+    if (controller == null) return null;
     if (_timeRegExp.firstMatch(data) case final timeStr?) {
       final offset = DurationUtils.parseDuration(timeStr.group(0));
-      if (0 < offset &&
-          offset * 1000 < videoDetailController.data.timeLength!) {
+      final timeLength = controller.data.timeLength;
+      if (timeLength != null && 0 < offset && offset * 1000 < timeLength) {
         return offset;
       }
     }

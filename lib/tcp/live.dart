@@ -146,6 +146,7 @@ class LiveMessageStream {
   int roomId, uid;
   List<String> servers;
   final List<void Function(dynamic obj)> _eventListeners = [];
+  void Function()? onDisconnected;
   LiveMessageStream({
     required this.streamToken,
     required this.roomId,
@@ -209,6 +210,8 @@ class LiveMessageStream {
       _channel?.sink.add(authPackage.marshal());
     } catch (e) {
       SmartDialog.showToast("弹幕地址链接失败: $e");
+      // 连接失败同样要走断开通知, 否则上层不会重连
+      close();
     }
   }
 
@@ -311,6 +314,7 @@ class LiveMessageStream {
   }
 
   void close() {
+    if (!_active) return;
     _active = false;
     if (kDebugMode) logger.i("$logTag close $hashCode");
     _timer?.cancel();
@@ -320,5 +324,6 @@ class LiveMessageStream {
     _socketSubscription = null;
     _channel?.sink.close();
     _channel = null;
+    onDisconnected?.call();
   }
 }

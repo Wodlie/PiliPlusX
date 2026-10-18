@@ -789,7 +789,7 @@ class RenderProgressBar extends RenderBox implements MouseTrackerAnnotation {
   void increaseAction() {
     final newValue = _thumbValue + _semanticActionUnit;
     _thumbValue = (newValue).clamp(0.0, 1.0);
-    onSeek?.call(_currentThumbDuration());
+    onSeek?.call(_currentThumbDurationInMilliseconds());
     markNeedsPaint();
     markNeedsSemanticsUpdate();
   }
@@ -797,7 +797,7 @@ class RenderProgressBar extends RenderBox implements MouseTrackerAnnotation {
   void decreaseAction() {
     final newValue = _thumbValue - _semanticActionUnit;
     _thumbValue = (newValue).clamp(0.0, 1.0);
-    onSeek?.call(_currentThumbDuration());
+    onSeek?.call(_currentThumbDurationInMilliseconds());
     markNeedsPaint();
     markNeedsSemanticsUpdate();
   }

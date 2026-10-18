@@ -117,6 +117,10 @@ class LiveRoomController extends GetxController {
   final disableAutoScroll = false.obs;
   bool autoScroll = true;
   LiveMessageStream? _msgStream;
+  Timer? _msgReconnectTimer;
+  int _dmGeneration = 0;
+  int _msgReconnectAttempt = 0;
+  bool _dmTokenInFlight = false;
 
   List<String> _keywordList = const [];
   Set<int> _shieldUids = const {};
@@ -409,8 +413,15 @@ class LiveRoomController extends GetxController {
   }
 
   void closeLiveMsg() {
-    _msgStream?.close();
+    _dmGeneration++;
+    _dmTokenInFlight = false;
+    _msgReconnectAttempt = 0;
+    _msgReconnectTimer?.cancel();
+    _msgReconnectTimer = null;
+    final stream = _msgStream;
     _msgStream = null;
+    stream?.onDisconnected = null;
+    stream?.close();
   }
 
   @pragma('vm:notify-debugger-on-exception')
@@ -463,23 +474,45 @@ class LiveRoomController extends GetxController {
   }
 
   void startLiveMsg() {
+    if (isClosed || _msgStream != null || _dmTokenInFlight) return;
     if (messages.isEmpty) {
       prefetch();
-      if (showSuperChat) {
-        getSuperChatMsg();
-      }
+      if (showSuperChat) getSuperChatMsg();
     }
-    if (_msgStream != null) {
+    if (dmInfo case final info?) {
+      initDm(info);
       return;
     }
-    if (dmInfo != null) {
-      initDm(dmInfo!);
+    _dmTokenInFlight = true;
+    final generation = ++_dmGeneration;
+    LiveHttp.liveRoomGetDanmakuToken(roomId: roomId)
+        .then((res) {
+          if (isClosed || generation != _dmGeneration) return;
+          _dmTokenInFlight = false;
+          if (res case Success(:final response)) {
+            dmInfo = response;
+            initDm(response);
+          } else {
+            _scheduleLiveMsgReconnect(generation);
+          }
+        })
+        .catchError((Object _) {
+          if (generation != _dmGeneration) return;
+          _dmTokenInFlight = false;
+          if (!isClosed) _scheduleLiveMsgReconnect(generation);
+        });
+  }
+
+  /// 断线退避重连: 3s 起, 每次失败递增, 最多 30s
+  void _scheduleLiveMsgReconnect(int generation) {
+    if (isClosed || generation != _dmGeneration || _msgReconnectTimer != null) {
       return;
     }
-    LiveHttp.liveRoomGetDanmakuToken(roomId: roomId).then((res) {
-      if (res case Success(:final response)) {
-        initDm(dmInfo = response);
-      }
+    final attempt = ++_msgReconnectAttempt;
+    final delay = Duration(seconds: attempt > 10 ? 30 : attempt * 3);
+    _msgReconnectTimer = Timer(delay, () {
+      _msgReconnectTimer = null;
+      if (!isClosed && generation == _dmGeneration) startLiveMsg();
     });
   }
 
@@ -536,18 +569,29 @@ class LiveRoomController extends GetxController {
   }
 
   void initDm(LiveDmInfoData info) {
-    if (info.hostList.isEmpty) {
-      return;
-    }
-    _msgStream =
-        LiveMessageStream(
-            streamToken: info.token,
-            roomId: roomId,
-            uid: Accounts.heartbeat.mid,
-            servers: info.hostList.map((host) => 'wss://${host.host}:${host.wssPort}/sub').toList(),
-          )
-          ..addEventListener(_danmakuListener)
-          ..init();
+    if (isClosed || info.hostList.isEmpty || _msgStream != null) return;
+    final generation = _dmGeneration;
+    final stream = LiveMessageStream(
+      streamToken: info.token,
+      roomId: roomId,
+      uid: Accounts.heartbeat.mid,
+      servers: info.hostList
+          .map((host) => 'wss://${host.host}:${host.wssPort}/sub')
+          .toList(),
+    )..addEventListener(_danmakuListener);
+    _msgStream = stream;
+    stream.onDisconnected = () {
+      if (isClosed ||
+          generation != _dmGeneration ||
+          !identical(_msgStream, stream)) {
+        return;
+      }
+      _msgStream = null;
+      // 旧 token 可能已过期, 重连时重新获取
+      dmInfo = null;
+      _scheduleLiveMsgReconnect(generation);
+    };
+    stream.init();
   }
 
   void addDm(dynamic msg, [DanmakuContentItem<DanmakuExtra>? item]) {
@@ -569,6 +613,8 @@ class LiveRoomController extends GetxController {
 
   @pragma('vm:notify-debugger-on-exception')
   void _danmakuListener(dynamic obj) {
+    // 收到弹幕即认为连接健康, 重置重连退避
+    _msgReconnectAttempt = 0;
     try {
       // logger.i(' 原始弹幕消息 ======> ${jsonEncode(obj)}');
       switch (obj['cmd']) {

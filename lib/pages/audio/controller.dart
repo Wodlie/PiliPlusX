@@ -205,9 +205,11 @@ class AudioController extends GetxController
     );
 
     if (shutdownTimerService.isActive) {
-      shutdownTimerService
-        ..onPause = onPause
-        ..isPlaying = isPlaying;
+      shutdownTimerService.registerOwner(
+        this,
+        onPause: onPause,
+        isPlaying: isPlaying,
+      );
     }
   }
 
@@ -820,10 +822,7 @@ class AudioController extends GetxController
   @override
   void onClose() {
     _stopStatusTimer();
-    shutdownTimerService
-      ..onPause = null
-      ..isPlaying = null
-      ..reset();
+    shutdownTimerService.unregisterOwner(this);
     videoPlayerServiceHandler
       ?..onPlay = null
       ..onPause = null

@@ -36,6 +36,28 @@ class ShutdownTimerService {
 
   VoidCallback? onPause;
   ValueGetter<bool>? isPlaying;
+  Object? _owner;
+
+  /// 注册定时关闭回调: 不同 owner 不得互相覆盖, 同 owner 重复注册幂等
+  void registerOwner(
+    Object owner, {
+    VoidCallback? onPause,
+    ValueGetter<bool>? isPlaying,
+  }) {
+    if (_owner != null && !identical(_owner, owner)) return;
+    _owner = owner;
+    this.onPause = onPause;
+    this.isPlaying = isPlaying;
+  }
+
+  /// 只注销本 owner 注册的回调; 计时本身归设定它的页面所有,
+  /// 不在这里 reset, 否则关闭音频页会取消其它页面设定的定时关闭
+  void unregisterOwner(Object owner) {
+    if (!identical(_owner, owner)) return;
+    _owner = null;
+    onPause = null;
+    isPlaying = null;
+  }
 
   DateTime? _deadline;
   DateTime? get deadline => _deadline;

@@ -5,6 +5,7 @@ import 'package:audio_session/audio_session.dart';
 class AudioSessionHandler {
   late AudioSession session;
   bool _playInterrupted = false;
+  double? _duckedVolume;
 
   Future<bool> setActive(bool active) {
     return session.setActive(active);
@@ -26,8 +27,11 @@ class AudioSessionHandler {
         // if (!player.playerStatus.playing) return;
         switch (event.type) {
           case AudioInterruptionType.duck:
+            final volume = PlPlayerController.getVolumeIfExists();
+            if (volume == null) return;
+            _duckedVolume ??= volume;
             PlPlayerController.setVolumeIfExists(
-              (PlPlayerController.getVolumeIfExists() ?? 0) * 0.5,
+              volume * 0.5,
               showIndicator: false,
             );
             // player.setVolume(player.volume.value * 0.5);
@@ -46,10 +50,13 @@ class AudioSessionHandler {
       } else {
         switch (event.type) {
           case AudioInterruptionType.duck:
-            PlPlayerController.setVolumeIfExists(
-              (PlPlayerController.getVolumeIfExists() ?? 0) * 2,
-              showIndicator: false,
-            );
+            if (_duckedVolume case final volume?) {
+              _duckedVolume = null;
+              PlPlayerController.setVolumeIfExists(
+                volume.clamp(0.0, 100.0),
+                showIndicator: false,
+              );
+            }
             // player.setVolume(player.volume.value * 2);
             break;
           case AudioInterruptionType.pause:
