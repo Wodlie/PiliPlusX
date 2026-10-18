@@ -185,9 +185,7 @@ abstract final class SettingBoxKey {
       enableDocProvider = 'enableDocProvider',
       enableEmoteTooltip = 'enableEmoteTooltip',
       mineTabs = 'mineTabs',
-      buvid = 'buvid',
-      blockAtOnlyReply = 'blockAtOnlyReply',
-      blockReplyAtCount = 'blockReplyAtCount';
+      buvid = 'buvid';
 
   static const String minimizeOnExit = 'minimizeOnExit',
       windowSize = 'windowSize',

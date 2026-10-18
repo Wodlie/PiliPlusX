@@ -77,18 +77,6 @@ List<SettingsModel> get replySettings => [
     defaultVal: false,
     onChanged: (value) => ReplyGrpc.antiGoodsReply = value,
   ),
-  const NormalModel(
-    title: '屏蔽评论@数量',
-    getSubtitle: _replyAtBlockSubtitle,
-    leading: Icon(Icons.pin_outlined),
-    onTap: _showReplyAtBlockDialog,
-  ),
-  const SwitchModel(
-    title: '屏蔽只包含@的评论',
-    leading: Icon(Icons.alternate_email),
-    setKey: SettingBoxKey.blockAtOnlyReply,
-    onChanged: _onBlockAtOnlyReplyChanged,
-  ),
   SwitchModel(
     title: '评论区搜索关键词',
     subtitle: '展示评论区搜索关键词',
@@ -164,66 +152,3 @@ void _showReplyLengthDialog(BuildContext context, VoidCallback setState) {
     ),
   );
 }
-
-String _replyAtBlockSubtitle() {
-  final blockReplyAtCount = Pref.blockReplyAtCount;
-  if (blockReplyAtCount == null) {
-    return '禁用';
-  }
-  return '屏蔽$blockReplyAtCount个@及以上的评论';
-}
-
-Future<void> _showReplyAtBlockDialog(
-  BuildContext context,
-  VoidCallback setState,
-) async {
-  void onChanged([int? value]) {
-    Get.back();
-    ReplyGrpc.blockReplyAtCount = value;
-    GStorage.setting
-        .put(SettingBoxKey.blockReplyAtCount, value)
-        .whenComplete(setState);
-  }
-
-  var countStr = Pref.blockReplyAtCount?.toString();
-  await showDialog<String>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('屏蔽@的数量'),
-      content: TextFormField(
-        autofocus: true,
-        keyboardType: .number,
-        initialValue: countStr,
-        onChanged: (value) => countStr = value,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      ),
-      actions: [
-        TextButton(
-          onPressed: onChanged,
-          child: const Text('禁用'),
-        ),
-        TextButton(
-          onPressed: Get.back,
-          child: Text(
-            '取消',
-            style: TextStyle(color: ColorScheme.of(context).outline),
-          ),
-        ),
-        TextButton(
-          onPressed: () {
-            try {
-              final count = int.parse(countStr!);
-              onChanged(count > 0 ? count : null);
-            } catch (e) {
-              SmartDialog.showToast(e.toString());
-            }
-          },
-          child: const Text('确认'),
-        ),
-      ],
-    ),
-  );
-}
-
-void _onBlockAtOnlyReplyChanged(bool value) =>
-    ReplyGrpc.blockAtOnlyReply = value;
