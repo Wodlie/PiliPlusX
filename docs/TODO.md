@@ -164,3 +164,7 @@
 - `BiliCookieJar.toJson()` 以 cookie 名做 key，同名不同 domain/path 的 cookie 持久化会互相覆盖（既有格式边界）。
 - SDK 补丁是 CRLF 行尾，`patch.ps1` 只把 material/cupertino 补丁规范化为 LF；CI 靠 Windows runner 的 CRLF 工作树匹配，跨平台需统一。
 - 本工具链 SDK 的 `_Cookie(name,value)` 构造器把 `httpOnly` 初始化为 true（`dart-sdk/lib/_http/http_headers.dart`），旧标量 cookie 读入后也会是 HttpOnly；`setBiliDomain` 的显式赋值目前是冗余保险。
+
+### 既有问题（非本次引入，2026-10-13 验收时确认）
+
+- `test/widgets/image_grid_view_test.dart` 在 `tearDownAll` 阶段挂起：全量套件里表现为 runner 的 `TimeoutException after 0:12:00`（唯一失败项）；单独运行 100s 内无任何用例完成。`git log 92815cf..HEAD -- test/widgets/image_grid_view_test.dart` 为空（本次未改动该文件），且原审查 §8 已记录「套件尾部不退出 / 常驻 isolate」同类现象。根因待单独立项（疑为 VisibilityDetector / timer / isolate 未释放）。
