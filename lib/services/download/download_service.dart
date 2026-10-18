@@ -371,10 +371,8 @@ class DownloadService extends GetxService {
 
   Future<void> _startDownload(BiliDownloadEntryInfo entry) async {
     try {
-      if (!await downloadDanmaku(entry: entry)) {
-        return;
-      }
-
+      await downloadDanmaku(entry: entry);
+      if (curDownload.value?.cid != entry.cid) return;
       _updateCurStatus(DownloadStatus.getPlayUrl);
 
       final mediaFileInfo = await DownloadHttp.getVideoUrl(
@@ -442,7 +440,18 @@ class DownloadService extends GetxService {
       if (kDebugMode) {
         debugPrint('get download url error: $e');
       }
+      await _finishFailedDownload(entry);
     }
+  }
+
+  Future<void> _finishFailedDownload(BiliDownloadEntryInfo entry) async {
+    if (curDownload.value?.cid != entry.cid) return;
+    waitDownloadQueue.remove(entry);
+    _curCid = null;
+    curDownload.value = null;
+    _downloadManager = null;
+    _audioDownloadManager = null;
+    nextDownload();
   }
 
   Future<void> _updateBiliDownloadEntryJson(BiliDownloadEntryInfo entry) {
@@ -464,7 +473,12 @@ class DownloadService extends GetxService {
 
   void _onDone([Object? error]) {
     if (error != null) {
-      _updateCurStatus(_downloadManager?.status ?? DownloadStatus.pause);
+      final status = _downloadManager?.status ?? DownloadStatus.pause;
+      _updateCurStatus(status);
+      if (status == DownloadStatus.failDownload) {
+        final entry = curDownload.value;
+        if (entry != null) _finishFailedDownload(entry);
+      }
       return;
     }
 
@@ -496,27 +510,35 @@ class DownloadService extends GetxService {
               ? DownloadStatus.failDownloadAudio
               : status,
         );
+        if (status == DownloadStatus.failDownload) {
+          final entry = curDownload.value;
+          if (entry != null) _finishFailedDownload(entry);
+        }
       }
     }
   }
 
   Future<void> _completeDownload() async {
     final entry = curDownload.value;
-    if (entry == null) {
-      return;
-    }
+    if (entry == null) return;
     entry
       ..downloadedBytes = entry.totalBytes
       ..isCompleted = true;
-    await _updateBiliDownloadEntryJson(entry);
-    waitDownloadQueue.remove(entry);
-    downloadList.insert(0, entry);
-    flagNotifier.refresh();
-    _curCid = null;
-    curDownload.value = null;
-    _downloadManager = null;
-    _audioDownloadManager = null;
-    nextDownload();
+    try {
+      await _updateBiliDownloadEntryJson(entry);
+      downloadList.insert(0, entry);
+      flagNotifier.refresh();
+    } catch (e) {
+      entry.isCompleted = false;
+      if (kDebugMode) debugPrint('save completed download failed: $e');
+    } finally {
+      waitDownloadQueue.remove(entry);
+      _curCid = null;
+      curDownload.value = null;
+      _downloadManager = null;
+      _audioDownloadManager = null;
+      nextDownload();
+    }
   }
 
   void nextDownload() {
@@ -564,11 +586,32 @@ class DownloadService extends GetxService {
     required String pageDirPath,
     bool refresh = true,
   }) async {
-    await Directory(pageDirPath).tryDel(recursive: true);
-    downloadList.removeWhere((e) => e.pageDirPath == pageDirPath);
-    if (refresh) {
-      flagNotifier.refresh();
-    }
+    await _lock.synchronized(() async {
+      final queued = waitDownloadQueue
+          .where((e) => e.pageDirPath == pageDirPath)
+          .toList();
+      final current = curDownload.value;
+      final deletesCurrent = current?.pageDirPath == pageDirPath;
+      if (deletesCurrent) {
+        await _downloadManager?.cancel(isDelete: true);
+        await _audioDownloadManager?.cancel(isDelete: true);
+        _downloadManager = null;
+        _audioDownloadManager = null;
+        _curCid = null;
+        curDownload.value = null;
+      }
+      waitDownloadQueue.removeWhere((e) => e.pageDirPath == pageDirPath);
+      for (final entry in queued) {
+        entry.status = DownloadStatus.pause;
+      }
+      try {
+        await Directory(pageDirPath).tryDel(recursive: true);
+      } finally {
+        downloadList.removeWhere((e) => e.pageDirPath == pageDirPath);
+        if (refresh) flagNotifier.refresh();
+        if (deletesCurrent) nextDownload();
+      }
+    });
   }
 
   Future<void> cancelDownload({

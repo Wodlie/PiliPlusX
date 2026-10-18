@@ -74,7 +74,52 @@ class DownloadManager {
       return;
     }
     final data = response.data!;
-    final contentLength = data.contentLength + received;
+    final status = response.statusCode;
+    final contentRange = response.headers.value('content-range');
+    final rangeMatch = contentRange == null
+        ? null
+        : RegExp(r'^bytes (\d+)-(\d+)/(\d+|\*)$').firstMatch(contentRange);
+    final rangeStart = int.tryParse(rangeMatch?.group(1) ?? '');
+    final rangeEnd = int.tryParse(rangeMatch?.group(2) ?? '');
+    final rangeTotal = int.tryParse(rangeMatch?.group(3) ?? '');
+
+    if (received > 0 && status == 200) {
+      await sink.close();
+      await file.writeAsBytes(const <int>[]);
+      await _start();
+      return;
+    }
+
+    if (status == 416) {
+      await sink.close();
+      final total = int.tryParse(
+        RegExp(r'bytes \*/(\d+)').firstMatch(contentRange ?? '')?.group(1) ?? '',
+      );
+      if (total == received && _status == DownloadStatus.downloading) {
+        _status = DownloadStatus.completed;
+        onDone();
+      } else {
+        await onError(StateError('Range not satisfiable; local file is incomplete'));
+      }
+      return;
+    }
+
+    if (received > 0 &&
+        (status != 206 ||
+            rangeStart != received ||
+            rangeEnd == null ||
+            (rangeTotal != null && rangeEnd >= rangeTotal) ||
+            (data.contentLength >= 0 &&
+                rangeEnd - received + 1 != data.contentLength))) {
+      await onError(StateError('Invalid partial response: $status $contentRange'));
+      return;
+    }
+    if (status != 200 && status != 206) {
+      await onError(StateError('Unexpected download response: $status'));
+      return;
+    }
+
+    final contentLength = data.contentLength + (status == 206 ? received : 0);
 
     if (received == 0) {
       onReceiveProgress?.call(0, contentLength);
