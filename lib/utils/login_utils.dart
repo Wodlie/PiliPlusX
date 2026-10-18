@@ -102,14 +102,21 @@ abstract final class LoginUtils {
   }
 
   static Future<void> onLogoutMain() {
-    Get.find<AccountService>()
-      ..face.value = ''
-      ..isLogin.value = false;
+    // AccountService 可能不存在：启动早期账号箱尚未发布，或本进程只是极简
+    // 单测（GStorage.clear() 会走到这里）。此时没有展示态可投影清空，跳过；
+    // 后面的 WebView cookie 清理照常执行，登出语义不变。
+    if (Get.isRegistered<AccountService>()) {
+      Get.find<AccountService>()
+        ..face.value = ''
+        ..isLogin.value = false;
+    }
 
     return Future.wait([
       if (Platform.isLinux)
         LinuxCookieManager.deleteAllCookies()
-      else
+      // 同 AccountService：WebView 平台实现也可能不存在（没有 WebView 插件的
+      // 进程，例如单元测试）。没有平台 cookie 可清，跳过这一钩子即可。
+      else if (web.InAppWebViewPlatform.instance != null)
         web.CookieManager.instance(
           webViewEnvironment: webViewEnvironment,
         ).deleteAllCookies(),
