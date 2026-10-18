@@ -131,3 +131,36 @@
 - [ ] 高画质无限试用 -Air
 
 **欢迎在 [Issues](https://github.com/Wodlie/PiliPlusX/issues) 提交建议和问题反馈**
+
+## 代码审查遗留（2026-10-13 修复后待验证）
+
+以下条目已按 `.ai/code-review-2026-10-13/report.md` 修复，并通过本机静态分析（0 error）+ 相关单测；但需要真机或真实接口才能收口：
+
+- [ ] F03 WebView 桥：原生 fork（`flutter_inappwebview_android` 的 `_callHandler`）仍不传 frame origin。Dart 侧已收口（主 frame 限定 + host 校验 + 导航代次 + 拒绝 net.*），上游 fork 需补 origin 能力。
+- [ ] F04 cookie：真机确认平台 CookieManager 里 SESSDATA/bili_jct/DedeUserID 的 `is_httponly` 变为 1；Hive 层 expires(DateTime) 往返抽查一次。
+- [ ] F05 换集：慢网连续换集只产生一次有效 playerInit，画面/弹幕/心跳归属新 cid。
+- [ ] F08 WBI：断网→恢复后重新取 key；跨日失败不复用旧 key；key 不可用时请求不带 `w_rid`。
+- [ ] F09 发布：uploadBfs 返回 Error 时 loading 关闭 + toast 显示服务端文案 + 草稿/已选图保留；清缓存后网图裁剪提示失败。
+- [ ] F11 重置所有数据：平台 WebView cookie store 确认已登出。
+- [ ] F15 定时关闭：视频/直播设定后进出音频页，倒计时仍在且到点生效。
+- [ ] F17 直播：飞行模式断网→恢复，弹幕按 3s→30s 退避恢复；退房/暂停期间不重连；token 晚到不建连接。
+- [ ] F18 直播：点击含 "01:23" 的弹幕不再崩且无跳转项。
+- [ ] F25 漫画投稿：`/x/v2/space/comic` 是否确为 `pn/ps` 分页（否则改 `next` 游标）。
+- [ ] F30 举报缓存：重开 Hive 后缓存命中（`Map<dynamic,dynamic>` 转型）需实测。
+- [ ] F35 弹幕：智能云屏蔽权重 >0 时，同 100ms 槽后续高权重弹幕能显示。
+- [ ] F36 duck：平台事件序下音量成对恢复。
+- [ ] F38 HK 回退：完整 URL 的端点打 -404/-10403 时确实回退且只回退一次。
+- [ ] F39 双屏：右副屏/负坐标副屏保存位置后能恢复；屏外值被拒。
+- [ ] F40 DLNA：真实设备上刷新后重选同一设备能重新投屏。
+- [ ] F42 时间选择：10:56 选 11:00 被拒、11:02 通过。
+- [ ] F44 patch.ps1：CI 跑一次 android+ios，用新增的 APPLIED/SKIP 日志当断言。
+
+### 已知未修（超出本次 44 条范围）
+
+- 同类「异步后用旧下标」仍存在于 `fav/topic`、`fav/cheese`、`fav/article`、`fan`、`msg_feed_top/{sys_msg,reply_me,like_me}`、`download/search`；可复用 `common_list_controller.dart` 的 `indexOfIdentity` / `indexWhereStable`。
+- 其它评论 footer（`main_reply/view.dart`、`common/dyn/common_dyn_page.dart`）尚未接入 `loadMoreError` 重试入口。
+- `lib/pages/common/common_intro_controller.dart:249-251`：快速收藏时 `queryVideoInFolder` 失败会静默 dismiss（与 F41 同类漏提示）。
+- `lib/plugin/pl_player/widgets/bottom_control.dart` 的 `videoDetailController` 仍为非空字段；直播若复用默认底栏需一并可空化。
+- `BiliCookieJar.toJson()` 以 cookie 名做 key，同名不同 domain/path 的 cookie 持久化会互相覆盖（既有格式边界）。
+- SDK 补丁是 CRLF 行尾，`patch.ps1` 只把 material/cupertino 补丁规范化为 LF；CI 靠 Windows runner 的 CRLF 工作树匹配，跨平台需统一。
+- 本工具链 SDK 的 `_Cookie(name,value)` 构造器把 `httpOnly` 初始化为 true（`dart-sdk/lib/_http/http_headers.dart`），旧标量 cookie 读入后也会是 HttpOnly；`setBiliDomain` 的显式赋值目前是冗余保险。
