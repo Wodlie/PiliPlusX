@@ -94,7 +94,11 @@ void main() {
     expect(request.cookieHeader, isNull, reason: 'token-only 必须零 cookie');
     expect(request.query['access_key'], 'ACCESS_KEY');
     // 校验不能顺手轮换凭证。
-    expect(acc.cookieJar.toJson()['SESSDATA'], 'sess_9001');
+    // B2 后每条 cookie 落盘为属性 map，值仍是 map 里的 value。
+    expect(
+      (acc.cookieJar.toJson()['SESSDATA'] as Map)['value'],
+      'sess_9001',
+    );
   });
 
   test('cookie 检测仍带账号 cookie，但同样不写回 Set-Cookie', () async {
@@ -110,7 +114,10 @@ void main() {
       adapter.requests.single.cookieHeader,
       contains('SESSDATA=sess_9002'),
     );
-    expect(acc.cookieJar.toJson()['SESSDATA'], 'sess_9002');
+    expect(
+      (acc.cookieJar.toJson()['SESSDATA'] as Map)['value'],
+      'sess_9002',
+    );
   });
 
   test('发起校验的凭证被替换后，请求被取消（不拿旧 key 发送）', () async {

@@ -473,7 +473,7 @@ void main() {
         reason: '第一个请求的过时结果被丢弃，第二个请求才是生效结果',
       );
       expect(
-        acc.cookieJar.toJson()['buvid3'],
+        (acc.cookieJar.toJson()['buvid3'] as Map)['value'],
         'ROTATED-8315',
         reason: 'Set-Cookie 仍由 AccountManager 正常保存（没有绕过）',
       );
