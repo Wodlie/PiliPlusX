@@ -1604,7 +1604,12 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     _videoPlayerController = null;
     _videoController = null;
     _instance = null;
-    videoPlayerServiceHandler?.clear();
+    // 只有"关闭全部页面"才做全局清理；单页关闭时该页已在 dispose 前
+    // 通过 onVideoDetailDispose(heroTag) 只移除自己登记的 item，
+    // 这里无条件 clear() 会连带清掉其它 owner（如后台音频页）的共享 item。
+    if (_isCloseAll) {
+      videoPlayerServiceHandler?.clear();
+    }
   }
 
   static void updatePlayCount() {
