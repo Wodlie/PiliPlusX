@@ -34,7 +34,10 @@ class VideoReplyController extends RootReplyController
   final int? aid;
   final VideoType? videoType;
 
-  late final isPugv = (videoType ?? videoCtr.videoType) == .pugv;
+  /// The video type in effect: an explicit override wins over videoCtr.
+  VideoType get effectiveVideoType => videoType ?? videoCtr.videoType;
+
+  late final isPugv = effectiveVideoType == .pugv;
 
   @override
   int get oid => aid ?? (isPugv ? videoCtr.epId! : videoCtr.aid);
@@ -60,7 +63,7 @@ class VideoReplyController extends RootReplyController
   int get rootOid => isPugv ? videoCtr.epId! : videoCtr.aid;
 
   @override
-  int get rootReplyType => (videoType ?? videoCtr.videoType).replyType;
+  int get rootReplyType => effectiveVideoType.replyType;
 
   // ===== 官方折叠评论（根评论区）：mixed_cards[27] -> FoldCard -> Reply/FoldList =====
   // 折叠卡的解码、状态与拉取流程在 ReplyFoldMixin 里（与楼中楼共用同一套），

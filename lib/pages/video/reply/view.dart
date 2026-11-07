@@ -238,7 +238,7 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                   item,
                   index,
                   controller.videoCtr.aid,
-                  controller.videoType.replyType,
+                  controller.effectiveVideoType.replyType,
                 ),
                 translatedText: translated != null && translated.isNotEmpty
                     ? translated

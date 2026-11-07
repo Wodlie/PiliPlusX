@@ -6,6 +6,7 @@ class Subtitle implements Comparable<Subtitle> {
   late String lan;
   String? lanDoc;
   String? subtitleUrl;
+  String? subtitleUrlV2;
   int? type;
   bool isAi = false;
 
@@ -40,6 +41,7 @@ class Subtitle implements Comparable<Subtitle> {
     isAi = type == 1;
     lanDoc = '${json["lan_doc"]}${isAi ? '（AI）' : ''}';
     subtitleUrl = json["subtitle_url"];
+    subtitleUrlV2 = json["subtitle_url_v2"];
   }
 
   @override
