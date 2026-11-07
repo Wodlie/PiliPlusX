@@ -24,11 +24,17 @@ abstract final class ReplyRest {
   >
   mainListRaw({
     required Account account,
-    required AccountHealthIdentity identity,
+
+    // 凭证指纹：匿名请求不需要（不强绑身份），传 null 即不注入。
+    AccountHealthIdentity? identity,
     required int oid,
     required int type,
     required int mode,
     required String offset,
+
+    // 定位评论：服务端把「包含该 rpid 的根评论」放到首条。与 gRPC 的
+    // `MainListReq.seek_rpid` 对应，语义一致。
+    int? seekRpid,
   }) async {
     final res = await Request().get(
       Api.replyMain,
@@ -39,11 +45,12 @@ abstract final class ReplyRest {
         'mode': mode,
         // offset 是不透明游标（含引号/反斜线），必须整体 JSON 编码。
         'pagination_str': jsonEncode({'offset': offset}),
+        if (seekRpid != null && seekRpid > 0) 'seek_rpid': seekRpid,
       },
       options: Options(
         extra: {
           'account': account,
-          AccountManager.expectedIdentityExtra: identity,
+          if (identity != null) AccountManager.expectedIdentityExtra: identity,
         },
       ),
     );

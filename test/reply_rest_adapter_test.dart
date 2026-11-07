@@ -296,6 +296,25 @@ void main() {
     expect(adminTop.replyControl.isUpTop, isFalse);
   });
 
+  test('invisible 与嵌套预览域：评论自查依赖这两个字段', () {
+    // 自查判定读「锚点根评论的 replies 预览域」+ 条目的 invisible 标记；
+    // REST 路径漏映射会让判定把「看不到」误当成「没了」。
+    final Map<String, dynamic> raw = {
+      ...replyJson(childIds: [2001]),
+      'invisible': true,
+    };
+    final reply = ReplyRestAdapter.reply(raw, oid: 555, type: 1);
+    expect(reply.invisible, isTrue);
+    expect(reply.replies.map((r) => r.id.toInt()), [2001]);
+
+    final visible = ReplyRestAdapter.reply(
+      replyJson(childIds: [2001]),
+      oid: 555,
+      type: 1,
+    );
+    expect(visible.invisible, isFalse);
+  });
+
   test('不修改传入的 JSON（适配必须是纯转换）', () {
     final raw = replyJson(
       content: {

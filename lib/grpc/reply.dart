@@ -343,6 +343,10 @@ abstract final class ReplyGrpc {
     int type = 1,
     required int oid,
     Int64? rpid,
+
+    // 定位评论：服务端把「包含该 rpid 的根评论」放到首条，并把该回复放进
+    // 它的 `replies` 预览域。传入楼中楼的 rpid 即可一次点查询命中，无需翻页。
+    Int64? seekRpid,
     required Mode mode,
     required String? offset,
     required Int64? cursorNext,
@@ -358,6 +362,7 @@ abstract final class ReplyGrpc {
         oid: Int64(oid),
         type: Int64(type),
         rpid: rpid,
+        seekRpid: seekRpid,
         cursor: CursorReq(
           mode: mode,
           next: cursorNext,
@@ -381,7 +386,9 @@ abstract final class ReplyGrpc {
       // `autoPaginate: false` 时调用方（根评论会话）自己负责追页：它需要
       // 每条链各自的游标语义（REST offset / gRPC cursor 严格分开），
       // 并且必须能在飞行中重新核对账号与健康状态。
-      if (autoPaginate &&
+      // 定位查询只取锚点所在的那一页：自动追页会把锚点页混进普通分页。
+      if (seekRpid == null &&
+          autoPaginate &&
           filter &&
           !showBlockedReplyBanner &&
           response.replies.isEmpty &&

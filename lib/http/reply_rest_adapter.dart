@@ -110,6 +110,8 @@ abstract final class ReplyRestAdapter {
       like: _int64(raw['like']),
       ctime: _int64(raw['ctime']),
       count: _int64(raw['count']),
+      // 自查判定依赖它：gRPC 侧同名字段（field 16）由服务端直接给出。
+      invisible: _bool(raw['invisible']),
       trackInfo: raw['track_info'] is String
           ? raw['track_info'] as String
           : null,

@@ -3,14 +3,19 @@ import 'dart:io' show Platform;
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/selection_text.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
-    show ReplyInfo;
+    show MainListReply, ReplyInfo;
+import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pbenum.dart'
+    show Mode;
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/reply.dart';
-import 'package:PiliPlus/models/common/reply/reply_sort_type.dart';
+import 'package:PiliPlus/http/reply_seek.dart';
+import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/account_health.dart';
 import 'package:PiliPlus/utils/android/android_helper.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
+import 'package:PiliPlus/utils/reply_seek_verdict.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -18,41 +23,44 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
+/// 评论自查：用 `seek_rpid` 点查询分别取「游客视角」与「账号视角」，再交给
+/// [ReplySeekVerdict] 判定。
+///
+/// 取代旧实现（逐页爬 `/x/v2/reply/reply` 定位页号，再用同一页号做游客复核）：
+/// 两个身份的分页不同源，「没扫到」与「被隐藏」无法区分，正常评论会被误报。
 abstract final class ReplyUtils {
-  // 评论检查状态
-  static const String replyStateNormal = 'normal';
-  static const String replyStateShadowBan = 'shadowBan';
-  static const String replyStateDeleted = 'deleted';
-  static const String replyStateInvisible = 'invisible';
-  static const String replyStateUnderReview = 'underReview';
-  static const String replyStateSuspectedNoProblem = 'suspectedNoProblem';
-  static const String replyStateUnknown = 'unknown';
+  /// 自动自查（刚发布）的重试轮数：只在「可能还没落库」的结论上重试。
+  static const int _maxRounds = 3;
 
-  /// 该楼回复过多，游客视角无法完整扫描，无法确认评论是否被吞
-  static const String replyStateScanLimited = 'scanLimited';
-  // sensitive 状态仅定义，不在此实现检测
+  /// 每轮间隔。首轮也要等，服务端对新评论的收录不是即时的。
+  static const Duration _roundDelay = Duration(seconds: 8);
 
-  static String replyStateDesc(String state, String message) {
-    switch (state) {
-      case replyStateNormal:
-        return '无账号状态下找到了你的评论，评论正常！\n\n你的评论：$message';
-      case replyStateShadowBan:
-        return '你的评论被shadow ban（仅自己可见）！\n\n你的评论: $message';
-      case replyStateDeleted:
-        return '你的评论被系统秒删！\n\n你的评论: $message';
-      case replyStateInvisible:
-        return '你的评论被标记为invisible（前端不可见）！\n\n你的评论: $message';
-      case replyStateUnderReview:
-        return '你的评论疑似审核中（不在列表中但可通过回复列表获取）！\n\n你的评论: $message';
-      case replyStateSuspectedNoProblem:
-        return '你的评论疑似正常（申诉提示无可申诉评论）！\n\n你的评论: $message';
-      case replyStateScanLimited:
-        return '无法确认评论状态（该楼回复过多，游客视角无法完整扫描）！\n\n你的评论: $message';
-      case replyStateUnknown:
-        return '你的评论状态未知！\n\n你的评论: $message';
-      default:
-        return message;
-    }
+  static ReplySeek _seeker() => ReplySeek(
+    healthOf: (account) {
+      if (Get.isRegistered<AccountService>()) {
+        return Get.find<AccountService>().healthFor(account);
+      }
+      // 服务未注册（单测/极简环境）时保守走 REST，绝不因此发起网络校验。
+      return AccountHealth.initial(account);
+    },
+  );
+
+  static String verdictDesc(
+    ReplyCheckVerdict verdict,
+    String message, {
+    String? detail,
+  }) {
+    final suffix = detail == null ? '' : '\n\n$detail';
+    final body = switch (verdict) {
+      ReplyCheckVerdict.normal => '在游客视角定位到了你的评论，评论正常！',
+      ReplyCheckVerdict.invisible => '你的评论被标记为 invisible（前端不可见）！',
+      ReplyCheckVerdict.shadowBan => '你的评论被 shadow ban（仅自己可见）！',
+      ReplyCheckVerdict.deleted => '你的评论已被删除（根评论已不可用）！',
+      ReplyCheckVerdict.underReview => '两个视角都定位不到这条评论，可能是审核中或已被删除（未确认）。',
+      ReplyCheckVerdict.scanLimited => '无法确认评论状态：本次定位没有命中这条评论（可能刚发布还没进列表，或该区域接口未返回）。',
+      ReplyCheckVerdict.unknown => '检查失败，未能判定评论状态。',
+    };
+    return '$body$suffix\n\n你的评论：$message';
   }
 
   static void onCheckReply({
@@ -67,7 +75,6 @@ abstract final class ReplyUtils {
         type: replyInfo.type.toInt(),
         id: replyInfo.id.toInt(),
         message: replyInfo.content.message,
-        //
         root: replyInfo.root.toInt(),
         parent: replyInfo.parent.toInt(),
         ctime: replyInfo.ctime.toInt(),
@@ -75,7 +82,6 @@ abstract final class ReplyUtils {
             .map((item) => item.toProto3Json())
             .toList(),
         mid: replyInfo.mid.toInt(),
-        //
         isManual: isManual,
         biliSendCommAntifraud: biliSendCommAntifraud,
         sourceId: sourceId,
@@ -128,10 +134,11 @@ abstract final class ReplyUtils {
       return;
     }
 
-    // CommAntifraud
-    if (!isManual) {
-      await Future.pause(const Duration(seconds: 8));
-    }
+    final isRoot = root == 0;
+    // 一级评论锚定自己；楼中楼锚定「包含它的根评论」。
+    final expectedRoot = isRoot ? id : root;
+    final account = Accounts.reply;
+
     void showAppealDialog(String sourceUrl) {
       final defaultReason = Pref.defaultAppealReason;
       final reasonController = TextEditingController(
@@ -139,7 +146,7 @@ abstract final class ReplyUtils {
             ? defaultReason
             : (message.length > 93 ? message.substring(0, 93) : message),
       );
-      ValueNotifier<String?> resultMessage = ValueNotifier(null);
+      final resultMessage = ValueNotifier<String?>(null);
 
       showDialog(
         context: Get.context!,
@@ -213,6 +220,7 @@ abstract final class ReplyUtils {
                       );
                     } else if (result case Error(:final errMsg, :final code)) {
                       if (code == 12082) {
+                        // 申诉结果只是提示，**不写入评论状态**（两条轴分开）。
                         resultMessage.value = '无可申诉评论，可能评论正常或正在审核中';
                       } else {
                         resultMessage.value = errMsg ?? '申诉失败';
@@ -228,11 +236,45 @@ abstract final class ReplyUtils {
       );
     }
 
-    void showReplyCheckResult(String state) {
+    void retry() =>
+        _checkReply(
+          oid: oid,
+          type: type,
+          id: id,
+          message: message,
+          root: root,
+          parent: parent,
+          ctime: ctime,
+          pictures: pictures,
+          mid: mid,
+          isManual: true,
+          biliSendCommAntifraud: biliSendCommAntifraud,
+          sourceId: sourceId,
+        );
+
+    void showReplyCheckResult(ReplyCheckVerdict verdict, {String? detail}) {
       final theme = ThemeUtils.theme;
-      final displayMessage = replyStateDesc(state, message);
+      final displayMessage = verdictDesc(verdict, message, detail: detail);
+      // 只有「确实有异常」才值得走申诉；看不清/失败时给重试。
+      final appealable = switch (verdict) {
+        ReplyCheckVerdict.invisible ||
+        ReplyCheckVerdict.shadowBan ||
+        ReplyCheckVerdict.deleted ||
+        ReplyCheckVerdict.underReview => true,
+        _ => false,
+      };
+      final retryable = ReplySeekVerdict.worthRetry(verdict) ||
+          verdict == ReplyCheckVerdict.unknown;
       final actions = [
-        if (state != replyStateNormal)
+        if (retryable)
+          TextButton(
+            onPressed: () {
+              Get.back();
+              retry();
+            },
+            child: const Text('重试'),
+          ),
+        if (appealable)
           TextButton(
             onPressed: () {
               Get.back();
@@ -266,255 +308,221 @@ abstract final class ReplyUtils {
       );
     }
 
-    // root reply
-    if (root == 0) {
-      // no cookie check
-      final res = await ReplyHttp.replyList(
-        isLogin: false,
-        oid: oid,
-        nextOffset: '',
-        type: type,
-        sort: ReplySortType.time.index,
-        page: 1,
-      );
-
-      if (res case Error(:final errMsg)) {
-        SmartDialog.showToast('获取评论主列表时发生错误：$errMsg');
-        return;
-      } else if (res case Success(:final response)) {
-        final index =
-            response.replies?.indexWhere((item) => item.rpid == id) ?? -1;
-        if (index != -1) {
-          // found in main list — check invisible first
-          final foundReply = response.replies![index];
-          if (foundReply.invisible == true) {
-            showReplyCheckResult(replyStateInvisible);
-          } else {
-            // not invisible in main list — verify via reply/reply without account
-            final resVerify = await ReplyHttp.replyReplyList(
-              isLogin: false,
-              oid: oid,
-              root: id,
-              pageNum: 1,
-              type: type,
-              isCheck: true,
-            );
-            if (resVerify is Error &&
-                resVerify.errMsg?.startsWith('12022') == true) {
-              // reply/reply fails with 12022 → shadow ban
-              showReplyCheckResult(replyStateShadowBan);
-            } else {
-              // reply/reply succeeds or other error → normal
-              showReplyCheckResult(replyStateNormal);
-            }
-          }
-        } else {
-          // not found — cookie check
-          final res1 = await ReplyHttp.replyReplyList(
-            isLogin: true,
-            oid: oid,
-            root: id,
-            pageNum: 1,
-            type: type,
-            account: Accounts.reply,
-          );
-
-          if (res1 is Error) {
-            // not found even with account — deleted
-            showReplyCheckResult(replyStateDeleted);
-          } else {
-            // found with account — no cookie replyReplyList check
-            final res2 = await ReplyHttp.replyReplyList(
-              isLogin: false,
-              oid: oid,
-              root: id,
-              pageNum: 1,
-              type: type,
-              isCheck: true,
-            );
-
-            if (res2 is Error) {
-              // check error code
-              if (res2.errMsg?.startsWith('12022') == true) {
-                showReplyCheckResult(replyStateShadowBan);
-              } else {
-                SmartDialog.showToast('检查评论时发生错误：${res2.errMsg}');
-              }
-            } else {
-              // no-cookie also found — check invisible on root
-              final rootData = res2.data.root;
-              if (rootData?.invisible == true) {
-                showReplyCheckResult(replyStateInvisible);
-              } else if (isManual) {
-                showReplyCheckResult(replyStateNormal);
-              } else {
-                showReplyCheckResult(replyStateUnderReview);
-              }
-            }
-          }
-        }
-      }
-    } else {
-      // 楼中楼：先带 Cookie 爬楼定位目标评论所在页及它上方相邻的评论（锚点），
-      // 再以游客视角（无 Cookie）扫描该页 ±3 页的小窗口：
-      // · 游客能看到目标 → 正常
-      // · 游客能看到锚点评论、唯独没有目标 → shadowban（目标被单独隐藏）
-      // · 该区域游客完全不可见（回复过多被接口截断）→ 无法确认
-      final locate = await _locateSubReply(
-        oid: oid,
-        root: root,
-        type: type,
-        targetId: id,
-        account: Accounts.reply,
-      );
-      if (locate.deleted) {
-        showReplyCheckResult(replyStateDeleted);
-        return;
-      }
-      if (locate.targetPage == null) {
-        // 带 Cookie 爬楼失败或未翻到底，无法定位
-        showReplyCheckResult(replyStateScanLimited);
-        return;
-      }
-      final check = await _checkGuestWindow(
-        oid: oid,
-        root: root,
-        type: type,
-        targetId: id,
-        anchorRpid: locate.anchorRpid,
-        targetPage: locate.targetPage!,
-      );
-      if (check.found) {
-        showReplyCheckResult(replyStateNormal);
-      } else if (check.anchorFound) {
-        // 目标附近的评论游客可见，唯独目标缺失 → shadowban
-        showReplyCheckResult(replyStateShadowBan);
-      } else {
-        // 该区域游客不可见（截断区），或锚点同样缺失，无法确认
-        showReplyCheckResult(replyStateScanLimited);
-      }
-    }
-  }
-
-  /// 带 Cookie 爬楼定位楼中楼目标评论。
-  ///
-  /// 返回目标所在页号、页内目标上方紧邻评论的 rpid（锚点，作为游客视角
-  /// 扫描的参照物），以及是否确认“已删除”（完整翻完且未找到）。
-  /// 返回 `targetPage == null` 且 `deleted == false` 表示无法定位。
-  static Future<({int? targetPage, int? anchorRpid, bool deleted})>
-  _locateSubReply({
-    required int oid,
-    required int root,
-    required int type,
-    required int targetId,
-    required Account account,
-    int maxPages = 60,
-  }) async {
-    int? lastRpidOfPrevPage;
-    int scanned = 0;
-    int? total;
-    for (int page = 1; page <= maxPages; page++) {
-      final res = await ReplyHttp.replyReplyList(
-        isLogin: true,
-        oid: oid,
-        root: root,
-        pageNum: page,
-        type: type,
-        isCheck: true,
+    // 自动自查可能跑多轮：只在「可能还没落库」的结论上重试。
+    final rounds = isManual ? 1 : _maxRounds;
+    var verdict = ReplyCheckVerdict.unknown;
+    String? detail;
+    for (var round = 0; round < rounds; round++) {
+      await Future<void>.delayed(_roundDelay);
+      // 页面已销毁（用户离开）就不再打扰。
+      if (Get.context == null) return;
+      final observed = await _observe(
+        seeker: _seeker(),
         account: account,
+        oid: oid,
+        type: type,
+        id: id,
+        expectedRoot: expectedRoot,
+        isRoot: isRoot,
       );
-      if (res is Error) {
-        return (targetPage: null, anchorRpid: null, deleted: false);
-      }
-      final data = res.data;
-      // 第一页响应带根评论，其 count 为该楼真实总回复数，用于判断列表是否被截断
-      total ??= data.root?.count;
-      final replies = data.replies ?? const [];
-      if (replies.isEmpty) {
-        // 空页 = 列表已结束；若已扫描数小于总回复数，说明被接口截断，无法确认
-        return (
-          targetPage: null,
-          anchorRpid: null,
-          deleted: total == null || scanned >= total,
-        );
-      }
-      final index = replies.indexWhere((item) => item.rpid == targetId);
-      if (index != -1) {
-        final int? anchorRpid;
-        if (index > 0) {
-          // 目标上方紧邻的评论
-          anchorRpid = replies[index - 1].rpid;
-        } else if (lastRpidOfPrevPage != null) {
-          // 目标位于页首：锚点为上一页最后一条评论
-          anchorRpid = lastRpidOfPrevPage;
-        } else if (replies.length > 1) {
-          // 目标位于第 1 页第 1 位：锚点取其下方的一条评论
-          anchorRpid = replies[1].rpid;
-        } else {
-          anchorRpid = null;
-        }
-        return (targetPage: page, anchorRpid: anchorRpid, deleted: false);
-      }
-      lastRpidOfPrevPage = replies.last.rpid;
-      scanned += replies.length;
+      verdict = observed.verdict;
+      detail = observed.detail;
+      if (!ReplySeekVerdict.worthRetry(verdict)) break;
     }
-    // 达到页数上限仍未找到：扫描不完整
-    return (targetPage: null, anchorRpid: null, deleted: false);
+
+    if (Get.context == null) return;
+    showReplyCheckResult(
+      verdict,
+      // 正常时不需要把排查信息糊在脸上。
+      detail: verdict == ReplyCheckVerdict.normal ? null : detail,
+    );
   }
 
-  /// 游客视角（无 Cookie）扫描目标页 ±3 页的小窗口。
-  ///
-  /// 返回目标评论是否可见、锚点评论是否可见。
-  static Future<({bool found, bool anchorFound})> _checkGuestWindow({
+  /// 采集两个视角的 seek 观测并给出结论。
+  static Future<({ReplyCheckVerdict verdict, String? detail})> _observe({
+    required ReplySeek seeker,
+    required Account account,
     required int oid,
-    required int root,
     required int type,
-    required int targetId,
-    required int targetPage,
-    required int? anchorRpid,
+    required int id,
+    required int expectedRoot,
+    required bool isRoot,
   }) async {
-    bool found = false;
-    bool anchorFound = false;
-    for (int page = targetPage - 3; page <= targetPage + 3; page++) {
-      if (page < 1) continue;
-      var res = await ReplyHttp.replyReplyList(
-        isLogin: false,
+    // 1) 账号视角
+    final selfRes = await seeker.asSelf(
+      account: account,
+      oid: oid,
+      type: type,
+      rpid: id,
+      mode: Mode.MAIN_LIST_TIME,
+    );
+    final selfSeat = _seatOf(
+      selfRes,
+      expectedRoot: expectedRoot,
+      targetId: id,
+      isRoot: isRoot,
+    );
+
+    // 2) 游客视角
+    final guestRes = await seeker.asGuest(
+      oid: oid,
+      type: type,
+      rpid: id,
+      mode: Mode.MAIN_LIST_TIME,
+    );
+    var guestSeat = _seatOf(
+      guestRes,
+      expectedRoot: expectedRoot,
+      targetId: id,
+      isRoot: isRoot,
+    );
+
+    // 3) 歧义消解：游客没看到时换热门排序再打一枪（两种排序都会锚定目标）。
+    if (guestSeat == ReplySeat.absent || guestSeat == ReplySeat.seatMiss) {
+      final again = await seeker.asGuest(
         oid: oid,
-        root: root,
-        pageNum: page,
         type: type,
-        isCheck: true,
+        rpid: id,
+        mode: Mode.MAIN_LIST_HOT,
       );
-      // 单页出错（如风控限流）时重试一次
-      if (res is Error) {
-        await Future.delayed(const Duration(seconds: 1));
-        res = await ReplyHttp.replyReplyList(
-          isLogin: false,
-          oid: oid,
-          root: root,
-          pageNum: page,
-          type: type,
-          isCheck: true,
-        );
+      final againSeat = _seatOf(
+        again,
+        expectedRoot: expectedRoot,
+        targetId: id,
+        isRoot: isRoot,
+      );
+      if (againSeat == ReplySeat.present || againSeat == ReplySeat.invisible) {
+        guestSeat = againSeat;
       }
-      if (res is Error) {
-        continue;
-      }
-      final replies = res.data.replies ?? const [];
-      if (replies.isEmpty) {
-        continue;
-      }
-      if (!found && replies.any((item) => item.rpid == targetId)) {
-        found = true;
-      }
-      if (anchorRpid != null &&
-          !anchorFound &&
-          replies.any((item) => item.rpid == anchorRpid)) {
-        anchorFound = true;
-      }
-      // 降低连续请求触发风控的概率
-      await Future.delayed(const Duration(milliseconds: 300));
     }
-    return (found: found, anchorFound: anchorFound);
+
+    final decided = ReplySeekVerdict.decide(
+      tourist: guestSeat,
+      account: selfSeat,
+    );
+    if (decided != null) {
+      return (verdict: decided, detail: _describe(selfSeat, guestSeat));
+    }
+
+    // 4) 两个视角都缺席：只探活根评论，1 次请求，不翻页。
+    final probe = await _probeRoot(
+      oid: oid,
+      type: type,
+      expectedRoot: expectedRoot,
+      account: account,
+    );
+    return (
+      verdict: ReplySeekVerdict.fromProbe(probe),
+      detail: _describe(selfSeat, guestSeat, probe: probe),
+    );
   }
+
+  /// 单次 seek 响应 → 该视角的观测。
+  static ReplySeat _seatOf(
+    ReplySeekResult result, {
+    required int expectedRoot,
+    required int targetId,
+    required bool isRoot,
+  }) => switch (result) {
+    ReplySeekError() => ReplySeat.failed,
+    ReplySeekPage(page: final page) => _seatOfPage(
+      page,
+      expectedRoot: expectedRoot,
+      targetId: targetId,
+      isRoot: isRoot,
+    ),
+  };
+
+  static ReplySeat _seatOfPage(
+    MainListReply page, {
+    required int expectedRoot,
+    required int targetId,
+    required bool isRoot,
+  }) {
+    // 锚点校验：假 rpid 会被服务端静默回落成首页，不校验就会误判。
+    final seat = _anchorOf(page, expectedRoot);
+    if (seat == null) return ReplySeat.seatMiss;
+    if (isRoot) {
+      return seat.invisible ? ReplySeat.invisible : ReplySeat.present;
+    }
+    for (final child in seat.replies) {
+      if (child.id.toInt() == targetId) {
+        return child.invisible ? ReplySeat.invisible : ReplySeat.present;
+      }
+    }
+    return ReplySeat.absent;
+  }
+
+  /// 在一页响应里找「锚定到 [expectedRoot] 的那条评论」。
+  ///
+  /// REST 适配器会把 UP 置顶项从 `replies` 移到 `upTop`（避免列表重复），
+  /// 只认 `replies.first` 会把置顶的锚点误判成「未定位到」。
+  static ReplyInfo? _anchorOf(MainListReply page, int expectedRoot) {
+    final replies = page.replies;
+    if (replies.isNotEmpty && replies.first.id.toInt() == expectedRoot) {
+      return replies.first;
+    }
+    final upTop = page.upTop;
+    if (upTop != null && upTop.id.toInt() == expectedRoot) return upTop;
+    return null;
+  }
+
+  /// 根评论是否还活着：`reply/reply` 第 1 页即可，不翻页、不算页号。
+  static Future<ReplyRootProbe> _probeRoot({
+    required int oid,
+    required int type,
+    required int expectedRoot,
+    required Account account,
+  }) async {
+    if (expectedRoot <= 0) return ReplyRootProbe.failed;
+    final res = await ReplyHttp.replyReplyList(
+      isLogin: true,
+      oid: oid,
+      root: expectedRoot,
+      pageNum: 1,
+      type: type,
+      isCheck: true,
+      account: account,
+    );
+    switch (res) {
+      case Success():
+        return ReplyRootProbe.alive;
+      case Error(:final errMsg):
+        // isCheck 把错误码前缀进 message：12022/12006 = 该评论已不可用。
+        if (errMsg != null &&
+            (errMsg.startsWith('12022') || errMsg.startsWith('12006'))) {
+          return ReplyRootProbe.unavailable;
+        }
+        return ReplyRootProbe.failed;
+    }
+    return ReplyRootProbe.failed;
+  }
+
+  /// 给用户看的排查信息：说清是「哪个视角、哪一步」没看到。
+  static String _describe(
+    ReplySeat self,
+    ReplySeat guest, {
+    ReplyRootProbe? probe,
+  }) {
+    final parts = <String>[
+      '账号视角：${_seatText(self)}',
+      '游客视角：${_seatText(guest)}',
+      if (probe != null) '根评论探活：${_probeText(probe)}',
+    ];
+    return parts.join('\n');
+  }
+
+  static String _seatText(ReplySeat seat) => switch (seat) {
+    ReplySeat.present => '可见',
+    ReplySeat.invisible => '可见但被标记 invisible',
+    ReplySeat.absent => '已定位到该楼，但没有这条评论',
+    ReplySeat.seatMiss => '未定位到（接口未返回该楼）',
+    ReplySeat.failed => '请求失败',
+  };
+
+  static String _probeText(ReplyRootProbe probe) => switch (probe) {
+    ReplyRootProbe.unavailable => '根评论已不可用（12022/12006）',
+    ReplyRootProbe.alive => '根评论仍在',
+    ReplyRootProbe.failed => '探活失败',
+  };
 }
