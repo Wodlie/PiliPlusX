@@ -17,6 +17,8 @@ import 'package:PiliPlus/common/widgets/translucent_row.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
     show ReplyInfo, ReplyControl, Content, Url, ReplyControl_VoteOption, Emote;
 import 'package:PiliPlus/grpc/reply.dart';
+import 'package:PiliPlus/pages/video/reply_reply/tree.dart' show ReasonType;
+import 'package:PiliPlus/pages/video/reply/widgets/reply_threaded_indent_box.dart';
 import 'package:PiliPlus/utils/bili_utils.dart';
 import 'package:PiliPlus/http/reply.dart';
 import 'package:PiliPlus/http/video.dart';
@@ -127,6 +129,11 @@ class ReplyItemGrpc extends StatefulWidget {
     this.isTranslating = false,
     this.onTranslate,
     this.forceShowOriginalContent = false,
+    this.depth,
+    this.reason,
+    this.collapsed,
+    this.toggleCollapse,
+    this.onScrollLeft,
   });
   final ReplyInfo replyItem;
   final int replyLevel;
@@ -163,6 +170,21 @@ class ReplyItemGrpc extends StatefulWidget {
   /// skipping blocked/expanded-blocked banners.
   final bool forceShowOriginalContent;
 
+  /// Threaded-reply indent depth (0 = flat list).
+  final int? depth;
+
+  /// Why this node was folded/suppressed in threaded mode.
+  final ReasonType? reason;
+
+  /// Non-zero when the subtree is collapsed.
+  final int? collapsed;
+
+  /// Toggles subtree collapse; null for leaves.
+  final VoidCallback? toggleCollapse;
+
+  /// Jumps to the parent reply when the indent line is scrolled left.
+  final VoidCallback? onScrollLeft;
+
   static final _voteRegExp = RegExp(r"^\{vote:\d+?\}$");
   static final _timeRegExp = RegExp(r'^(?:\d+[:：])?\d+[:：]\d+$');
   static bool enableWordRe = Pref.enableWordRe;
@@ -179,7 +201,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   int _blockImageVersion = 0;
 
   @override
-  Widget build(BuildContext context) {
+  Widget _buildItem(BuildContext context) {
     final colorScheme = ColorScheme.of(context);
 
     // 折叠横幅：独立返回值，不需要 InkWell 包装
@@ -269,6 +291,30 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
       ],
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final content = _buildItem(context);
+    final depth = widget.depth ?? 0;
+    if (depth <= 0) return content;
+    return ReplyThreadedIndentBox(
+      depth: depth,
+      colors: _threadLineColors(ColorScheme.of(context), depth),
+      divColor: Theme.of(context).dividerColor.withValues(alpha: 0.15),
+      onScrollLeft: widget.onScrollLeft,
+      child: content,
+    );
+  }
+
+  /// Per-level accent colours for the threaded indent lines.
+  static List<Color> _threadLineColors(ColorScheme cs, int depth) =>
+      List<Color>.generate(
+        depth,
+        (i) => i.isEven
+            ? cs.outlineVariant.withValues(alpha: 0.55)
+            : cs.primary.withValues(alpha: 0.35),
+        growable: false,
+      );
 
   Widget _buildHeader(BuildContext context, ColorScheme colorScheme) {
     final member = widget.replyItem.member;

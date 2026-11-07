@@ -15,6 +15,7 @@ import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/pages/common/reply/reply_footer_mixin.dart';
 import 'package:PiliPlus/pages/common/slide/common_slide_page.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
+import 'package:PiliPlus/pages/video/reply_reply/tree.dart';
 import 'package:PiliPlus/pages/video/reply_reply/controller.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/extension/widget_ext.dart';
@@ -275,6 +276,37 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
                     : const SizedBox.shrink();
               },
             ),
+            Obx(
+              () => controller.replyTree.value != null
+                  ? const SizedBox.shrink()
+                  : IconButton(
+                      visualDensity: .compact,
+                      onPressed: () {
+                        if (controller.isEnd && controller.foldCard == null) {
+                          controller.buildTree();
+                        } else if (controller.inFetchReply) {
+                          SmartDialog.showToast('正在拉取评论，请稍后');
+                        } else {
+                          showConfirmDialog(
+                            context: context,
+                            title: const Text(
+                              '是否加载全部评论以显示线程化评论？',
+                            ),
+                            content: const Text(
+                              '这将消耗一定流量\n且可能导致IP或账号风控',
+                            ),
+                            onConfirm: controller.nextReplyRound,
+                          );
+                        }
+                      },
+                      icon: const Icon(
+                        Icons.view_comfortable_outlined,
+                        size: 22,
+                      ),
+                      color: colorScheme.outline,
+                      tooltip: '线程化展示',
+                    ),
+            ),
             Expanded(
               child: Obx(
                 () => LinearProgressIndicator(
@@ -331,62 +363,85 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
           child: VideoReplySkeleton(),
         ),
       ),
-      Success(:final response!) => SuperSliverList.builder(
-        listController: controller.listController,
-        itemBuilder: (context, index) {
-          if (index == response.length && controller.canShowFoldEntry) {
-            final foldText = controller.foldCard.value?.bottomText;
-            return InkWell(
-              onTap: controller.loadFoldedReplies,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      foldText != null && foldText.isNotEmpty
-                          ? foldText
-                          : '显示被折叠评论',
-                      style: TextStyle(
-                        fontSize: 13,
+      Success(:final response!) => switch (controller.replyTree.value) {
+        final tree? => SuperSliverList.builder(
+          listController: controller.listController,
+          itemCount: tree.length + 1,
+          itemBuilder: (context, index) {
+            if (index == tree.length) {
+              controller.onLoadMore();
+              return buildEndItem();
+            }
+            final node = tree[index];
+            final child = _replyItem(
+              context,
+              node.reply,
+              index,
+              node: node,
+              treeIndex: index,
+            );
+            return jumpIndex == index
+                ? controller.colorAnimWrapper(colorScheme, child)
+                : child;
+          },
+        ),
+        null => SuperSliverList.builder(
+          listController: controller.listController,
+          itemBuilder: (context, index) {
+            if (index == response.length && controller.canShowFoldEntry) {
+              final foldText = controller.foldCard.value?.bottomText;
+              return InkWell(
+                onTap: controller.loadFoldedReplies,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        foldText != null && foldText.isNotEmpty
+                            ? foldText
+                            : '显示被折叠评论',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                      Icon(
+                        Icons.keyboard_arrow_right,
+                        size: 16,
                         color: colorScheme.primary,
                       ),
-                    ),
-                    Icon(
-                      Icons.keyboard_arrow_right,
-                      size: 16,
-                      color: colorScheme.primary,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }
-          if (index ==
-              response.length + (controller.canShowFoldEntry ? 1 : 0)) {
-            controller.onLoadMore();
-            return Container(
-              height: 125,
-              alignment: Alignment.center,
-              margin: .only(bottom: MediaQuery.viewPaddingOf(context).bottom),
-              child: Text(
-                controller.isEnd ? '没有更多了' : '加载中...',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: colorScheme.outline,
+              );
+            }
+            if (index ==
+                response.length + (controller.canShowFoldEntry ? 1 : 0)) {
+              controller.onLoadMore();
+              return Container(
+                height: 125,
+                alignment: Alignment.center,
+                margin: .only(
+                  bottom: MediaQuery.viewPaddingOf(context).bottom,
                 ),
-              ),
-            );
-          }
-          final child = _replyItem(context, response[index], index);
-          if (jumpIndex == index) {
-            return controller.colorAnimWrapper(colorScheme, child);
-          }
-          return child;
-        },
-        itemCount: response.length + 1 + (controller.canShowFoldEntry ? 1 : 0),
-      ),
+                child: Text(
+                  controller.isEnd ? '没有更多了' : '加载中...',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: colorScheme.outline),
+                ),
+              );
+            }
+            final child = _replyItem(context, response[index], index);
+            if (jumpIndex == index) {
+              return controller.colorAnimWrapper(colorScheme, child);
+            }
+            return child;
+          },
+          itemCount:
+              response.length + (controller.canShowFoldEntry ? 2 : 1),
+        ),
+      },
       Error(:final errMsg) => HttpError(
         errMsg: errMsg,
         onReload: controller.onReload,
@@ -414,14 +469,25 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
       ),
     );
   }
-  Widget _replyItem(BuildContext context, ReplyInfo replyItem, int index) {
+  Widget _replyItem(
+    BuildContext context,
+    ReplyInfo replyItem,
+    int index, {
+    ReplyTreeNode? node,
+    int? treeIndex,
+  }) {
     final rpid = replyItem.id;
     final translated = controller.translatedReplies[rpid];
+    final isTree = node != null;
     final item = ReplyItemGrpc(
       replyItem: replyItem,
       replyLevel: isDialogue ? 3 : 2,
-      onReply: (replyItem) => controller.onReply(replyItem, index: index),
-      onDelete: (item, subIndex) => controller.onRemove(index, item, subIndex),
+      onReply: (replyItem) => isTree
+          ? controller.onReplyByTreeNode(treeIndex!, replyItem)
+          : controller.onReply(replyItem, index: index),
+      onDelete: (item, subIndex) => isTree
+          ? controller.onRemoveByTreeNode(treeIndex!, item)
+          : controller.onRemove(index, item, subIndex),
       upMid: controller.upMid,
       dialogueCallback: isDialogue
           ? _onJumpToParent
@@ -433,7 +499,17 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
           : null,
       isTranslating: translated != null && translated.isEmpty,
       onTranslate: () => controller.translateReply(replyItem),
+      depth: node?.depth,
+      reason: node?.reason,
+      collapsed: node?.collapsed,
+      toggleCollapse: node == null || node.isLeaf
+          ? null
+          : () => controller.toggleCollapseTree(treeIndex!),
+      onScrollLeft: node == null || node.depth <= 0
+          ? null
+          : () => controller.setIndexByTreeNode(treeIndex!, node.parent),
     );
+    if (isTree) return item;
     if (!controller.foldedIds.contains(replyItem.id.toInt())) return item;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
