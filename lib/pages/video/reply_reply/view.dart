@@ -1,6 +1,7 @@
 import 'package:PiliPlus/common/skeleton/video_reply.dart';
 import 'package:PiliPlus/common/sliver_single_child_delegate.dart';
 import 'package:PiliPlus/common/style.dart';
+import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
 import 'package:PiliPlus/common/widgets/scaffold/mini_scaffold.dart';
@@ -11,6 +12,7 @@ import 'package:PiliPlus/common/widgets/view_safe_area.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
     show ReplyInfo;
 import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/pages/common/reply/reply_footer_mixin.dart';
 import 'package:PiliPlus/pages/common/slide/common_slide_page.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
 import 'package:PiliPlus/pages/video/reply_reply/controller.dart';
@@ -97,27 +99,29 @@ class VideoReplyReplyPanel extends CommonSlidePage {
 }
 
 class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
-    with SingleTickerProviderStateMixin, CommonSlideMixin {
-  late VideoReplyReplyController _controller;
+    with SingleTickerProviderStateMixin, CommonSlideMixin, ReplyFooterMixin {
+  @override
+  late final VideoReplyReplyController controller;
   late final _tag = Utils.makeHeroTag('${widget.rpid}${widget.dialog}');
-
+  @override
+  ColorScheme get colorScheme => theme.colorScheme;
   late final bool isDialogue = widget.dialog != null;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final controller = PrimaryScrollController.of(context);
-    _controller
+    final scrollSontroller = PrimaryScrollController.of(context);
+    controller
       ..didChangeDependencies(context)
-      ..nestedController = controller is ExtendedNestedScrollController
-          ? controller
+      ..nestedController = scrollSontroller is ExtendedNestedScrollController
+          ? scrollSontroller
           : null;
   }
 
   @override
   void initState() {
     super.initState();
-    _controller = Get.put(
+    controller = Get.put(
       VideoReplyReplyController(
         hasRoot: widget.firstFloor != null,
         id: widget.id,
@@ -137,8 +141,8 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
   }
 
   @override
-  Widget buildPage(ThemeData theme) {
-    Widget child() => enableSlide ? slideList(theme) : buildList(theme);
+  Widget buildPage() {
+    Widget child() => enableSlide ? slideList() : buildList();
     return SimpleColoredBox(
       color: theme.canvasColor,
       child: MiniScaffold(
@@ -176,16 +180,15 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
     );
   }
 
-  ReplyInfo? get firstFloor =>
-      widget.firstFloor ?? _controller.firstFloor.value;
+  ReplyInfo? get firstFloor => widget.firstFloor ?? controller.firstFloor.value;
 
   ScrollController get scrollController =>
-      _controller.nestedController ?? _controller.scrollController;
+      controller.nestedController ?? controller.scrollController;
 
   @override
-  Widget buildList(ThemeData theme) {
+  Widget buildList() {
     return refreshIndicator(
-      onRefresh: _controller.onRefresh,
+      onRefresh: controller.onRefresh,
       isClampingScrollPhysics: widget.isNested,
       child: CustomScrollView(
         key: ValueKey(scrollController.hashCode),
@@ -193,14 +196,14 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           if (!isDialogue) ...[
-            if ((widget.firstFloor ?? _controller.firstFloor.value)
+            if ((widget.firstFloor ?? controller.firstFloor.value)
                 case final firstFloor?)
               _header(theme, firstFloor)
             else
               Obx(() {
                 // trigger rebuild when translation state changes
-                _controller.translatedReplies.length;
-                final firstFloor = _controller.firstFloor.value;
+                controller.translatedReplies.length;
+                final firstFloor = controller.firstFloor.value;
                 if (firstFloor == null) {
                   return const SliverToBoxAdapter();
                 }
@@ -210,10 +213,10 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
           ],
           Obx(() {
             // trigger rebuild when translation state changes
-            _controller.translatedReplies.length;
+            controller.translatedReplies.length;
             return _buildBody(
               theme.colorScheme,
-              _controller.loadingState.value,
+              controller.loadingState.value,
             );
           }),
         ],
@@ -223,7 +226,7 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
 
   Widget _header(ThemeData theme, ReplyInfo firstFloor) {
     final rpid = firstFloor.id;
-    final translated = _controller.translatedReplies[rpid];
+    final translated = controller.translatedReplies[rpid];
     return SliverMainAxisGroup(
       slivers: [
         SliverToBoxAdapter(
@@ -231,15 +234,15 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
             replyItem: firstFloor,
             replyLevel: 2,
             needDivider: false,
-            onReply: (replyItem) => _controller.onReply(replyItem, index: -1),
-            upMid: widget.upMid ?? _controller.upMid,
+            onReply: (replyItem) => controller.onReply(replyItem, index: -1),
+            upMid: widget.upMid ?? controller.upMid,
             onCheckReply: (item) =>
-                _controller.onCheckReply(item, isManual: true),
+                controller.onCheckReply(item, isManual: true),
             translatedText: translated != null && translated.isNotEmpty
                 ? translated
                 : null,
             isTranslating: translated != null && translated.isEmpty,
-            onTranslate: () => _controller.translateReply(firstFloor),
+            onTranslate: () => controller.translateReply(firstFloor),
           ),
         ),
         SliverToBoxAdapter(
@@ -259,11 +262,11 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
       child: Padding(
         padding: const .fromLTRB(12, 2.5, 6, 2.5),
         child: Row(
-          mainAxisAlignment: .spaceBetween,
+          spacing: 6,
           children: [
             Obx(
               () {
-                final count = _controller.count.value;
+                final count = controller.count.value;
                 return count != -1
                     ? Text(
                         '相关回复共${NumUtils.numFormat(count)}条',
@@ -272,26 +275,37 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
                     : const SizedBox.shrink();
               },
             ),
+            Expanded(
+              child: Obx(
+                () => LinearProgressIndicator(
+                  // ignore: deprecated_member_use
+                  year2023: true,
+                  borderRadius: const .all(.circular(4)),
+                  value: controller.progress.value,
+                  stopIndicatorColor: Colors.transparent,
+                ),
+              ),
+            ),
             TextButton.icon(
               style: Style.buttonStyle,
-              onPressed: _controller.canSort.value
-                  ? _controller.queryBySort
+              onPressed: controller.canSort.value
+                  ? controller.queryBySort
                   : null,
               icon: Icon(
                 Icons.sort,
                 size: 16,
-                color: _controller.canSort.value
+                color: controller.canSort.value
                     ? colorScheme.secondary
                     : colorScheme.outline,
               ),
               label: Obx(
                 () => Text(
-                  _controller.canSort.value
-                      ? _controller.sortType.value.label
+                  controller.canSort.value
+                      ? controller.sortType.value.label
                       : '排序不可用',
                   style: TextStyle(
                     fontSize: 13,
-                    color: _controller.canSort.value
+                    color: controller.canSort.value
                         ? colorScheme.secondary
                         : colorScheme.outline,
                   ),
@@ -308,7 +322,7 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
     ColorScheme colorScheme,
     LoadingState<List<ReplyInfo>?> loadingState,
   ) {
-    final jumpIndex = _controller.index.value;
+    final jumpIndex = controller.index.value;
     return switch (loadingState) {
       Loading() => const SliverPrototypeExtentList(
         prototypeItem: VideoReplySkeleton(),
@@ -318,12 +332,12 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
         ),
       ),
       Success(:final response!) => SuperSliverList.builder(
-        listController: _controller.listController,
+        listController: controller.listController,
         itemBuilder: (context, index) {
-          if (index == response.length && _controller.canShowFoldEntry) {
-            final foldText = _controller.foldCard.value?.bottomText;
+          if (index == response.length && controller.canShowFoldEntry) {
+            final foldText = controller.foldCard.value?.bottomText;
             return InkWell(
-              onTap: _controller.loadFoldedReplies,
+              onTap: controller.loadFoldedReplies,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
                 child: Row(
@@ -349,14 +363,14 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
             );
           }
           if (index ==
-              response.length + (_controller.canShowFoldEntry ? 1 : 0)) {
-            _controller.onLoadMore();
+              response.length + (controller.canShowFoldEntry ? 1 : 0)) {
+            controller.onLoadMore();
             return Container(
               height: 125,
               alignment: Alignment.center,
               margin: .only(bottom: MediaQuery.viewPaddingOf(context).bottom),
               child: Text(
-                _controller.isEnd ? '没有更多了' : '加载中...',
+                controller.isEnd ? '没有更多了' : '加载中...',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,
@@ -367,15 +381,15 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
           }
           final child = _replyItem(context, response[index], index);
           if (jumpIndex == index) {
-            return _controller.colorAnimWrapper(colorScheme, child);
+            return controller.colorAnimWrapper(colorScheme, child);
           }
           return child;
         },
-        itemCount: response.length + 1 + (_controller.canShowFoldEntry ? 1 : 0),
+        itemCount: response.length + 1 + (controller.canShowFoldEntry ? 1 : 0),
       ),
       Error(:final errMsg) => HttpError(
         errMsg: errMsg,
-        onReload: _controller.onReload,
+        onReload: controller.onReload,
       ),
     };
   }
@@ -402,40 +416,48 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
   }
   Widget _replyItem(BuildContext context, ReplyInfo replyItem, int index) {
     final rpid = replyItem.id;
-    final translated = _controller.translatedReplies[rpid];
+    final translated = controller.translatedReplies[rpid];
     final item = ReplyItemGrpc(
       replyItem: replyItem,
       replyLevel: isDialogue ? 3 : 2,
-      onReply: (replyItem) => _controller.onReply(replyItem, index: index),
-      onDelete: (item, subIndex) => _controller.onRemove(index, item, null),
-      upMid: _controller.upMid,
-      showDialogue: () => MiniScaffold.of(context).showBottomSheet(
-        constraints: const BoxConstraints(),
-        (context) => VideoReplyReplyPanel(
-          oid: replyItem.oid.toInt(),
-          rpid: replyItem.root.toInt(),
-          dialog: replyItem.dialog.toInt(),
-          replyType: widget.replyType,
-          isVideoDetail: true,
-          isNested: widget.isNested,
-        ),
-      ),
-      jumpToDialogue: () {
-        if (!_controller.setIndexById(replyItem.parent)) {
-          SmartDialog.showToast('评论可能已被删除');
-        }
-      },
-      onCheckReply: (item) => _controller.onCheckReply(item, isManual: true),
+      onReply: (replyItem) => controller.onReply(replyItem, index: index),
+      onDelete: (item, subIndex) => controller.onRemove(index, item, subIndex),
+      upMid: controller.upMid,
+      dialogueCallback: isDialogue
+          ? _onJumpToParent
+          : (replyItem) => _showDialogue(context, replyItem),
+      getReplyChain: () => controller.getParentChain(index, firstFloor),
+      onCheckReply: (item) => controller.onCheckReply(item, isManual: true),
       translatedText: translated != null && translated.isNotEmpty
           ? translated
           : null,
       isTranslating: translated != null && translated.isEmpty,
-      onTranslate: () => _controller.translateReply(replyItem),
+      onTranslate: () => controller.translateReply(replyItem),
     );
-    if (!_controller.foldedIds.contains(replyItem.id.toInt())) return item;
+    if (!controller.foldedIds.contains(replyItem.id.toInt())) return item;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [_foldedMark(context), item],
+    );
+  }
+
+  void _onJumpToParent(ReplyInfo replyItem) {
+    if (!controller.setIndexById(replyItem.parent)) {
+      SmartDialog.showToast('评论可能已被删除');
+    }
+  }
+
+  void _showDialogue(BuildContext context, ReplyInfo replyItem) {
+    MiniScaffold.of(context).showBottomSheet(
+      constraints: const BoxConstraints(),
+      (context) => VideoReplyReplyPanel(
+        oid: replyItem.oid.toInt(),
+        rpid: replyItem.root.toInt(),
+        dialog: replyItem.dialog.toInt(),
+        replyType: widget.replyType,
+        isVideoDetail: true,
+        isNested: widget.isNested,
+      ),
     );
   }
 }

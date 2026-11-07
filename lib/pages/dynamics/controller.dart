@@ -138,6 +138,16 @@ class DynamicsController
   }
 
   @override
+  Future<void> showRefresh() {
+    final controller = this.controller;
+    if (controller != null) {
+      singleRefresh();
+      return controller.showRefresh();
+    }
+    return singleRefresh();
+  }
+
+  @override
   void animateToTop() {
     controller?.animateToTop();
     scrollController.animToTop();
@@ -155,9 +165,7 @@ class DynamicsController
         EasyThrottle.throttle(
           'topOrRefresh',
           const Duration(milliseconds: 500),
-          () async {
-            await onRefresh();
-          },
+          showRefresh,
         );
       } else {
         animateToTop();

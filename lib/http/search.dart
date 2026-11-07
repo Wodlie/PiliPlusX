@@ -1,4 +1,5 @@
 import 'package:PiliPlus/http/api.dart';
+import 'package:PiliPlus/http/browser_ua.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/live.dart';
 import 'package:PiliPlus/http/loading_state.dart';
@@ -15,7 +16,6 @@ import 'package:PiliPlus/models_new/video/video_detail/dimension.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/request_identity_adapter.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
-import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/wbi_sign.dart';
 import 'package:dio/dio.dart';
@@ -106,6 +106,7 @@ abstract final class SearchHttp {
           'origin': 'https://search.bilibili.com',
           'referer':
               'https://search.bilibili.com/${params['search_type']}?keyword=${Uri.encodeFull(keyword)}',
+          'user-agent': BrowserUa.pc,
         },
       ),
     );
@@ -115,7 +116,7 @@ abstract final class SearchHttp {
         final Map<String, dynamic> dataData = resData['data'];
         final vVoucher = dataData['v_voucher'];
         if (vVoucher != null) {
-          RequestUtils.validate(vVoucher, onSuccess);
+          // RequestUtils.validate(vVoucher, onSuccess);
           return const Error('触发风控');
         }
         try {

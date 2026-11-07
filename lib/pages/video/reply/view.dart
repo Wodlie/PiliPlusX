@@ -6,11 +6,12 @@ import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
 import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
 import 'package:PiliPlus/common/widgets/sliver/sliver_floating_header.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
-    show ReplyInfo;
+    show ReplyInfo, MainListReply;
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/pages/common/fab_mixin.dart';
+import 'package:PiliPlus/pages/common/reply/reply_footer_mixin.dart';
+import 'package:PiliPlus/pages/common/reply/vote/reply_vote_item.dart';
 import 'package:PiliPlus/pages/video/reply/controller.dart';
-import 'package:PiliPlus/pages/video/reply/vote/reply_vote_item.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:get/get.dart';
@@ -37,9 +38,12 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
         AutomaticKeepAliveClientMixin,
         SingleTickerProviderStateMixin,
         BaseFabMixin,
-        FabMixin {
+        FabMixin,
+        ReplyFooterMixin<VideoReplyPanel, MainListReply> {
+  @override
   late ColorScheme colorScheme;
-  late VideoReplyController _videoReplyController;
+  @override
+  late VideoReplyController controller;
 
   String get heroTag => widget.heroTag;
 
@@ -49,34 +53,29 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
   @override
   void initState() {
     super.initState();
-    _videoReplyController = Get.find<VideoReplyController>(tag: heroTag);
-    if (_videoReplyController.loadingState.value is Loading) {
-      _videoReplyController.queryData();
+    controller = Get.find<VideoReplyController>(tag: heroTag);
+    if (controller.loadingState.value is Loading) {
+      controller.queryData();
     }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _videoReplyController.didChangeDependencies(context);
+    controller.didChangeDependencies(context);
     colorScheme = ColorScheme.of(context);
-    bottom = MediaQuery.viewPaddingOf(context).bottom;
   }
-
-  late double bottom;
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
     return fabAnimWrapper(
       child: refreshIndicator(
-        onRefresh: _videoReplyController.onRefresh,
+        onRefresh: controller.onRefresh,
         isClampingScrollPhysics: widget.isNested,
         child: ScaffoldLayout(
           body: CustomScrollView(
-            controller: widget.isNested
-                ? null
-                : _videoReplyController.scrollController,
+            controller: widget.isNested ? null : controller.scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             key: const PageStorageKey(_VideoReplyPanelState),
             slivers: [
@@ -85,7 +84,7 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                 child: Padding(
                   padding: const .fromLTRB(12, 2.5, 6, 2.5),
                   child: Obx(() {
-                    final sortType = _videoReplyController.sortType.value;
+                    final sortType = controller.sortType.value;
                     return Row(
                       mainAxisAlignment: .spaceBetween,
                       children: [
@@ -95,23 +94,23 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                         ),
                         TextButton.icon(
                           style: Style.buttonStyle,
-                          onPressed: _videoReplyController.canSort.value
-                              ? _videoReplyController.queryBySort
+                          onPressed: controller.canSort.value
+                              ? controller.queryBySort
                               : null,
                           icon: Icon(
                             Icons.sort,
                             size: 16,
-                            color: _videoReplyController.canSort.value
+                            color: controller.canSort.value
                                 ? colorScheme.secondary
                                 : colorScheme.outline,
                           ),
                           label: Text(
-                            _videoReplyController.canSort.value
+                            controller.canSort.value
                                 ? sortType.descShort
                                 : '排序不可用',
                             style: TextStyle(
                               fontSize: 13,
-                              color: _videoReplyController.canSort.value
+                              color: controller.canSort.value
                                   ? colorScheme.secondary
                                   : colorScheme.outline,
                             ),
@@ -125,9 +124,9 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
               Obx(
                 () {
                   // trigger rebuild when translation state changes
-                  _videoReplyController.translatedReplies.length;
+                  controller.translatedReplies.length;
                   return _buildBody(
-                    _videoReplyController.loadingState.value,
+                    controller.loadingState.value,
                   );
                 },
               ),
@@ -138,17 +137,17 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
             child: Padding(
               padding: .only(
                 right: kFloatingActionButtonMargin,
-                bottom: kFloatingActionButtonMargin + bottom,
+                bottom: kFloatingActionButtonMargin + padding.bottom,
               ),
               child: FloatingActionButton(
                 heroTag: null,
                 onPressed: () {
                   feedBack();
-                  _videoReplyController.onReply(
+                  controller.onReply(
                     null,
-                    oid: _videoReplyController.aid,
-                    replyType: _videoReplyController.videoType.replyType,
-                    mentionItem: _videoReplyController.mentionItem,
+                    oid: controller.videoCtr.aid,
+                    replyType: controller.replyType,
+                    mentionItem: controller.mentionItem,
                   );
                 },
                 tooltip: '发表评论',
@@ -173,11 +172,11 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
         );
       case Success(:final response):
         if (response != null && response.isNotEmpty) {
-          final voteCard = _videoReplyController.voteCard;
+          final voteCard = controller.voteCard;
           final hasVote = voteCard != null;
           // 折叠入口与普通分页各自占一个 slot：关闭自动加载折叠回复后，
           // 根评论仍能继续分页，不必先点开折叠内容。
-          final showFoldEntry = _videoReplyController.canShowFoldEntry;
+          final showFoldEntry = controller.canShowFoldEntry;
           final foldIndex = showFoldEntry ? response.length : -1;
           final footerIndex = response.length + (showFoldEntry ? 1 : 0);
           final count = footerIndex + 1 + (hasVote ? 1 : 0);
@@ -192,7 +191,7 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
               }
               if (index == foldIndex) {
                 return InkWell(
-                  onTap: _videoReplyController.loadFoldedReplies,
+                  onTap: controller.loadFoldedReplies,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
                     child: Row(
@@ -200,7 +199,7 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                       children: [
                         Flexible(
                           child: Text(
-                            _videoReplyController.foldText,
+                            controller.foldText,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -224,35 +223,35 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
               }
               final replyItem = response[index];
               final rpid = replyItem.id;
-              final translated = _videoReplyController.translatedReplies[rpid];
+              final translated = controller.translatedReplies[rpid];
               final child = ReplyItemGrpc(
                 replyItem: replyItem,
                 replyLevel: widget.replyLevel,
-                replyReply: _videoReplyController.replyReply,
-                onReply: _videoReplyController.onReply,
+                replyReply: controller.replyReply,
+                onReply: controller.onReply,
                 onDelete: (item, subIndex) =>
-                    _videoReplyController.onRemove(index, item, subIndex),
-                upMid: _videoReplyController.upMid,
+                    controller.onRemove(index, item, subIndex),
+                upMid: controller.upMid,
                 getTag: () => heroTag,
-                onCheckReply: _videoReplyController.onCheckReply,
-                onToggleTop: (item) => _videoReplyController.onToggleTop(
+                onCheckReply: controller.onCheckReply,
+                onToggleTop: (item) => controller.onToggleTop(
                   item,
                   index,
-                  _videoReplyController.aid,
-                  _videoReplyController.videoType.replyType,
+                  controller.videoCtr.aid,
+                  controller.videoType.replyType,
                 ),
                 translatedText: translated != null && translated.isNotEmpty
                     ? translated
                     : null,
                 isTranslating: translated != null && translated.isEmpty,
-                isOfficialFolded: _videoReplyController.foldedIds.contains(
+                isOfficialFolded: controller.foldedIds.contains(
                   rpid.toInt(),
                 ),
                 onTranslate: () =>
-                    _videoReplyController.translateReply(replyItem),
+                    controller.translateReply(replyItem),
               );
-              if (replyItem.id == _videoReplyController.targetRootRpId) {
-                return _videoReplyController.colorAnimWrapper(
+              if (replyItem.id == controller.targetRootRpId) {
+                return controller.colorAnimWrapper(
                   colorScheme,
                   child,
                 );
@@ -263,11 +262,8 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
           );
         }
 
-        final child = HttpError(
-          errMsg: '还没有评论',
-          onReload: _videoReplyController.onReload,
-        );
-        if (_videoReplyController.voteCard case final voteCard?) {
+        final child = emptyWidget();
+        if (controller.voteCard case final voteCard?) {
           return SliverMainAxisGroup(
             slivers: [
               SliverToBoxAdapter(
@@ -281,21 +277,21 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
       case Error(:final errMsg):
         return HttpError(
           errMsg: errMsg,
-          onReload: _videoReplyController.onReload,
+          onReload: controller.onReload,
         );
     }
   }
 
   /// 列表末尾 slot：续页失败时给可操作重试，其余情况照常自动加载。
   Widget _buildReplyFooter(ColorScheme colorScheme) {
-    final errMsg = _videoReplyController.loadMoreError.value;
+    final errMsg = controller.loadMoreError.value;
     if (errMsg != null) {
       return InkWell(
-        onTap: _videoReplyController.onLoadMoreRetry,
+        onTap: controller.onLoadMoreRetry,
         child: Container(
           height: 125,
           alignment: .center,
-          margin: .only(bottom: bottom),
+          margin: .only(bottom: padding.bottom),
           child: Column(
             mainAxisSize: .min,
             children: [
@@ -314,15 +310,15 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
         ),
       );
     }
-    if (!_videoReplyController.isEnd) {
-      _videoReplyController.onLoadMore();
+    if (!controller.isEnd) {
+      controller.onLoadMore();
     }
     return Container(
       height: 125,
       alignment: .center,
-      margin: .only(bottom: bottom),
+      margin: .only(bottom: padding.bottom),
       child: Text(
-        _videoReplyController.isEnd ? '没有更多了' : '加载中...',
+        controller.isEnd ? '没有更多了' : '加载中...',
         textAlign: .center,
         style: TextStyle(fontSize: 12, color: colorScheme.outline),
       ),

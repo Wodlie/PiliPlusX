@@ -1,7 +1,7 @@
 import 'dart:convert' show utf8;
 
 import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
-import 'package:crypto/crypto.dart';
+import 'package:crypto/crypto.dart' show md5;
 
 abstract final class AppSign {
   /// APP 签名：`md5(按键升序拼接的 query + appsec)`。
@@ -43,7 +43,7 @@ abstract final class AppSign {
       result.write(separator);
       separator = '&';
       result.write(Uri.encodeComponent(key));
-      if (value != null && value.isNotEmpty) {
+      if (value != null) {
         result
           ..write('=')
           ..write(Uri.encodeComponent(value));

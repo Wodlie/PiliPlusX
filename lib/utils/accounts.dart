@@ -17,6 +17,8 @@ abstract final class Accounts {
       _AccountLifecycleRegistry();
   static _AccountLifecycleState _state = _AccountLifecycleState.anonymous();
   static bool get mainEqVideo => main == video;
+  static bool get isMainVip => Pref.userInfoCache?.vipStatus == 1;
+  static bool get isVideoVip => main == video ? isMainVip : true;
   static Account get main => get(AccountType.main);
   static Account get video => get(AccountType.video);
   static Account get heartbeat => get(AccountType.heartbeat);
@@ -209,6 +211,9 @@ abstract final class Accounts {
     AccountType.values.length,
     AnonymousAccount(),
   );
+
+  static Future<void> importJsonAccount(Map<String, dynamic> json) =>
+      _AccountLifecycleRegistry.importJsonAccount(json);
 }
 
 final class _AccountLifecycleRegistry extends ListBase<Account> {
@@ -228,6 +233,18 @@ final class _AccountLifecycleRegistry extends ListBase<Account> {
     final nextAccounts = List<Account>.from(Accounts._state.accounts);
     nextAccounts[index] = value;
     Accounts._publish(nextAccounts);
+  }
+
+  static Future<void> importJsonAccount(Map<String, dynamic> json) async {
+    final res = json.map(
+      (key, value) => MapEntry(key, LoginAccount.fromJson(value)),
+    );
+    await Accounts.account.putAll(res);
+    await Accounts.refresh();
+    MineController.anonymity.value = !Accounts.heartbeat.isLogin;
+    if (Accounts.main.isLogin) {
+      await LoginUtils.onLoginMain();
+    }
   }
 }
 

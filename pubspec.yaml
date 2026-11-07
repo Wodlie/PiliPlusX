@@ -21,7 +21,7 @@ version: 1.2.1+5468
 
 environment:
   sdk: ">=3.13.0"
-  flutter: 3.47.7
+  flutter: 3.47.9
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -42,6 +42,7 @@ dependencies:
       url: https://github.com/bggRGjQaUbCoE/audio_service.git
       path: audio_service
       ref: dev
+  audio_service_mpris: ^1.0.0-beta.2
   audio_session:
     git:
       url: https://github.com/bggRGjQaUbCoE/audio_session.git
@@ -63,7 +64,7 @@ dependencies:
     git:
       url: https://github.com/bggRGjQaUbCoE/flutter_cached_network_image_ce.git
       path: cached_network_image
-      ref: 733d4aae9cadaafa9e16f20a6f6a3682c935de01
+      ref: b1597d6d58ad3bc5bcf2d93022bc893add7ce66b
   canvas_danmaku:
     git:
       url: https://github.com/cnctem/canvas_danmaku.git
@@ -86,7 +87,7 @@ dependencies:
   device_info_plus: ^13.1.0
   dio: ^5.9.1
   dio_http2_adapter: ^2.7.1
-  dlna_dart: ^0.1.0
+  dlna_dart: ^0.1.2
   dynamic_color: ^2.1.0
   easy_debounce: ^2.0.3
   encrypt: ^5.0.3
@@ -152,13 +153,14 @@ dependencies:
     git:
       url: https://github.com/bggRGjQaUbCoE/flutter_native_device_orientation.git
       ref: master
+  nm: ^0.5.0
   package_info_plus: ^10.1.0
   path: ^1.9.1
   path_provider: ^2.1.5
   path_provider_platform_interface: ^2.1.3
   permission_handler_android: ^14.0.0
   permission_handler_apple: ^9.4.7
-  permission_handler_platform_interface: ^4.3.0
+  permission_handler_platform_interface: ^4.4.0
   mobile_scanner: ^7.4.0
   pretty_qr_code: ^3.3.0
   protobuf: ^6.0.0
@@ -184,11 +186,10 @@ dependencies:
     git:
       url: https://github.com/wgh136/webdav_client.git
       ref: main
+  webview_all_linux: ^1.4.9
+  webview_platform_interface: ^1.4.9
   win32: ^6.3.0
-  window_manager:
-    git:
-      url: https://github.com/leanflutter/window_manager.git
-      ref: main
+  window_manager: ^0.6.0
 
 dependency_overrides:
   flutter_inappwebview_android:
@@ -240,7 +241,7 @@ dependency_overrides:
     git:
       url: https://github.com/bggRGjQaUbCoE/flutter_cached_network_image_ce.git
       path: cached_network_image
-      ref: 733d4aae9cadaafa9e16f20a6f6a3682c935de01
+      ref: b1597d6d58ad3bc5bcf2d93022bc893add7ce66b
 
 dev_dependencies:
   flutter_test:

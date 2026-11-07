@@ -1,7 +1,7 @@
 import 'package:PiliPlus/common/widgets/colored_box_transition.dart';
 import 'package:PiliPlus/common/widgets/flutter/text_field/controller.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
-    show MainListReply, ReplyInfo, SubjectControl, Mode;
+    show MainListReply, ReplyInfo, SubjectControl, Mode, CursorReply;
 import 'package:PiliPlus/grpc/bilibili/pagination.pb.dart';
 import 'package:PiliPlus/grpc/reply.dart' show ReplyGrpc;
 import 'package:PiliPlus/http/loading_state.dart';
@@ -101,6 +101,9 @@ mixin ReplyLocateMixin<T>
 abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
   ReplyController({int count = -1}) : count = RxInt(count);
 
+  int get oid;
+  int get replyType;
+
   Int64? rootRpId;
   late final RxInt count;
 
@@ -116,13 +119,12 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
   final RxMap<Int64, String> translatedReplies = <Int64, String>{}.obs;
 
   Int64? upMid;
-  Int64? cursorNext;
+  String? nextOffset;
   SubjectControl? subjectControl;
-  FeedPaginationReply? paginationReply;
   late bool hasUpTop = false;
 
   @override
-  bool? get hasFooter => true;
+  bool get hasFooter => true;
 
   // comment antifraud
   late final _enableCommAntifraud = Pref.enableCommAntifraud;
@@ -142,6 +144,9 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
   }
 
   @override
+  bool get endIfNullOrEmpty => false;
+
+  @override
   void checkIsEnd(int length) {
     final count = this.count.value;
     if (count != -1 && length >= count) {
@@ -149,16 +154,25 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
     }
   }
 
+  late final _filterIntro = Pref.filterIntro;
+  String? intro;
+  @pragma('vm:prefer-inline')
+  void _removeIntro(MainListReply data) {
+    final intro = this.intro;
+    if (intro != null &&
+        intro.isNotEmpty &&
+        _filterIntro &&
+        data.replies.isNotEmpty) {
+      data.replies.removeWhere((i) => i.content.message.trim() == intro);
+    }
+  }
+
   @override
   bool customHandleResponse(bool isRefresh, Success<R> response) {
     final data = response.response as MainListReply;
-    cursorNext = data.cursor.next;
-    paginationReply = data.paginationReply;
     count.value = data.subjectControl.count.toInt();
     if (isRefresh) {
-      subjectControl = data.subjectControl;
-      canSort.value = data.subjectControl.switcherType == Int64(1);
-      upMid ??= data.subjectControl.upMid;
+      handleSubjectControl(data.subjectControl);
       if (hasUpTop = data.hasUpTop()) {
         data.replies.insert(0, data.upTop);
       }
@@ -166,8 +180,26 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
         sortType.value = .select;
       }
     }
-    isEnd = data.cursor.isEnd;
+
+    handlePagination(
+      cursor: data.cursor,
+      offset: data.paginationReply.nextOffset,
+    );
+
+    _removeIntro(data);
+
     return false;
+  }
+
+  void handlePagination({required CursorReply cursor, required String offset}) {
+    if (cursor.isEnd || offset.isEmpty || nextOffset == offset) isEnd = true;
+    nextOffset = offset;
+  }
+
+  void handleSubjectControl(SubjectControl control) {
+    subjectControl = control;
+    canSort.value = control.switcherType == Int64(1);
+    upMid ??= control.upMid;
   }
 
   @override
@@ -183,9 +215,8 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
 
   @override
   Future<void> onRefresh() {
-    cursorNext = null;
+    nextOffset = null;
     subjectControl = null;
-    paginationReply = null;
     canSort.value = true;
     ReplyGrpc.clearBlockedReasons();
     return super.onRefresh();

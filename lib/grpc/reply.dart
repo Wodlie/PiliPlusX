@@ -1,7 +1,7 @@
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart';
 import 'package:PiliPlus/grpc/bilibili/pagination.pb.dart';
-import 'package:PiliPlus/grpc/fold_list_req_ext.dart';
+import 'package:PiliPlus/grpc/fold_list_req_ext.dart' as fold_ext;
 import 'package:PiliPlus/grpc/grpc_req.dart';
 import 'package:PiliPlus/grpc/url.dart';
 import 'package:PiliPlus/http/loading_state.dart';
@@ -69,15 +69,17 @@ abstract final class ReplyGrpc {
   //   );
   // }
 
+  static bool _hasGoods(Url url) =>
+      url.hasExtra() &&
+      (url.extra.goodsCmControl == Int64.ONE ||
+          url.extra.hasGoodsItemId() ||
+          url.extra.hasGoodsPrefetchedCache());
+
   // ref BiliRoamingX
-  static bool needRemoveGoodGrpc(ReplyInfo reply) {
+  @pragma('vm:prefer-inline')
+  static bool _needRemoveGoodGrpc(ReplyInfo reply) {
     return (reply.content.urls.isNotEmpty &&
-            reply.content.urls.values.any((url) {
-              return url.hasExtra() &&
-                  (url.extra.goodsCmControl == Int64.ONE ||
-                      url.extra.hasGoodsItemId() ||
-                      url.extra.hasGoodsPrefetchedCache());
-            })) ||
+            reply.content.urls.values.any(_hasGoods)) ||
         reply.content.message.contains(Constants.goodsUrlPrefix);
   }
 
@@ -246,7 +248,7 @@ abstract final class ReplyGrpc {
     }
 
     // Strategy 2: Goods (带货)
-    if (antiGoodsReply && needRemoveGoodGrpc(reply)) {
+    if (antiGoodsReply && _needRemoveGoodGrpc(reply)) {
       return '带货评论';
     }
 
@@ -340,7 +342,7 @@ abstract final class ReplyGrpc {
       checkBlockReason(reply) != null;
 
   static Future<LoadingState<MainListReply>> mainList({
-    int type = 1,
+    required int type,
     required int oid,
     Int64? rpid,
 
@@ -428,14 +430,18 @@ abstract final class ReplyGrpc {
   static void filterMainList(MainListReply response) {
     // UP 置顶评论过滤
     if (response.hasUpTop()) {
-      final reason = checkBlockReason(response.upTop);
+      final topReply = response.upTop;
+      final reason = checkBlockReason(topReply);
       if (reason != null) {
         if (showBlockedReplyBanner) {
-          _blockedReasons[response.upTop.id.toInt()] = reason;
+          _blockedReasons[topReply.id.toInt()] = reason;
           // 不 clearUpTop — 让控制器插入 replies[0]，渲染为横幅
         } else {
           response.clearUpTop(); // 移除模式：保持原行为
         }
+      } else if (!showBlockedReplyBanner && topReply.replies.isNotEmpty) {
+        // 上游 fix filter top reply：置顶评论保留时，其预览子回复同样过滤
+        topReply.replies.removeWhere(needRemoveGrpc);
       }
     }
 
@@ -470,12 +476,13 @@ abstract final class ReplyGrpc {
   }
 
   static Future<LoadingState<DetailListReply>> detailList({
-    int type = 1,
+    required int type,
     required int oid,
     required int root,
     required int rpid,
     required Mode mode,
     required String? offset,
+    Map<Int64, ReplyInfo>? removed,
   }) async {
     final res = await GrpcReq.request(
       GrpcUrl.detailList,
@@ -499,13 +506,21 @@ abstract final class ReplyGrpc {
         }
       }
     } else {
-      res.dataOrNull?.root.replies.removeWhere(needRemoveGrpc);
+      res.dataOrNull?.root.replies.removeWhere(
+        removed == null
+            ? needRemoveGrpc
+            : (i) {
+                final flag = needRemoveGrpc(i);
+                if (flag) removed[i.id] = i;
+                return flag;
+              },
+      );
     }
     return res;
   }
 
   static Future<LoadingState<DialogListReply>> dialogList({
-    int type = 1,
+    required int type,
     required int oid,
     required int root,
     required int dialog,
@@ -540,18 +555,24 @@ abstract final class ReplyGrpc {
   /// 游标来自 DetailListReply.mixed_cards[11].fold.fold_pagination.offset
   /// （见 fold_list_req_ext.dart 的 decodeFoldCardFromUnknown）。
   static Future<LoadingState<FoldListResp>> foldList({
-    int type = 1,
+    required int type,
     required int oid,
-    required String offset,
+    String? offset,
     String extra = '',
+    FeedPagination? pagination,
   }) async {
+    assert(offset != null || pagination != null);
+    FeedPagination? page = pagination;
+    if (page == null && offset != null) {
+      page = FeedPagination(offset: offset);
+    }
     final res = await GrpcReq.request(
       GrpcUrl.foldList,
       FoldListReq(
         oid: Int64(oid),
         type: Int64(type),
         extra: extra,
-        pagination: FeedPagination(offset: offset),
+        pagination: page,
       ),
       FoldListResp.fromBuffer,
     );
@@ -569,11 +590,34 @@ abstract final class ReplyGrpc {
     return res;
   }
 
+  /// fork 的 ReplyFoldMixin 用的是 fold_list_req_ext.dart 里手写的 FoldListResp。
+  /// 上游 2.2.0 已生成同构消息，故复用上面的取数与屏蔽逻辑，只把返回消息按线
+  /// 格式换成 fork 类型，避免两套 FoldList 取数实现逐渐分叉。
+  static Future<LoadingState<fold_ext.FoldListResp>> foldListForMixin({
+    required int type,
+    required int oid,
+    required String offset,
+    String extra = '',
+  }) async {
+    final res = await foldList(
+      type: type,
+      oid: oid,
+      offset: offset,
+      extra: extra,
+    );
+    return switch (res) {
+      Success(:final response) =>
+        Success(fold_ext.FoldListResp.fromBuffer(response.writeToBuffer())),
+      Error(:final errMsg, :final code) => Error(errMsg, code: code),
+      _ => LoadingState.loading(),
+    };
+  }
+
   static Future<LoadingState<SearchItemReply>> searchItem({
     required int page,
     required SearchItemType itemType,
     required int oid,
-    int type = 1,
+    required int type,
     String? keyword,
   }) {
     return GrpcReq.request(

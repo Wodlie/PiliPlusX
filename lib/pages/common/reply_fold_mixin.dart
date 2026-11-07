@@ -2,13 +2,14 @@ import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
     show MainListReply, ReplyInfo;
 import 'package:PiliPlus/grpc/fold_list_req_ext.dart';
 import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/pages/common/reply_controller.dart';
+import 'package:PiliPlus/pages/common/reply/reply_controller.dart';
+import 'package:PiliPlus/pages/common/reply/reply_footer_mixin.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:get/get.dart';
 import 'package:protobuf/protobuf.dart' show GeneratedMessage;
 
 /// Shared state and pagination for official folded replies.
-mixin ReplyFoldMixin<R> on ReplyController<R> {
+mixin ReplyFoldMixin<R> on ReplyController<R> implements ReplyFooterController<R> {
   Rxn<FoldCard> get foldCard;
 
   final foldedIds = <int>{};
@@ -19,6 +20,7 @@ mixin ReplyFoldMixin<R> on ReplyController<R> {
   bool get canShowFoldEntry =>
       !Pref.autoShowFoldedReply && foldCard.value != null && !foldedLoaded;
 
+  @override
   String get foldText {
     final text = foldCard.value?.bottomText;
     return (text != null && text.isNotEmpty) ? text : '已为您过滤部分不友善评论';
@@ -86,6 +88,9 @@ mixin ReplyFoldMixin<R> on ReplyController<R> {
     foldCard.value = null;
     foldRank = 0;
   }
+
+  /// Upstream loadFoldList equivalent (this fork uses the foldedIds model).
+  Future<void> loadFoldList({bool toast = true}) => loadFoldedReplies();
 
   Future<void> loadFoldedReplies() async {
     final card = foldCard.value;

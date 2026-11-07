@@ -1,4 +1,5 @@
 import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/app_device_profile.dart';
@@ -8,6 +9,7 @@ import 'package:PiliPlus/utils/accounts/identity_persistence.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:cookie_jar/cookie_jar.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:hive_ce/hive.dart';
 
 sealed class Account {
@@ -291,7 +293,7 @@ class AnonymousAccount extends Account {
   @override
   final bool isLogin = false;
   @override
-  final DefaultCookieJar cookieJar = DefaultCookieJar()..setBuvid3();
+  final DefaultCookieJar cookieJar = DefaultCookieJar();
   @override
   final String? accessKey = null;
   @override
@@ -311,7 +313,7 @@ class AnonymousAccount extends Account {
   Map<String, String> get grpcHeaders => GrpcHeaders.newHeaders(null, buvid);
 
   @override
-  bool activated = false;
+  bool activated = true;
 
   @override
   Future<void> delete() {
@@ -324,7 +326,41 @@ class AnonymousAccount extends Account {
 
   static final _instance = AnonymousAccount._();
 
-  AnonymousAccount._();
+  AnonymousAccount._() {
+    _getBuvid();
+  }
+
+  Future<void> _getBuvid() async {
+    try {
+      final res = await Request().get(
+        '/x/frontend/finger/spi',
+        options: Options(extra: {'account': const NoAccount()}),
+      );
+      final resData = res.data;
+      if (resData['code'] == 0) {
+        final data = resData['data'];
+        final String b3 = data['b_3'];
+        final String b4 = data['b_4'];
+        final bnut = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+        (cookieJar.domainCookies['bilibili.com'] ??= {
+            '/': {},
+          })['/']!
+          ..['buvid3'] = SerializableCookie(
+            Cookie('buvid3', b3)..setBiliDomain(),
+          )
+          ..['b_nut'] = SerializableCookie(
+            Cookie('b_nut', bnut)..setBiliDomain(),
+          )
+          ..['buvid4'] = SerializableCookie(
+            Cookie('buvid4', b4)..setBiliDomain(),
+          );
+      } else {
+        throw resData;
+      }
+    } catch (_) {
+      cookieJar.setBuvid3();
+    }
+  }
 
   factory AnonymousAccount() => _instance;
 

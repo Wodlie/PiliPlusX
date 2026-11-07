@@ -4,6 +4,7 @@ import 'package:PiliPlus/common/widgets/custom_icon.dart';
 import 'package:PiliPlus/grpc/reply.dart';
 import 'package:PiliPlus/models/common/reply/reply_sort_type.dart';
 import 'package:PiliPlus/pages/setting/models/model.dart';
+import 'package:PiliPlus/pages/setting/widgets/slider_dialog.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -38,14 +39,6 @@ List<SettingsModel> get replySettings => [
     ),
     onTap: _showReplyLengthDialog,
   ),
-  getBanWordModel(
-    title: '评论关键词过滤',
-    key: SettingBoxKey.banWordForReply,
-    onChanged: (value) {
-      ReplyGrpc.replyRegExp = value;
-      ReplyGrpc.enableFilter = value.pattern.isNotEmpty;
-    },
-  ),
   const SwitchModel(
     title: '记录评论',
     leading: Icon(Icons.message_outlined),
@@ -76,6 +69,26 @@ List<SettingsModel> get replySettings => [
     setKey: SettingBoxKey.antiGoodsReply,
     defaultVal: false,
     onChanged: (value) => ReplyGrpc.antiGoodsReply = value,
+  ),
+  const SwitchModel(
+    title: '屏蔽复制简介评论',
+    leading: Icon(Icons.summarize),
+    setKey: SettingBoxKey.filterIntro,
+    defaultVal: false,
+  ),
+  getBanWordModel(
+    title: '评论关键词过滤',
+    key: SettingBoxKey.banWordForReply,
+    onChanged: (value) {
+      ReplyGrpc.replyRegExp = value;
+      ReplyGrpc.enableFilter = value.pattern.isNotEmpty;
+    },
+  ),
+  NormalModel(
+    title: '线程式评论折叠阈值',
+    getSubtitle: () => '当前：「${Pref.foldDepth}」，0为不折叠',
+    leading: const Icon(Icons.compress),
+    onTap: _showReplyDepthDialog,
   ),
   SwitchModel(
     title: '评论区搜索关键词',
@@ -151,4 +164,25 @@ void _showReplyLengthDialog(BuildContext context, VoidCallback setState) {
       ],
     ),
   );
+}
+
+Future<void> _showReplyDepthDialog(
+  BuildContext context,
+  VoidCallback setState,
+) async {
+  final res = await showDialog<double>(
+    context: context,
+    builder: (context) => SliderDialog(
+      title: const Text('线程式评论折叠阈值'),
+      min: 0,
+      max: 18,
+      divisions: 19,
+      precise: 0,
+      value: Pref.foldDepth.toDouble(),
+    ),
+  );
+  if (res != null) {
+    GStorage.setting.put(SettingBoxKey.foldDepth, res.toInt());
+    setState();
+  }
 }

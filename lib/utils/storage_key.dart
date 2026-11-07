@@ -16,6 +16,8 @@ abstract final class SettingBoxKey {
       audioOutput = 'audioOutput',
       bufferSize = 'bufferSize',
       bufferSec = 'bufferSec',
+      liveBufferSize = 'liveBufferSize',
+      liveBufferSec = 'liveBufferSec',
       hardwareDecoding = 'hardwareDecoding',
       videoSync = 'videoSync',
       autosync = 'autosync',
@@ -23,8 +25,6 @@ abstract final class SettingBoxKey {
       enableAutoEnter = 'enableAutoEnter',
       enableAutoExit = 'enableAutoExit',
       enableOnlineTotal = 'enableOnlineTotal',
-      superChatType = 'superChatType',
-      fullScreenSCWidth = 'fullScreenSCWidth',
       keyboardControl = 'keyboardControl',
       pauseOnMinimize = 'pauseOnMinimize',
       pgcSkipType = 'pgcSkipType',
@@ -48,6 +48,7 @@ abstract final class SettingBoxKey {
       enableBackgroundPlay = 'enableBackgroundPlay',
       continuePlayInBackground = 'continuePlayInBackground',
       appRcmd = 'appRcmd',
+      rcmdSource = 'rcmdSource',
       enableSaveLastData = 'enableSaveLastData',
       minDurationForRcmd = 'minDurationForRcmd',
       minPlayForRcmd = 'minPlayForRcmd',
@@ -140,6 +141,7 @@ abstract final class SettingBoxKey {
       showDynActionBar = 'showDynActionBar',
       darkVideoPage = 'darkVideoPage',
       enableSlideVolumeBrightness = 'enableSlideVolumeBrightness',
+      enableScrollVolume = 'enableScrollVolume',
       enableSlideFS = 'enableSlideFS',
       retryCount = 'retryCount',
       retryDelay = 'retryDelay',
@@ -168,6 +170,7 @@ abstract final class SettingBoxKey {
       enableTapDm = 'enableTapDm',
       setSystemBrightness = 'setSystemBrightness',
       downloadPath = 'downloadPath',
+      cachePlayInfo = 'cachePlayInfo',
       imageSavePath = 'imageSavePath',
       followOrderType = 'followOrderType',
       saveImgPath = 'saveImgPath',
@@ -185,7 +188,15 @@ abstract final class SettingBoxKey {
       enableDocProvider = 'enableDocProvider',
       enableEmoteTooltip = 'enableEmoteTooltip',
       mineTabs = 'mineTabs',
-      buvid = 'buvid';
+      buvid = 'buvid',
+      filterIntro = 'filterIntro',
+      showRefreshFAB = 'showRefreshFAB';
+
+  static const String superChatType = 'superChatType',
+      enableFullScreenSC = 'enableFullScreenSC',
+      fullScreenSCOpacity = 'fullScreenSCOpacity',
+      fullScreenSCScale = 'fullScreenSCScale',
+      fullScreenSCWidth = 'fullScreenSCWidth';
 
   static const String minimizeOnExit = 'minimizeOnExit',
       windowSize = 'windowSize',
@@ -265,6 +276,7 @@ abstract final class SettingBoxKey {
       upPanelPosition = 'upPanelPosition',
       dynamicsShowAllFollowedUp = 'dynamicsShowAllFollowedUp',
       useSideBar = 'useSideBar',
+      hideSideBarLabel = 'hideSideBarLabel',
       enableMYBar = 'enableMYBar',
       hideStatusBar = 'hideStatusBar',
       useSystemFont = 'useSystemFont',
@@ -310,6 +322,8 @@ abstract final class SettingBoxKey {
   /// 切换账号、重新登录/导入这些生命周期节点触发。
   static const String accountHealthRecheckIntervalHours =
       'accountHealthRecheckIntervalHours';
+
+  static const String foldDepth = 'foldDepth';
 }
 
 abstract final class LocalCacheKey {

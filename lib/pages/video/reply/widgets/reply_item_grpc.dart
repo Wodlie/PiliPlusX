@@ -116,6 +116,8 @@ class ReplyItemGrpc extends StatefulWidget {
     this.onDelete,
     this.upMid,
     this.showDialogue,
+    this.dialogueCallback,
+    this.getReplyChain,
     this.getTag,
     this.onViewImage,
     this.onCheckReply,
@@ -135,6 +137,13 @@ class ReplyItemGrpc extends StatefulWidget {
   final Function(ReplyInfo replyItem, int? subIndex)? onDelete;
   final Int64? upMid;
   final VoidCallback? showDialogue;
+
+  /// 上游 2.2.0 的对话入口：level 2 打开对话面板，level 3 跳转父评论。
+  /// fork 的 showDialogue/jumpToDialogue 保持可用；两者皆空时按钮禁用。
+  final void Function(ReplyInfo replyItem)? dialogueCallback;
+
+  /// 上游 2.2.0 的「复制整条回复链」取数入口（fork 菜单暂未接线）。
+  final Iterable<ReplyInfo> Function()? getReplyChain;
   final Function? getTag;
   final VoidCallback? onViewImage;
   final ValueChanged<ReplyInfo>? onCheckReply;
@@ -709,7 +718,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
           SizedBox(
             height: 32,
             child: TextButton(
-              onPressed: widget.showDialogue,
+              onPressed: widget.dialogueCallback == null
+                  ? widget.showDialogue
+                  : () => widget.dialogueCallback!(widget.replyItem),
               style: buttonStyle,
               child: Text('查看对话', style: textStyle),
             ),
@@ -720,7 +731,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
           SizedBox(
             height: 32,
             child: TextButton(
-              onPressed: widget.jumpToDialogue,
+              onPressed: widget.dialogueCallback == null
+                  ? widget.jumpToDialogue
+                  : () => widget.dialogueCallback!(widget.replyItem),
               style: buttonStyle,
               child: Text('跳转回复', style: textStyle),
             ),

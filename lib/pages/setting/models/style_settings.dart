@@ -125,6 +125,14 @@ List<SettingsModel> get styleSettings => [
     needReboot: true,
   ),
   const SwitchModel(
+    title: '隐藏侧边栏文字',
+    subtitle: '仅显示图标，减少侧边栏占用宽度',
+    leading: Icon(Icons.label_off_outlined),
+    setKey: SettingBoxKey.hideSideBarLabel,
+    defaultVal: false,
+    needReboot: true,
+  ),
+  const SwitchModel(
     title: '首页显示一键刷新',
     subtitle: '桌面端友好；移动端不建议开启，可点击主菜单栏当前项刷新',
     leading: Icon(Icons.refresh_rounded),
@@ -177,6 +185,14 @@ List<SettingsModel> get styleSettings => [
     defaultVal: false,
     needReboot: true,
   ),
+  if (PlatformUtils.isDesktop)
+    const SwitchModel(
+      title: '首页显示刷新按钮',
+      leading: Icon(Icons.refresh),
+      setKey: SettingBoxKey.showRefreshFAB,
+      defaultVal: true,
+      needReboot: true,
+    ),
   NormalModel(
     title: '页面过渡动画',
     leading: const Icon(Icons.animation),
@@ -823,7 +839,7 @@ void _setDynBadge(DynamicBadgeMode value, VoidCallback setState) {
       .whenComplete(setState);
 }
 
-Future<void> _setMsgBadge(DynamicBadgeMode value, VoidCallback setState) async {
+void _setMsgBadge(DynamicBadgeMode value, VoidCallback setState) {
   final mainController = Get.find<MainController>()..msgBadgeMode = value;
   if (value != DynamicBadgeMode.hidden) {
     mainController.queryUnreadMsg(true);

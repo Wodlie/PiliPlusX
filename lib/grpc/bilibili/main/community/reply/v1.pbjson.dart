@@ -676,6 +676,14 @@ const DetailListReply$json = {
       '6': '.bilibili.main.community.reply.v1.DetailListReply.SubjectTitle',
       '10': 'subjectTitle'
     },
+    {
+      '1': 'mixed_cards',
+      '3': 11,
+      '4': 3,
+      '5': 11,
+      '6': '.bilibili.main.community.reply.v1.MixedCard',
+      '10': 'mixedCards'
+    },
   ],
   '3': [DetailListReply_SubjectTitle$json],
 };
@@ -713,11 +721,12 @@ final $typed_data.Uint8List detailListReplyDescriptor = $convert.base64Decode(
     '5iaWxpYmlsaS5wYWdpbmF0aW9uLkZlZWRQYWdpbmF0aW9uUmVwbHlSD3BhZ2luYXRpb25SZXBs'
     'eRIdCgpzZXNzaW9uX2lkGAkgASgJUglzZXNzaW9uSWQSYwoNc3ViamVjdF90aXRsZRgKIAEoCz'
     'I+LmJpbGliaWxpLm1haW4uY29tbXVuaXR5LnJlcGx5LnYxLkRldGFpbExpc3RSZXBseS5TdWJq'
-    'ZWN0VGl0bGVSDHN1YmplY3RUaXRsZRrOAQoMU3ViamVjdFRpdGxlEhsKCWxlZnRfaWNvbhgBIA'
-    'EoCVIIbGVmdEljb24SFAoFdGl0bGUYAiABKAlSBXRpdGxlEhIKBGxpbmsYAyABKAlSBGxpbmsS'
-    'GwoJcnBpZF9tdXRlGAQgASgDUghycGlkTXV0ZRJaCgtwdXNoX3N3aXRjaBgFIAEoDjI5LmJpbG'
-    'liaWxpLm1haW4uY29tbXVuaXR5LnJlcGx5LnYxLlJlcGx5Tm90aWZpY2F0aW9uU3dpdGNoUgpw'
-    'dXNoU3dpdGNo');
+    'ZWN0VGl0bGVSDHN1YmplY3RUaXRsZRJMCgttaXhlZF9jYXJkcxgLIAMoCzIrLmJpbGliaWxpLm'
+    '1haW4uY29tbXVuaXR5LnJlcGx5LnYxLk1peGVkQ2FyZFIKbWl4ZWRDYXJkcxrOAQoMU3ViamVj'
+    'dFRpdGxlEhsKCWxlZnRfaWNvbhgBIAEoCVIIbGVmdEljb24SFAoFdGl0bGUYAiABKAlSBXRpdG'
+    'xlEhIKBGxpbmsYAyABKAlSBGxpbmsSGwoJcnBpZF9tdXRlGAQgASgDUghycGlkTXV0ZRJaCgtw'
+    'dXNoX3N3aXRjaBgFIAEoDjI5LmJpbGliaWxpLm1haW4uY29tbXVuaXR5LnJlcGx5LnYxLlJlcG'
+    'x5Tm90aWZpY2F0aW9uU3dpdGNoUgpwdXNoU3dpdGNo');
 
 @$core.Deprecated('Use detailListReqDescriptor instead')
 const DetailListReq$json = {
@@ -2122,6 +2131,15 @@ const MixedCard$json = {
       '10': 'question'
     },
     {
+      '1': 'fold',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.bilibili.main.community.reply.v1.FoldCard',
+      '9': 0,
+      '10': 'fold'
+    },
+    {
       '1': 'type',
       '3': 1,
       '4': 1,
@@ -2144,16 +2162,18 @@ const MixedCard_Type$json = {
   '2': [
     {'1': 'UNKNOWN', '2': 0},
     {'1': 'QUESTION', '2': 1},
+    {'1': 'FOLD', '2': 2},
   ],
 };
 
 /// Descriptor for `MixedCard`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List mixedCardDescriptor = $convert.base64Decode(
     'CglNaXhlZENhcmQSTAoIcXVlc3Rpb24YBCABKAsyLi5iaWxpYmlsaS5tYWluLmNvbW11bml0eS'
-    '5yZXBseS52MS5RdWVzdGlvbkNhcmRIAFIIcXVlc3Rpb24SRAoEdHlwZRgBIAEoDjIwLmJpbGli'
-    'aWxpLm1haW4uY29tbXVuaXR5LnJlcGx5LnYxLk1peGVkQ2FyZC5UeXBlUgR0eXBlEhAKA29pZB'
-    'gCIAEoCVIDb2lkEiEKDGRpc3BsYXlfcmFuaxgDIAEoA1ILZGlzcGxheVJhbmsiIQoEVHlwZRIL'
-    'CgdVTktOT1dOEAASDAoIUVVFU1RJT04QAUIGCgRpdGVt');
+    '5yZXBseS52MS5RdWVzdGlvbkNhcmRIAFIIcXVlc3Rpb24SQAoEZm9sZBgFIAEoCzIqLmJpbGli'
+    'aWxpLm1haW4uY29tbXVuaXR5LnJlcGx5LnYxLkZvbGRDYXJkSABSBGZvbGQSRAoEdHlwZRgBIA'
+    'EoDjIwLmJpbGliaWxpLm1haW4uY29tbXVuaXR5LnJlcGx5LnYxLk1peGVkQ2FyZC5UeXBlUgR0'
+    'eXBlEhAKA29pZBgCIAEoCVIDb2lkEiEKDGRpc3BsYXlfcmFuaxgDIAEoA1ILZGlzcGxheVJhbm'
+    'siKwoEVHlwZRILCgdVTktOT1dOEAASDAoIUVVFU1RJT04QARIICgRGT0xEEAJCBgoEaXRlbQ==');
 
 @$core.Deprecated('Use noticeDescriptor instead')
 const Notice$json = {
@@ -2875,6 +2895,21 @@ const ReplyControl$json = {
       '6': '.bilibili.main.community.reply.v1.ReplyControl.InsertEffect',
       '10': 'insertEffect'
     },
+    {
+      '1': 'translation_switch',
+      '3': 37,
+      '4': 1,
+      '5': 14,
+      '6': '.bilibili.main.community.reply.v1.TranslationSwitch',
+      '10': 'translationSwitch'
+    },
+    {
+      '1': 'show_translation',
+      '3': 100,
+      '4': 1,
+      '5': 8,
+      '10': 'showTranslation'
+    },
   ],
   '3': [
     ReplyControl_EasterEggLabel$json,
@@ -2995,18 +3030,21 @@ final $typed_data.Uint8List replyControlDescriptor = $convert.base64Decode(
     'aWxpLm1haW4uY29tbXVuaXR5LnJlcGx5LnYxLlJlcGx5Q29udHJvbC5FYXN0ZXJFZ2dMYWJlbF'
     'IOZWFzdGVyRWdnTGFiZWwSJwoPY29udGV4dF9mZWF0dXJlGCMgASgJUg5jb250ZXh0RmVhdHVy'
     'ZRJgCg1pbnNlcnRfZWZmZWN0GCQgASgLMjsuYmlsaWJpbGkubWFpbi5jb21tdW5pdHkucmVwbH'
-    'kudjEuUmVwbHlDb250cm9sLkluc2VydEVmZmVjdFIMaW5zZXJ0RWZmZWN0GkEKDkVhc3RlckVn'
-    'Z0xhYmVsEhQKBWltYWdlGAEgASgJUgVpbWFnZRIZCghqdW1wX3VybBgCIAEoCVIHanVtcFVybB'
-    'rXAQoLR3JhZGVSZWNvcmQSFAoFc2NvcmUYASABKAVSBXNjb3JlElUKBXRleHRzGAIgAygLMj8u'
-    'YmlsaWJpbGkubWFpbi5jb21tdW5pdHkucmVwbHkudjEuUmVwbHlDb250cm9sLkdyYWRlUmVjb3'
-    'JkLlRleHRSBXRleHRzGlsKBFRleHQSEAoDcmF3GAEgASgJUgNyYXcSQQoFc3R5bGUYAiABKAsy'
-    'Ky5iaWxpYmlsaS5tYWluLmNvbW11bml0eS5yZXBseS52MS5UZXh0U3R5bGVSBXN0eWxlGjwKDE'
-    'luc2VydEVmZmVjdBIYCgdjb250ZW50GAEgASgJUgdjb250ZW50EhIKBGljb24YAiABKAlSBGlj'
-    'b24a8QEKClZvdGVPcHRpb24SYgoKbGFiZWxfa2luZBgBIAEoDjJDLmJpbGliaWxpLm1haW4uY2'
-    '9tbXVuaXR5LnJlcGx5LnYxLlJlcGx5Q29udHJvbC5Wb3RlT3B0aW9uLkxhYmVsS2luZFIJbGFi'
-    'ZWxLaW5kEhIKBGRlc2MYAiABKAlSBGRlc2MSEAoDaWR4GAMgASgDUgNpZHgSFwoHdm90ZV9pZB'
-    'gEIAEoA1IGdm90ZUlkIkAKCUxhYmVsS2luZBIVChFERUZBVUxUX0xhYmVsS2luZBAAEgcKA1JF'
-    'RBABEggKBEJMVUUQAhIJCgVQTEFJThAD');
+    'kudjEuUmVwbHlDb250cm9sLkluc2VydEVmZmVjdFIMaW5zZXJ0RWZmZWN0EmIKEnRyYW5zbGF0'
+    'aW9uX3N3aXRjaBglIAEoDjIzLmJpbGliaWxpLm1haW4uY29tbXVuaXR5LnJlcGx5LnYxLlRyYW'
+    '5zbGF0aW9uU3dpdGNoUhF0cmFuc2xhdGlvblN3aXRjaBIpChBzaG93X3RyYW5zbGF0aW9uGGQg'
+    'ASgIUg9zaG93VHJhbnNsYXRpb24aQQoORWFzdGVyRWdnTGFiZWwSFAoFaW1hZ2UYASABKAlSBW'
+    'ltYWdlEhkKCGp1bXBfdXJsGAIgASgJUgdqdW1wVXJsGtcBCgtHcmFkZVJlY29yZBIUCgVzY29y'
+    'ZRgBIAEoBVIFc2NvcmUSVQoFdGV4dHMYAiADKAsyPy5iaWxpYmlsaS5tYWluLmNvbW11bml0eS'
+    '5yZXBseS52MS5SZXBseUNvbnRyb2wuR3JhZGVSZWNvcmQuVGV4dFIFdGV4dHMaWwoEVGV4dBIQ'
+    'CgNyYXcYASABKAlSA3JhdxJBCgVzdHlsZRgCIAEoCzIrLmJpbGliaWxpLm1haW4uY29tbXVuaX'
+    'R5LnJlcGx5LnYxLlRleHRTdHlsZVIFc3R5bGUaPAoMSW5zZXJ0RWZmZWN0EhgKB2NvbnRlbnQY'
+    'ASABKAlSB2NvbnRlbnQSEgoEaWNvbhgCIAEoCVIEaWNvbhrxAQoKVm90ZU9wdGlvbhJiCgpsYW'
+    'JlbF9raW5kGAEgASgOMkMuYmlsaWJpbGkubWFpbi5jb21tdW5pdHkucmVwbHkudjEuUmVwbHlD'
+    'b250cm9sLlZvdGVPcHRpb24uTGFiZWxLaW5kUglsYWJlbEtpbmQSEgoEZGVzYxgCIAEoCVIEZG'
+    'VzYxIQCgNpZHgYAyABKANSA2lkeBIXCgd2b3RlX2lkGAQgASgDUgZ2b3RlSWQiQAoJTGFiZWxL'
+    'aW5kEhUKEURFRkFVTFRfTGFiZWxLaW5kEAASBwoDUkVEEAESCAoEQkxVRRACEgkKBVBMQUlOEA'
+    'M=');
 
 @$core.Deprecated('Use replyExtraDescriptor instead')
 const ReplyExtra$json = {
@@ -3329,6 +3367,22 @@ const ReplyInfo$json = {
       '10': 'memberV2'
     },
     {'1': 'track_info', '3': 16, '4': 1, '5': 9, '10': 'trackInfo'},
+    {
+      '1': 'translated_content',
+      '3': 17,
+      '4': 1,
+      '5': 11,
+      '6': '.bilibili.main.community.reply.v1.Content',
+      '10': 'translatedContent'
+    },
+    {
+      '1': 'parent_reply_member',
+      '3': 100,
+      '4': 1,
+      '5': 11,
+      '6': '.bilibili.main.community.reply.v1.Member',
+      '10': 'parentReplyMember'
+    },
   ],
 };
 
@@ -3344,8 +3398,11 @@ final $typed_data.Uint8List replyInfoDescriptor = $convert.base64Decode(
     'NvbW11bml0eS5yZXBseS52MS5NZW1iZXJSBm1lbWJlchJTCg1yZXBseV9jb250cm9sGA4gASgL'
     'Mi4uYmlsaWJpbGkubWFpbi5jb21tdW5pdHkucmVwbHkudjEuUmVwbHlDb250cm9sUgxyZXBseU'
     'NvbnRyb2wSRwoJbWVtYmVyX3YyGA8gASgLMiouYmlsaWJpbGkubWFpbi5jb21tdW5pdHkucmVw'
-    'bHkudjEuTWVtYmVyVjJSCG1lbWJlclYyEh0KCnRyYWNrX2luZm8YECABKAlSCXRyYWNrSW5mbw'
-    '==');
+    'bHkudjEuTWVtYmVyVjJSCG1lbWJlclYyEh0KCnRyYWNrX2luZm8YECABKAlSCXRyYWNrSW5mbx'
+    'JYChJ0cmFuc2xhdGVkX2NvbnRlbnQYESABKAsyKS5iaWxpYmlsaS5tYWluLmNvbW11bml0eS5y'
+    'ZXBseS52MS5Db250ZW50UhF0cmFuc2xhdGVkQ29udGVudBJYChNwYXJlbnRfcmVwbHlfbWVtYm'
+    'VyGGQgASgLMiguYmlsaWJpbGkubWFpbi5jb21tdW5pdHkucmVwbHkudjEuTWVtYmVyUhFwYXJl'
+    'bnRSZXBseU1lbWJlcg==');
 
 @$core.Deprecated('Use replyInfoReplyDescriptor instead')
 const ReplyInfoReply$json = {
@@ -4579,3 +4636,147 @@ const WordSearchParam$json = {
 /// Descriptor for `WordSearchParam`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List wordSearchParamDescriptor = $convert.base64Decode(
     'Cg9Xb3JkU2VhcmNoUGFyYW0SHwoLc2hvd25fY291bnQYASABKANSCnNob3duQ291bnQ=');
+
+@$core.Deprecated('Use translateReplyReqDescriptor instead')
+const TranslateReplyReq$json = {
+  '1': 'TranslateReplyReq',
+  '2': [
+    {'1': 'type', '3': 1, '4': 1, '5': 3, '10': 'type'},
+    {'1': 'oid', '3': 2, '4': 1, '5': 3, '10': 'oid'},
+    {'1': 'rpids', '3': 3, '4': 3, '5': 3, '10': 'rpids'},
+  ],
+};
+
+/// Descriptor for `TranslateReplyReq`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List translateReplyReqDescriptor = $convert.base64Decode(
+    'ChFUcmFuc2xhdGVSZXBseVJlcRISCgR0eXBlGAEgASgDUgR0eXBlEhAKA29pZBgCIAEoA1IDb2'
+    'lkEhQKBXJwaWRzGAMgAygDUgVycGlkcw==');
+
+@$core.Deprecated('Use translateReplyRespDescriptor instead')
+const TranslateReplyResp$json = {
+  '1': 'TranslateReplyResp',
+  '2': [
+    {
+      '1': 'translated_replies',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6':
+          '.bilibili.main.community.reply.v1.TranslateReplyResp.TranslatedRepliesEntry',
+      '10': 'translatedReplies'
+    },
+  ],
+  '3': [TranslateReplyResp_TranslatedRepliesEntry$json],
+};
+
+@$core.Deprecated('Use translateReplyRespDescriptor instead')
+const TranslateReplyResp_TranslatedRepliesEntry$json = {
+  '1': 'TranslatedRepliesEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 3, '10': 'key'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.bilibili.main.community.reply.v1.ReplyInfo',
+      '10': 'value'
+    },
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `TranslateReplyResp`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List translateReplyRespDescriptor = $convert.base64Decode(
+    'ChJUcmFuc2xhdGVSZXBseVJlc3ASegoSdHJhbnNsYXRlZF9yZXBsaWVzGAEgAygLMksuYmlsaW'
+    'JpbGkubWFpbi5jb21tdW5pdHkucmVwbHkudjEuVHJhbnNsYXRlUmVwbHlSZXNwLlRyYW5zbGF0'
+    'ZWRSZXBsaWVzRW50cnlSEXRyYW5zbGF0ZWRSZXBsaWVzGnEKFlRyYW5zbGF0ZWRSZXBsaWVzRW'
+    '50cnkSEAoDa2V5GAEgASgDUgNrZXkSQQoFdmFsdWUYAiABKAsyKy5iaWxpYmlsaS5tYWluLmNv'
+    'bW11bml0eS5yZXBseS52MS5SZXBseUluZm9SBXZhbHVlOgI4AQ==');
+
+@$core.Deprecated('Use foldCardDescriptor instead')
+const FoldCard$json = {
+  '1': 'FoldCard',
+  '2': [
+    {'1': 'bottom_text', '3': 1, '4': 1, '5': 9, '10': 'bottomText'},
+    {
+      '1': 'fold_pagination',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.bilibili.pagination.FeedPagination',
+      '10': 'foldPagination'
+    },
+  ],
+};
+
+/// Descriptor for `FoldCard`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List foldCardDescriptor = $convert.base64Decode(
+    'CghGb2xkQ2FyZBIfCgtib3R0b21fdGV4dBgBIAEoCVIKYm90dG9tVGV4dBJMCg9mb2xkX3BhZ2'
+    'luYXRpb24YAiABKAsyIy5iaWxpYmlsaS5wYWdpbmF0aW9uLkZlZWRQYWdpbmF0aW9uUg5mb2xk'
+    'UGFnaW5hdGlvbg==');
+
+@$core.Deprecated('Use foldListReqDescriptor instead')
+const FoldListReq$json = {
+  '1': 'FoldListReq',
+  '2': [
+    {'1': 'oid', '3': 1, '4': 1, '5': 3, '10': 'oid'},
+    {'1': 'type', '3': 2, '4': 1, '5': 3, '10': 'type'},
+    {'1': 'extra', '3': 3, '4': 1, '5': 9, '10': 'extra'},
+    {
+      '1': 'pagination',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.bilibili.pagination.FeedPagination',
+      '10': 'pagination'
+    },
+  ],
+};
+
+/// Descriptor for `FoldListReq`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List foldListReqDescriptor = $convert.base64Decode(
+    'CgtGb2xkTGlzdFJlcRIQCgNvaWQYASABKANSA29pZBISCgR0eXBlGAIgASgDUgR0eXBlEhQKBW'
+    'V4dHJhGAMgASgJUgVleHRyYRJDCgpwYWdpbmF0aW9uGAQgASgLMiMuYmlsaWJpbGkucGFnaW5h'
+    'dGlvbi5GZWVkUGFnaW5hdGlvblIKcGFnaW5hdGlvbg==');
+
+@$core.Deprecated('Use foldListRespDescriptor instead')
+const FoldListResp$json = {
+  '1': 'FoldListResp',
+  '2': [
+    {
+      '1': 'replies',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.bilibili.main.community.reply.v1.ReplyInfo',
+      '10': 'replies'
+    },
+    {
+      '1': 'pagination_reply',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.bilibili.pagination.FeedPaginationReply',
+      '10': 'paginationReply'
+    },
+    {'1': 'title', '3': 3, '4': 1, '5': 9, '10': 'title'},
+    {
+      '1': 'subject_control',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.bilibili.main.community.reply.v1.SubjectControl',
+      '10': 'subjectControl'
+    },
+  ],
+};
+
+/// Descriptor for `FoldListResp`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List foldListRespDescriptor = $convert.base64Decode(
+    'CgxGb2xkTGlzdFJlc3ASRQoHcmVwbGllcxgBIAMoCzIrLmJpbGliaWxpLm1haW4uY29tbXVuaX'
+    'R5LnJlcGx5LnYxLlJlcGx5SW5mb1IHcmVwbGllcxJTChBwYWdpbmF0aW9uX3JlcGx5GAIgASgL'
+    'MiguYmlsaWJpbGkucGFnaW5hdGlvbi5GZWVkUGFnaW5hdGlvblJlcGx5Ug9wYWdpbmF0aW9uUm'
+    'VwbHkSFAoFdGl0bGUYAyABKAlSBXRpdGxlElkKD3N1YmplY3RfY29udHJvbBgEIAEoCzIwLmJp'
+    'bGliaWxpLm1haW4uY29tbXVuaXR5LnJlcGx5LnYxLlN1YmplY3RDb250cm9sUg5zdWJqZWN0Q2'
+    '9udHJvbA==');

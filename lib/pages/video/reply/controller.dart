@@ -1,15 +1,15 @@
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
     show MainListReply, ReplyInfo;
 import 'package:PiliPlus/grpc/fold_list_req_ext.dart';
+import 'package:PiliPlus/models/common/video/video_type.dart';
 import 'package:PiliPlus/grpc/reply.dart';
 import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/models/common/video/video_type.dart';
 import 'package:PiliPlus/models_new/dynamic/dyn_mention/item.dart';
-import 'package:PiliPlus/pages/common/reply_controller.dart';
+import 'package:PiliPlus/pages/common/reply/reply_controller.dart';
 import 'package:PiliPlus/pages/common/reply_fold_mixin.dart';
+import 'package:PiliPlus/pages/common/reply/vote/reply_vote_mixin.dart';
 import 'package:PiliPlus/pages/common/root_reply_controller.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
-import 'package:PiliPlus/pages/video/reply/vote/reply_vote_mixin.dart';
 import 'package:PiliPlus/pages/video/reply_reply/view.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/reply_scheme_helper.dart';
@@ -25,13 +25,22 @@ class VideoReplyController extends RootReplyController
         ReplyLocateMixin<MainListReply>,
         MainReplyLocateMixin {
   VideoReplyController({
-    required this.aid,
-    required this.videoType,
+    this.aid,
+    this.videoType,
     required this.heroTag,
   });
-  int aid;
-  final VideoType videoType;
-  late final isPugv = videoType == VideoType.pugv;
+  /// Optional overrides kept for tests and pre-merge call sites;
+  /// the live path reads them from [videoCtr].
+  final int? aid;
+  final VideoType? videoType;
+
+  late final isPugv = (videoType ?? videoCtr.videoType) == .pugv;
+
+  @override
+  int get oid => aid ?? (isPugv ? videoCtr.epId! : videoCtr.aid);
+
+  @override
+  int get replyType => videoCtr.videoType.replyType;
 
   final String heroTag;
   late final videoCtr = Get.find<VideoDetailController>(tag: heroTag);
@@ -48,10 +57,10 @@ class VideoReplyController extends RootReplyController
   }
 
   @override
-  int get rootOid => isPugv ? videoCtr.epId! : aid;
+  int get rootOid => isPugv ? videoCtr.epId! : videoCtr.aid;
 
   @override
-  int get rootReplyType => videoType.replyType;
+  int get rootReplyType => (videoType ?? videoCtr.videoType).replyType;
 
   // ===== 官方折叠评论（根评论区）：mixed_cards[27] -> FoldCard -> Reply/FoldList =====
   // 折叠卡的解码、状态与拉取流程在 ReplyFoldMixin 里（与楼中楼共用同一套），
@@ -61,8 +70,8 @@ class VideoReplyController extends RootReplyController
 
   @override
   Future<LoadingState<FoldListResp>> fetchFoldList(String offset) =>
-      ReplyGrpc.foldList(
-        type: videoType.replyType,
+      ReplyGrpc.foldListForMixin(
+        type: videoCtr.videoType.replyType,
         oid: rootOid,
         offset: offset,
       );
@@ -84,7 +93,7 @@ class VideoReplyController extends RootReplyController
   }
 
   @override
-  dynamic get sourceId => IdUtils.av2bv(aid);
+  dynamic get sourceId => IdUtils.av2bv(videoCtr.aid);
 
   @override
   void onAnimRootReply(ReplyInfo rootReply) {

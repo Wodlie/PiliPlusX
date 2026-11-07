@@ -8,6 +8,7 @@ import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/login.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
+import 'package:PiliPlus/models/login/captcha_config.dart';
 import 'package:PiliPlus/models/login/model.dart';
 import 'package:PiliPlus/pages/login/geetest/geetest_webview_dialog.dart';
 import 'package:PiliPlus/utils/accounts.dart';
@@ -19,6 +20,7 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, visibleForTesting;
+import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -96,6 +98,8 @@ class LoginPageController extends GetxController
   void _clearLoginSessionIdentity() {
     _loginSessionIdentity = null;
   }
+
+  bool _isVerifyingCaptcha = false;
 
   @override
   void onInit() {
@@ -178,24 +182,78 @@ class LoginPageController extends GetxController
   }
 
   // 申请极验验证码
-  void getCaptcha(
+  Future<void> getCaptcha(
     String geeGt,
     String geeChallenge,
-    VoidCallback onSuccess,
-  ) {
-    GeetestWebviewDialog.geetest(geeGt, geeChallenge).then((res) {
-      if (res != null) {
-        captchaData
-          ..validate = res['geetest_validate']
-          ..seccode = res['geetest_seccode']
-          ..geetest = GeetestData(
-            challenge: res['geetest_challenge'],
-            gt: geeGt,
-          );
-        SmartDialog.showToast('验证成功');
-        onSuccess();
+    VoidCallback onSuccess, {
+    bool canRefreshRegistration = false,
+  }) async {
+    if (_isVerifyingCaptcha || isClosed) return;
+    _isVerifyingCaptcha = true;
+    var succeeded = false;
+    try {
+      captchaData
+        ..validate = null
+        ..seccode = null
+        ..geetest = null;
+      LoginCaptcha session = (
+        gt: geeGt,
+        challenge: geeChallenge,
+        token: captchaData.token,
+      );
+      if (Platform.isIOS && canRefreshRegistration) {
+        // Only SMS verification supports a new registration from preCapture.
+        final resolved = await resolveLoginCaptcha(
+          session,
+          isUnavailable: LoginHttp.isGeetestConfigUnavailable,
+          refresh: () async {
+            if (isClosed) return null;
+            final res = await LoginHttp.preCapture();
+            return res['status'] == true
+                ? parseLoginCaptcha(res['data'])
+                : null;
+          },
+        );
+        if (isClosed) return;
+        if (resolved == null) {
+          SmartDialog.showToast('验证码服务暂时不可用，请稍后重试或使用扫码登录');
+          return;
+        }
+        session = resolved;
       }
-    });
+
+      final res = await GeetestWebviewDialog.geetest(
+        session.gt,
+        session.challenge,
+      );
+      if (res == null || isClosed) return;
+      final validate = res['geetest_validate'];
+      final seccode = res['geetest_seccode'];
+      final challenge = res['geetest_challenge'];
+      if (validate is! String ||
+          validate.isEmpty ||
+          seccode is! String ||
+          seccode.isEmpty ||
+          challenge is! String ||
+          challenge.isEmpty) {
+        SmartDialog.showToast('验证结果不完整，请重试');
+        return;
+      }
+      captchaData
+        ..token = session.token
+        ..validate = validate
+        ..seccode = seccode
+        ..geetest = GeetestData(challenge: challenge, gt: session.gt);
+      succeeded = true;
+      SmartDialog.showToast('验证成功');
+    } catch (_) {
+      if (!isClosed) {
+        SmartDialog.showToast('加载验证码失败，请稍后重试或使用扫码登录');
+      }
+    } finally {
+      _isVerifyingCaptcha = false;
+    }
+    if (succeeded && !isClosed) onSuccess();
   }
 
   static String validateCookie(String cookie) {
@@ -324,21 +382,10 @@ class LoginPageController extends GetxController
         showDialog(
           context: Get.context!,
           builder: (context) => AlertDialog(
-            titlePadding: const EdgeInsets.only(
-              left: 16,
-              top: 18,
-              right: 16,
-              bottom: 12,
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-            actionsPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
-            title: const Text(
-              "本次登录需要验证您的手机号",
-              textAlign: TextAlign.center,
-            ),
+            titlePadding: const .only(left: 16, top: 18, right: 16, bottom: 12),
+            contentPadding: const .symmetric(horizontal: 16),
+            actionsPadding: const .symmetric(horizontal: 16, vertical: 12),
+            title: const Text("本次登录需要验证您的手机号", textAlign: .center),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -378,6 +425,7 @@ class LoginPageController extends GetxController
                       "获取验证码失败，请尝试其它登录方式\n"
                       "(${preCaptureRes['code']}) ${preCaptureRes['msg']} ${preCaptureRes['data']}",
                     );
+                    return;
                   }
                   String geeGt = preCaptureRes['data']['gee_gt'];
                   String geeChallenge = preCaptureRes['data']['gee_challenge'];
@@ -397,7 +445,7 @@ class LoginPageController extends GetxController
                       final safeCenterSendSmsCodeRes =
                           await LoginHttp.safeCenterSmsCode(
                             tmpCode: currentUri.queryParameters['tmp_token']!,
-                            geeChallenge: geeChallenge,
+                            geeChallenge: captchaData.geetest?.challenge,
                             geeSeccode: captchaData.seccode,
                             geeValidate: captchaData.validate,
                             recaptchaToken: captchaData.token,
@@ -414,6 +462,7 @@ class LoginPageController extends GetxController
                       captchaKey =
                           safeCenterSendSmsCodeRes['data']['captcha_key'];
                     },
+                    canRefreshRegistration: true,
                   );
                 },
               ),
@@ -474,7 +523,9 @@ class LoginPageController extends GetxController
                     );
                     return;
                   }
+                  Get.back();
                   SmartDialog.showToast('正在保存身份信息');
+                  TextInput.finishAutofillContext();
                   await setAccount(
                     data['token_info'],
                     data['cookie_info']['cookies'],
@@ -483,9 +534,7 @@ class LoginPageController extends GetxController
                     // 可能留下的 android_i。
                     profile: AppDeviceProfiles.android,
                   );
-                  Get
-                    ..back()
-                    ..back();
+                  Get.back();
                 },
                 child: const Text("确认"),
               ),
@@ -503,6 +552,7 @@ class LoginPageController extends GetxController
         return;
       }
       SmartDialog.showToast('正在保存身份信息');
+      TextInput.finishAutofillContext();
       await setAccount(
         data['token_info'],
         data['cookie_info']['cookies'],
@@ -732,7 +782,12 @@ class LoginPageController extends GetxController
             return;
           }
 
-          getCaptcha(geeGt!, geeChallenge!, sendSmsCode);
+          getCaptcha(
+            geeGt!,
+            geeChallenge!,
+            sendSmsCode,
+            canRefreshRegistration: true,
+          );
           break;
         default:
           // 这里也会收到 86104「请使用其它方式注册或登录」——那是号码/账号层面的拒绝
@@ -817,12 +872,11 @@ class LoginPageController extends GetxController
     }
   }
 
-  static Future<void>? switchAccountDialog(BuildContext context) {
-    if (Accounts.account.isEmpty) {
-      SmartDialog.showToast('请先登录');
-      return Get.toNamed('/loginPage');
-    }
-    final colorScheme = ColorScheme.of(context);
+  static Future<void>? switchAccountDialog(BuildContext parentContext) {
+    // if (Accounts.account.isEmpty) {
+    //   SmartDialog.showToast('请先登录');
+    //   return Get.toNamed('/loginPage');
+    // }
     final selectAccount = List.of(Accounts.accountMode);
     final useDisplayName = Pref.accountDisplayName;
     final options = {
@@ -836,130 +890,137 @@ class LoginPageController extends GetxController
     };
     bool quickSelect = selectAccount.every((e) => e == selectAccount.first);
     return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          crossAxisAlignment: .start,
-          mainAxisAlignment: .spaceBetween,
-          children: [
-            Text.rich(
-              style: const TextStyle(height: 1.5),
-              TextSpan(
-                children: [
-                  const TextSpan(text: '账号切换'),
-                  TextSpan(
-                    text: '\nmid为0时使用匿名',
-                    style: TextStyle(fontSize: 14, color: colorScheme.outline),
-                  ),
-                ],
-              ),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(
-                visualDensity: .compact,
-                tapTargetSize: .shrinkWrap,
-              ),
-              onPressed: () {
-                quickSelect = !quickSelect;
-                (context as Element).markNeedsBuild();
-              },
-              child: Text(quickSelect ? '详细' : '快速'),
-            ),
-          ],
-        ),
-        titlePadding: const .only(left: 22, top: 16, right: 22, bottom: 3),
-        contentPadding: const .symmetric(vertical: 5),
-        actionsPadding: const .only(left: 8, right: 16, bottom: 10),
-        actionsAlignment: MainAxisAlignment.spaceBetween,
-        content: SingleChildScrollView(
-          child: AnimatedSize(
-            curve: Curves.easeIn,
-            alignment: .topCenter,
-            duration: const Duration(milliseconds: 200),
-            child: quickSelect
-                ? Builder(
-                    builder: (context) => RadioGroup<Account>(
-                      groupValue: selectAccount[0],
-                      onChanged: (v) {
-                        selectAccount.fillRange(0, selectAccount.length, v);
-                        (context as Element).markNeedsBuild();
-                      },
-                      child: Column(
-                        crossAxisAlignment: .start,
-                        children: options.entries
-                            .map(
-                              (entry) => RadioWidget<Account>(
-                                value: entry.key,
-                                title: entry.value,
-                                mainAxisSize: .max,
-                                padding: PlatformUtils.isDesktop
-                                    ? const .only(left: 12)
-                                    : const .only(left: 12, top: 2, bottom: 2),
-                              ),
-                            )
-                            .toList(),
+      context: parentContext,
+      builder: (context) {
+        final colorScheme = ColorScheme.of(context);
+        return AlertDialog(
+          title: Row(
+            crossAxisAlignment: .start,
+            children: [
+              Text.rich(
+                style: const TextStyle(height: 1.5),
+                TextSpan(
+                  children: [
+                    const TextSpan(text: '账号切换'),
+                    TextSpan(
+                      text: '\nmid为0时使用匿名',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colorScheme.outline,
                       ),
                     ),
-                  )
-                : Column(
-                    crossAxisAlignment: .start,
-                    children: AccountType.values
-                        .map(
-                          (e) => Builder(
-                            builder: (context) => RadioGroup<Account>(
-                              groupValue: selectAccount[e.index],
-                              onChanged: (v) {
-                                selectAccount[e.index] = v!;
-                                (context as Element).markNeedsBuild();
-                              },
-                              child: WrapRadioOptionsGroup<Account>(
-                                groupTitle: e.title,
-                                options: options,
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Get.back();
-              Get.toNamed('/loginPage');
-            },
-            child: const Text('登录新账号'),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextButton(
-                onPressed: Get.back,
-                child: Text(
-                  '取消',
-                  style: TextStyle(color: ColorScheme.of(context).outline),
+                  ],
                 ),
               ),
+              const Spacer(),
               TextButton(
+                style: TextButton.styleFrom(
+                  visualDensity: .compact,
+                  tapTargetSize: .shrinkWrap,
+                ),
                 onPressed: () {
+                  quickSelect = !quickSelect;
+                  (context as Element).markNeedsBuild();
+                },
+                child: Text(quickSelect ? '详细' : '快速'),
+              ),
+              IconButton(
+                visualDensity: .compact,
+                tooltip: '登录',
+                onPressed: () async {
                   Get.back();
-                  for (final type in AccountType.values) {
-                    final index = type.index;
-                    final account = quickSelect
-                        ? selectAccount.first
-                        : selectAccount[index];
-                    if (account != Accounts.accountMode[index]) {
-                      Accounts.set(type, account);
-                    }
+                  await Get.toNamed('/loginPage');
+                  if (parentContext.mounted) {
+                    switchAccountDialog(parentContext);
                   }
                 },
-                child: const Text('确定'),
+                iconSize: 18,
+                icon: Icon(Icons.login_outlined, color: colorScheme.secondary),
               ),
             ],
           ),
-        ],
-      ),
+          titlePadding: const .only(left: 22, top: 16, right: 22, bottom: 3),
+          contentPadding: const .symmetric(vertical: 5),
+          actionsPadding: const .only(left: 16, right: 16, bottom: 10),
+          content: SingleChildScrollView(
+            child: AnimatedSize(
+              curve: Curves.easeIn,
+              alignment: .topCenter,
+              duration: const Duration(milliseconds: 200),
+              child: quickSelect
+                  ? Builder(
+                      builder: (context) => RadioGroup<Account>(
+                        groupValue: selectAccount[0],
+                        onChanged: (v) {
+                          selectAccount.fillRange(0, selectAccount.length, v);
+                          (context as Element).markNeedsBuild();
+                        },
+                        child: Column(
+                          crossAxisAlignment: .start,
+                          children: options.entries
+                              .map(
+                                (entry) => RadioWidget<Account>(
+                                  value: entry.key,
+                                  title: entry.value,
+                                  mainAxisSize: .max,
+                                  padding: PlatformUtils.isDesktop
+                                      ? const .only(left: 12)
+                                      : const .only(
+                                          left: 12,
+                                          top: 2,
+                                          bottom: 2,
+                                        ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: .start,
+                      children: AccountType.values
+                          .map(
+                            (e) => Builder(
+                              builder: (context) => RadioGroup<Account>(
+                                groupValue: selectAccount[e.index],
+                                onChanged: (v) {
+                                  selectAccount[e.index] = v!;
+                                  (context as Element).markNeedsBuild();
+                                },
+                                child: WrapRadioOptionsGroup<Account>(
+                                  groupTitle: e.title,
+                                  options: options,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: Get.back,
+              child: Text('取消', style: TextStyle(color: colorScheme.outline)),
+            ),
+            TextButton(
+              onPressed: () {
+                Get.back();
+                for (final type in AccountType.values) {
+                  final index = type.index;
+                  final account = quickSelect
+                      ? selectAccount.first
+                      : selectAccount[index];
+                  if (account != Accounts.accountMode[index]) {
+                    Accounts.set(type, account);
+                  }
+                }
+              },
+              child: const Text('确定'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

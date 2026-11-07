@@ -44,8 +44,6 @@ import 'package:PiliPlus/utils/mobile_observer.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/share_utils.dart';
-import 'package:PiliPlus/utils/storage.dart';
-import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
@@ -69,6 +67,7 @@ class LiveRoomPage extends StatefulWidget {
 class _LiveRoomPageState extends State<LiveRoomPage>
     with WidgetsBindingObserver, RouteAware, RouteAwareMixin {
   late final fullScreenSCWidth = Pref.fullScreenSCWidth;
+  PlayOwner get _playOwner => (tag: heroTag, type: null);
   final String heroTag = Utils.generateRandomString(6);
   late final LiveRoomController _liveRoomController;
   late final PlPlayerController plPlayerController;
@@ -89,10 +88,17 @@ class _LiveRoomPageState extends State<LiveRoomPage>
     );
     plPlayerController = _liveRoomController.plPlayerController
       ..addStatusLister(playerListener);
-    PlPlayerController.setPlayCallBack(plPlayerController.play);
+    _setPlayCallBack();
     if (plPlayerController.removeSafeArea) {
       hideSystemBar();
     }
+  }
+
+  void _setPlayCallBack() {
+    PlPlayerController.setPlayCallBack(
+      plPlayerController.play,
+      playOwner: _playOwner,
+    );
   }
 
   @override
@@ -114,16 +120,32 @@ class _LiveRoomPageState extends State<LiveRoomPage>
     plPlayerController.screenRatio = maxHeight / maxWidth;
   }
 
+  void _onPushPopupRoute() {
+    _liveRoomController.isPlaying = plPlayerController.playerStatus.isPlaying;
+  }
+
+  void _onPopPopupRoute() {
+    if (!mounted) return;
+    if (PlPlayerController.playOwner != _playOwner) {
+      _onPopNext();
+    }
+  }
+
   @override
-  Future<void> didPopNext() async {
+  void didPopNext() {
     addObserverMobile(this);
+    _onPopNext();
+    super.didPopNext();
+  }
+
+  Future<void> _onPopNext() async {
     if (!plPlayerController.isLive) {
       plPlayerController.isLive = true;
       _liveRoomController.isLoaded.refresh();
     }
     plPlayerController.danmakuController =
         _liveRoomController.danmakuController;
-    PlPlayerController.setPlayCallBack(plPlayerController.play);
+    _setPlayCallBack();
     _liveRoomController.startLiveTimer();
     if (plPlayerController.playerStatus.isPlaying &&
         plPlayerController.cid == null) {
@@ -141,7 +163,6 @@ class _LiveRoomPageState extends State<LiveRoomPage>
     }
     if (!mounted) return;
     plPlayerController.addStatusLister(playerListener);
-    super.didPopNext();
   }
 
   @override
@@ -249,7 +270,9 @@ class _LiveRoomPageState extends State<LiveRoomPage>
     Alignment alignment = Alignment.center,
     bool needDm = true,
   }) {
-    if (!isFullScreen && !plPlayerController.isDesktopPip) {
+    if (_liveRoomController.enableFSSC &&
+        !isFullScreen &&
+        !plPlayerController.isDesktopPip) {
       _liveRoomController.fsSC.value = null;
     }
     _liveRoomController.isFullScreen = isFullScreen;
@@ -295,6 +318,7 @@ class _LiveRoomPageState extends State<LiveRoomPage>
       },
     );
     if (_liveRoomController.showSuperChat &&
+        _liveRoomController.enableFSSC &&
         (isFullScreen || plPlayerController.isDesktopPip)) {
       player = Stack(
         clipBehavior: Clip.none,
@@ -335,7 +359,7 @@ class _LiveRoomPageState extends State<LiveRoomPage>
                 return const SizedBox.shrink();
               }
               try {
-                return ExtraHitTestStack(
+                Widget child = ExtraHitTestStack(
                   key: ValueKey(item.id),
                   clipBehavior: Clip.none,
                   children: [
@@ -358,6 +382,20 @@ class _LiveRoomPageState extends State<LiveRoomPage>
                     ),
                   ],
                 );
+                if (_liveRoomController.fsSCOpacity != 1.0) {
+                  child = Opacity(
+                    opacity: _liveRoomController.fsSCOpacity,
+                    child: child,
+                  );
+                }
+                if (_liveRoomController.fsSCScale != 1.0) {
+                  child = Transform.scale(
+                    alignment: .bottomLeft,
+                    scale: _liveRoomController.fsSCScale,
+                    child: child,
+                  );
+                }
+                return child;
               } catch (_) {
                 if (kDebugMode) rethrow;
                 return const SizedBox.shrink();
@@ -521,6 +559,7 @@ class _LiveRoomPageState extends State<LiveRoomPage>
 
   void _showRank() {
     if (_liveRoomController.ruid case final ruid?) {
+      _onPushPopupRoute();
       final heightFactor = PlatformUtils.isMobile && !isPortrait ? 1.0 : 0.7;
       showModalBottomSheet(
         context: context,
@@ -536,7 +575,7 @@ class _LiveRoomPageState extends State<LiveRoomPage>
             roomId: _liveRoomController.roomId,
           ),
         ),
-      );
+      ).whenComplete(_onPopPopupRoute);
     }
   }
 
@@ -712,7 +751,11 @@ class _LiveRoomPageState extends State<LiveRoomPage>
           Container(
             width: width,
             height: height,
-            margin: EdgeInsets.only(bottom: padding.bottom),
+            // 全屏时容器已经铺满，再留 padding.bottom 会顶掉一截视频高度，
+            // 表现为底部一条黑边（顶部没有）。全屏应直接铺到边缘。
+            margin: isFullScreen
+                ? EdgeInsets.zero
+                : EdgeInsets.only(bottom: padding.bottom),
             child: videoPlayerPanel(
               isFullScreen,
               fill: Colors.transparent,
@@ -797,17 +840,7 @@ class _LiveRoomPageState extends State<LiveRoomPage>
                       height: 34,
                       child: IconButton(
                         style: IconButton.styleFrom(padding: .zero),
-                        onPressed: () {
-                          final newVal = !enableShowLiveDanmaku;
-                          plPlayerController.enableShowLiveDanmaku.value =
-                              newVal;
-                          if (!plPlayerController.tempPlayerConf) {
-                            GStorage.setting.put(
-                              SettingBoxKey.enableShowLiveDanmaku,
-                              newVal,
-                            );
-                          }
-                        },
+                        onPressed: _liveRoomController.toggleDanmaku,
                         icon: enableShowLiveDanmaku
                             ? const Icon(
                                 size: 22,

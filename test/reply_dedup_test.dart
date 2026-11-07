@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart';
 import 'package:PiliPlus/grpc/bilibili/pagination.pb.dart';
 import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/pages/common/reply_controller.dart';
+import 'package:PiliPlus/pages/common/reply/reply_controller.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:fixnum/fixnum.dart';
@@ -25,6 +25,12 @@ class _TestReplyController extends ReplyController<MainListReply> {
 
   @override
   dynamic get sourceId => 'test-oid';
+
+  @override
+  int get oid => 12345;
+
+  @override
+  int get replyType => 1;
 
   @override
   Future<LoadingState<MainListReply>> customGetData() async {
