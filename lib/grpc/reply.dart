@@ -357,6 +357,7 @@ abstract final class ReplyGrpc {
     AccountHealthIdentity? expectedIdentity,
     bool filter = true,
     bool autoPaginate = true,
+    bool retainBlockedReplies = false,
   }) async {
     final res = await GrpcReq.request(
       GrpcUrl.mainList,
@@ -377,7 +378,9 @@ abstract final class ReplyGrpc {
       expectedIdentity: expectedIdentity,
     );
     if (res case Success(:final response)) {
-      if (filter) filterMainList(response);
+      if (filter) {
+        filterMainList(response, retainBlockedReplies: retainBlockedReplies);
+      }
 
       // When all replies on this page were filtered out but the server
       // indicates more pages exist, automatically load the next page so
@@ -407,6 +410,7 @@ abstract final class ReplyGrpc {
           autoLoadDepth: autoLoadDepth + 1,
           account: account,
           expectedIdentity: expectedIdentity,
+          retainBlockedReplies: retainBlockedReplies,
         );
         if (nextRes case Success(response: final nextResponse)) {
           // Update cursor/pagination to reflect the furthest page fetched,
@@ -427,7 +431,17 @@ abstract final class ReplyGrpc {
   ///
   /// 从 [mainList] 原样抽出，gRPC 与 REST 回退共用同一套判定（关键词、等级、
   /// 带货、@、黑名单与横幅原因表），避免两套过滤逐渐分叉。
-  static void filterMainList(MainListReply response) {
+  static void filterMainList(
+    MainListReply response, {
+    bool retainBlockedReplies = false,
+  }) {
+    if (retainBlockedReplies) {
+      if (response.hasUpTop()) _markBlockedReplies([response.upTop]);
+      _markBlockedReplies(response.topReplies);
+      _markBlockedReplies(response.replies);
+      return;
+    }
+
     // UP 置顶评论过滤
     if (response.hasUpTop()) {
       final topReply = response.upTop;
@@ -472,6 +486,14 @@ abstract final class ReplyGrpc {
           return hasMatch;
         });
       }
+    }
+  }
+
+  static void _markBlockedReplies(Iterable<ReplyInfo> replies) {
+    for (final reply in replies) {
+      final reason = checkBlockReason(reply);
+      if (reason != null) _blockedReasons[reply.id.toInt()] = reason;
+      _markBlockedReplies(reply.replies);
     }
   }
 
@@ -560,6 +582,7 @@ abstract final class ReplyGrpc {
     String? offset,
     String extra = '',
     FeedPagination? pagination,
+    bool retainBlockedReplies = false,
   }) async {
     assert(offset != null || pagination != null);
     FeedPagination? page = pagination;
@@ -576,7 +599,10 @@ abstract final class ReplyGrpc {
       ),
       FoldListResp.fromBuffer,
     );
-    if (showBlockedReplyBanner) {
+    if (retainBlockedReplies) {
+      final data = res.dataOrNull;
+      if (data != null) _markBlockedReplies(data.replies);
+    } else if (showBlockedReplyBanner) {
       final data = res.dataOrNull;
       if (data != null) {
         for (final reply in data.replies) {
@@ -598,16 +624,19 @@ abstract final class ReplyGrpc {
     required int oid,
     required String offset,
     String extra = '',
+    bool retainBlockedReplies = false,
   }) async {
     final res = await foldList(
       type: type,
       oid: oid,
       offset: offset,
       extra: extra,
+      retainBlockedReplies: retainBlockedReplies,
     );
     return switch (res) {
-      Success(:final response) =>
-        Success(fold_ext.FoldListResp.fromBuffer(response.writeToBuffer())),
+      Success(:final response) => Success(
+        fold_ext.FoldListResp.fromBuffer(response.writeToBuffer()),
+      ),
       Error(:final errMsg, :final code) => Error(errMsg, code: code),
       _ => LoadingState.loading(),
     };

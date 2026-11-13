@@ -12,9 +12,15 @@ import 'package:PiliPlus/models/common/theme/theme_color_type.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
 import 'package:PiliPlus/router/app_pages.dart';
 import 'package:PiliPlus/services/account_service.dart';
+import 'package:PiliPlus/services/content_guard/model/account_scope.dart';
+import 'package:PiliPlus/services/content_guard/model/account_scope_adapter.dart';
+import 'package:PiliPlus/services/content_guard/storage/content_guard_startup.dart';
+import 'package:PiliPlus/services/content_guard/storage/key_value_store.dart';
 import 'package:PiliPlus/services/download/download_service.dart';
 import 'package:PiliPlus/services/logger.dart';
 import 'package:PiliPlus/services/service_locator.dart';
+import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/desktop/calc_window_position.dart';
@@ -135,7 +141,19 @@ void main() async {
   }
 
   Request();
+  // Not awaited on purpose: setCookie() awaits Accounts.refresh(), whose first
+  // await is a buvidActive POST. Hydration is already done — refresh() publishes
+  // synchronously before that await — so Accounts.main below is the restored
+  // account, not the anonymous placeholder.
   Request.setCookie();
+  // Order the durable ContentGuard namespace: storage is open, the account is
+  // hydrated, and nothing has evaluated yet because runApp has not run.
+  // Non-fatal; if hydration ever moves behind an await this is skipped and a
+  // later ContentGuardService.create still performs it.
+  await ContentGuardStartup.runAtStartup(
+    store: HiveKeyValueStore(GStorage.localCache),
+    account: _contentGuardScopeOf(Accounts.main),
+  );
   RequestUtils.syncHistoryStatus();
 
   SmartDialog.config.toast = SmartConfigToast(displayType: .onlyRefresh);
@@ -226,6 +244,24 @@ void main() async {
           WidgetsBinding.instance.addPostFrameCallback(show);
       }
     }
+  }
+}
+
+/// ContentGuard scope of [account], or null when there is no usable account.
+///
+/// Kept here rather than in the service layer because it is the one step that
+/// needs the app's account model. `NoAccount` has no cookie jar and throws inside
+/// `AccountHealthIdentity.capture`, so it is refused instead of producing an
+/// invented scope; an anonymous account resolves to a real scope with no stable
+/// durable identity, which the bootstrap treats as "nothing to do".
+AccountScope? _contentGuardScopeOf(Account account) {
+  if (account is NoAccount) return null;
+  try {
+    return scopeOf(account);
+  } catch (_) {
+    // An account whose cookie jar is not hydrated yet cannot be scoped. Starting
+    // the app is more important than scoping it.
+    return null;
   }
 }
 

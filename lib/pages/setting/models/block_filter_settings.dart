@@ -34,8 +34,74 @@ Future<void> _showReplyMinLevelDialog(
   }
 }
 
+Future<void> _showContentGuardIntDialog(
+  BuildContext context,
+  VoidCallback setState, {
+  required String title,
+  required String key,
+  required int value,
+  required List<int> values,
+  required String unit,
+}) async {
+  final choices = {...values, value}.toList()..sort();
+  final result = await showDialog<int>(
+    context: context,
+    builder: (context) => SelectDialog<int>(
+      title: title,
+      value: value,
+      values: choices.map((v) => (v, '$v$unit')).toList(),
+    ),
+  );
+  if (result == null) return;
+  await GStorage.setting.put(key, result);
+  setState();
+}
+
 List<SettingsModel> get blockFilterSettings => [
   // 评论过滤组
+  SwitchModel(
+    title: '评论过滤记录与建议',
+    subtitle: '仅视频评论、通用评论和动态评论三处根评论列表，复用既有静态过滤并记录结果；更改后刷新评论生效；关闭保留本地记录及建议处理状态',
+    leading: const Icon(Icons.fact_check_outlined),
+    setKey: SettingBoxKey.contentGuardEnabled,
+    defaultVal: false,
+  ),
+  SwitchModel(
+    title: '生成本地黑名单建议',
+    subtitle: '仅统计合格违规评论生成建议，当前仅计入有明确归因的带货命中，其他过滤不计入；仅在你同意后加入本地黑名单；更改后刷新评论生效',
+    leading: const Icon(Icons.playlist_add_check_outlined),
+    setKey: SettingBoxKey.contentGuardSuggestionsEnabled,
+    defaultVal: false,
+  ),
+  NormalModel(
+    title: '黑名单建议触发次数',
+    leading: const Icon(Icons.numbers_outlined),
+    getSubtitle: () =>
+        '同一作者在窗口内至少 ${Pref.contentGuardSuggestionThreshold} 条不同的合格违规评论时建议',
+    onTap: (context, setState) => _showContentGuardIntDialog(
+      context,
+      setState,
+      title: '黑名单建议触发次数',
+      key: SettingBoxKey.contentGuardSuggestionThreshold,
+      value: Pref.contentGuardSuggestionThreshold,
+      values: const [1, 2, 3, 5, 10, 20, 50, 100],
+      unit: ' 次',
+    ),
+  ),
+  NormalModel(
+    title: '黑名单建议统计窗口',
+    leading: const Icon(Icons.date_range_outlined),
+    getSubtitle: () => '统计最近 ${Pref.contentGuardSuggestionWindowDays} 天的合格违规评论',
+    onTap: (context, setState) => _showContentGuardIntDialog(
+      context,
+      setState,
+      title: '黑名单建议统计窗口',
+      key: SettingBoxKey.contentGuardSuggestionWindowDays,
+      value: Pref.contentGuardSuggestionWindowDays,
+      values: const [1, 7, 14, 30, 60, 90, 180, 365],
+      unit: ' 天',
+    ),
+  ),
   getBanWordModel(
     title: '评论关键词过滤',
     key: SettingBoxKey.banWordForReply,
@@ -133,4 +199,3 @@ List<SettingsModel> get blockFilterSettings => [
     },
   ),
 ];
-

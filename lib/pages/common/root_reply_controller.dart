@@ -4,6 +4,7 @@ import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/root_reply.dart';
 import 'package:PiliPlus/pages/common/reply/reply_controller.dart';
 import 'package:PiliPlus/services/account_service.dart';
+import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/account_health.dart';
 import 'package:get/get.dart';
 
@@ -50,11 +51,31 @@ abstract class RootReplyController extends ReplyController<MainListReply> {
 
   int get rootReplyType;
 
+  /// Whether this fetch must keep rows the static filters would have removed.
+  ///
+  /// Default false: the transport then removes them exactly as it always has.
+  /// The ContentGuard mixin overrides this to true only while the feature is
+  /// enabled and a live lease exists for a stable account, because the guard has
+  /// to see the rows the filters hit in order to collapse, attribute and ledger
+  /// them. Never driven by the global show-banner preference.
+  bool get retainBlockedReplies => false;
+
+  /// The account the NEXT fetch will run under, or null when unbound.
+  ///
+  /// Delegates to [RootReplySession.prepare], which binds the same
+  /// account/health/identity the fetch itself uses - synchronously, with no
+  /// network and no health probe. Reading `Accounts.main` instead would answer a
+  /// different question during an account switch: the session may still be bound
+  /// to the previous instance, and a stale scope must not authorise retention.
+  @override
+  Account? get rootRequestAccount => rootSession.prepare();
+
   @override
   Future<LoadingState<MainListReply>> customGetData() => rootSession.fetch(
     oid: rootOid,
     type: rootReplyType,
     mode: mode,
+    retainBlockedReplies: retainBlockedReplies,
   );
 
   @override

@@ -5,6 +5,8 @@ import 'dart:typed_data';
 
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart' as gen;
 import 'package:PiliPlus/grpc/bilibili/rpc.pb.dart' show Status;
+import 'package:PiliPlus/grpc/bilibili/pagination.pb.dart'
+    show FeedPaginationReply;
 import 'package:PiliPlus/grpc/grpc_req.dart';
 import 'package:PiliPlus/grpc/reply.dart' show ReplyGrpc;
 import 'package:PiliPlus/grpc/url.dart';
@@ -813,6 +815,244 @@ void main() {
     });
   });
 
+  group('per-request retention', () {
+    for (final useGrpc in [false, true]) {
+      final transport = useGrpc ? 'gRPC' : 'REST';
+      test(
+        '$transport retains hits after empty pages, then removes on next fetch',
+        () async {
+          final acc = loginAccount(mid: useGrpc ? 8391 : 8392, token: useGrpc);
+          Accounts.accountMode[AccountType.main.index] = acc;
+          publish(acc);
+          ReplyGrpc.enableFilter = true;
+          ReplyGrpc.replyRegExp = RegExp('blocked');
+          final child = gen.ReplyInfo(
+            id: Int64(902),
+            content: gen.Content(message: 'blocked'),
+            replies: [
+              gen.ReplyInfo(
+                id: Int64(903),
+                content: gen.Content(message: 'blocked'),
+              ),
+            ],
+          );
+          final blocked = gen.ReplyInfo(
+            id: Int64(901),
+            content: gen.Content(message: 'blocked'),
+            replies: [child],
+          );
+          adapter.grpcPages = {
+            0: _grpcPage(const [], next: 10, isEnd: false),
+            10: _grpcPage(const [], next: 20, isEnd: false),
+            20: _grpcPage(const [], next: 30, isEnd: false)
+              ..replies.add(blocked),
+            30: _grpcPage([904], next: 0, isEnd: true)
+              ..replies.add(blocked.deepCopy()..id = Int64(905)),
+          };
+          final restBlocked = _plainReplyJson(901)
+            ..['content'] = <String, dynamic>{'message': 'blocked'}
+            ..['replies'] = [
+              _plainReplyJson(902)
+                ..['content'] = <String, dynamic>{'message': 'blocked'}
+                ..['replies'] = [
+                  _plainReplyJson(903)
+                    ..['content'] = <String, dynamic>{'message': 'blocked'},
+                ],
+            ];
+          adapter.restPages = {
+            '': _restPage(const [], nextOffset: 'p2'),
+            'p2': _restPage(const [], nextOffset: 'p3'),
+            'p3': _restPage([restBlocked], nextOffset: 'p4'),
+            'p4': _restPage([
+              _plainReplyJson(905)
+                ..['content'] = <String, dynamic>{'message': 'blocked'},
+              904,
+            ], nextOffset: ''),
+          };
+          final session = RootReplySession(healthOf: service.healthFor);
+          try {
+            final retained = await session.fetch(
+              oid: 12345,
+              type: 1,
+              mode: gen.Mode.MAIN_LIST_TIME,
+              retainBlockedReplies: true,
+            );
+            expect(retained, isA<state.Success<gen.MainListReply>>());
+            final root = retained.dataOrNull!.replies.single;
+            expect(root.id.toInt(), 901);
+            expect(root.replies.single.replies.single.id.toInt(), 903);
+            for (final item in [
+              root,
+              root.replies.single,
+              root.replies.single.replies.single,
+            ]) {
+              expect(ReplyGrpc.getBlockReason(item), contains('关键词过滤'));
+            }
+            expect(session.pendingRestartReason, isNull);
+            expect(ReplyGrpc.showBlockedReplyBanner, isFalse);
+            final removed = await session.fetch(
+              oid: 12345,
+              type: 1,
+              mode: gen.Mode.MAIN_LIST_TIME,
+            );
+            expect(removed.dataOrNull!.replies.map((item) => item.id.toInt()), [
+              904,
+            ]);
+            if (useGrpc) {
+              expect(
+                adapter.grpcRequests.map((req) => req.cursor.next.toInt()),
+                [0, 10, 20, 30],
+              );
+              expect(adapter.restRequests, isEmpty);
+            } else {
+              expect(adapter.restRequests.map((req) => req.paginationOffset), [
+                '',
+                'p2',
+                'p3',
+                'p4',
+              ]);
+              expect(adapter.grpcRequests, isEmpty);
+            }
+            final replacement = loginAccount(mid: 8393, token: useGrpc);
+            Accounts.accountMode[AccountType.main.index] = replacement;
+            publish(replacement);
+            final stale = await session.fetch(
+              oid: 12345,
+              type: 1,
+              mode: gen.Mode.MAIN_LIST_TIME,
+              retainBlockedReplies: true,
+            );
+            expect(stale, isA<state.Error>());
+            expect(session.pendingRestartReason, 'account');
+            session.reset();
+            final restarted = await session.fetch(
+              oid: 12345,
+              type: 1,
+              mode: gen.Mode.MAIN_LIST_TIME,
+              retainBlockedReplies: true,
+            );
+            expect(restarted.dataOrNull!.replies.single.id.toInt(), 901);
+          } finally {
+            ReplyGrpc.enableFilter = false;
+            ReplyGrpc.replyRegExp = RegExp('');
+          }
+        },
+      );
+    }
+
+    test(
+      'fold and bridge preserve and recursively mark only when requested',
+      () async {
+        adapter.foldPage = gen.FoldListResp(
+          replies: [
+            gen.ReplyInfo(
+              id: Int64(921),
+              content: gen.Content(message: 'blocked'),
+              replies: [
+                gen.ReplyInfo(
+                  id: Int64(922),
+                  content: gen.Content(message: 'blocked'),
+                ),
+              ],
+            ),
+            gen.ReplyInfo(
+              id: Int64(923),
+              content: gen.Content(message: 'ordinary'),
+            ),
+          ],
+        );
+        ReplyGrpc.enableFilter = true;
+        ReplyGrpc.replyRegExp = RegExp('blocked');
+        try {
+          final removed = await ReplyGrpc.foldList(
+            oid: 12345,
+            type: 1,
+            offset: '',
+          );
+          expect(removed.dataOrNull!.replies.map((item) => item.id.toInt()), [
+            923,
+          ]);
+          final retained = await ReplyGrpc.foldList(
+            oid: 12345,
+            type: 1,
+            offset: '',
+            retainBlockedReplies: true,
+          );
+          expect(retained.dataOrNull!.replies.map((item) => item.id.toInt()), [
+            921,
+            923,
+          ]);
+          expect(
+            ReplyGrpc.getBlockReason(
+              retained.dataOrNull!.replies.first.replies.single,
+            ),
+            contains('关键词过滤'),
+          );
+          ReplyGrpc.clearBlockedReasons();
+          final bridged = await ReplyGrpc.foldListForMixin(
+            oid: 12345,
+            type: 1,
+            offset: '',
+            retainBlockedReplies: true,
+          );
+          expect(bridged.dataOrNull!.replies.map((item) => item.id.toInt()), [
+            921,
+            923,
+          ]);
+          expect(
+            ReplyGrpc.getBlockReason(
+              bridged.dataOrNull!.replies.first.replies.single,
+            ),
+            contains('关键词过滤'),
+          );
+          expect(ReplyGrpc.showBlockedReplyBanner, isFalse);
+        } finally {
+          ReplyGrpc.enableFilter = false;
+          ReplyGrpc.replyRegExp = RegExp('');
+        }
+      },
+    );
+
+    test(
+      'mainList recursion forwards retention to the first nonempty page',
+      () async {
+        final blocked = gen.ReplyInfo(
+          id: Int64(911),
+          content: gen.Content(message: 'blocked'),
+        );
+        ReplyGrpc.enableFilter = true;
+        ReplyGrpc.replyRegExp = RegExp('blocked');
+        adapter.grpcPages = {
+          0: _grpcPage(const [], next: 10, isEnd: false)
+            ..paginationReply = FeedPaginationReply(nextOffset: 'p2'),
+          10: _grpcPage(const [], next: 0, isEnd: true)..replies.add(blocked),
+        };
+        try {
+          final result = await ReplyGrpc.mainList(
+            oid: 12345,
+            type: 1,
+            mode: gen.Mode.MAIN_LIST_TIME,
+            offset: '',
+            cursorNext: Int64.ZERO,
+            retainBlockedReplies: true,
+          );
+          expect(result.dataOrNull!.replies.single.id.toInt(), 911);
+          expect(
+            ReplyGrpc.getBlockReason(result.dataOrNull!.replies.single),
+            contains('关键词过滤'),
+          );
+          expect(adapter.grpcRequests.map((req) => req.cursor.next.toInt()), [
+            0,
+            10,
+          ]);
+        } finally {
+          ReplyGrpc.enableFilter = false;
+          ReplyGrpc.replyRegExp = RegExp('');
+        }
+      },
+    );
+  });
+
   group('gRPC 自动追页（只认 cursor.next）', () {
     test('空页 + 无 pagination_reply：按 cursor.next 继续追页直到上限', () async {
       final acc = loginAccount(mid: 8328);
@@ -975,6 +1215,7 @@ class _RootAdapter implements HttpClientAdapter {
   final probePaths = <String>[];
 
   Map<int, gen.MainListReply> grpcPages = const {};
+  gen.FoldListResp? foldPage;
   Map<String, Map<String, dynamic>> restPages = const {};
 
   /// 按账号区分的 REST 首屏内容（切号用例：内容不同才不会有旧列表假阳性）。
@@ -1032,6 +1273,7 @@ class _RootAdapter implements HttpClientAdapter {
     restRequests.clear();
     probePaths.clear();
     grpcPages = const {};
+    foldPage = null;
     restPages = const {};
     restPagesByMid = const {};
     grpcStatus = 0;
@@ -1067,6 +1309,16 @@ class _RootAdapter implements HttpClientAdapter {
     if (path == '/x/web-interface/nav' || path == '/x/space/myinfo') {
       probePaths.add(path);
       return _json({'code': -404});
+    }
+    if (path == GrpcUrl.foldList && foldPage != null) {
+      return ResponseBody.fromBytes(
+        GrpcReq.compressProtobuf(foldPage!.writeToBuffer()),
+        200,
+        headers: {
+          'grpc-status': ['0'],
+          Headers.contentTypeHeader: ['application/grpc'],
+        },
+      );
     }
     if (path == GrpcUrl.mainList) {
       // 关键时序：请求一进入 adapter 就解析、记账、分配序号并确定本请求的

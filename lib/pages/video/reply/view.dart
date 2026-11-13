@@ -10,9 +10,11 @@ import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/pages/common/fab_mixin.dart';
 import 'package:PiliPlus/pages/common/reply/reply_footer_mixin.dart';
+import 'package:PiliPlus/pages/common/reply/reply_guard_suggestion_card.dart';
 import 'package:PiliPlus/pages/common/reply/vote/reply_vote_item.dart';
 import 'package:PiliPlus/pages/video/reply/controller.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
+import 'package:PiliPlus/services/content_guard/presenter/presenter.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -23,11 +25,21 @@ class VideoReplyPanel extends StatefulWidget {
     this.replyLevel = 1,
     required this.heroTag,
     required this.isNested,
+    this.contentGuardProjection,
   });
 
   final int replyLevel;
   final String heroTag;
   final bool isNested;
+
+  /// ContentGuard's projection of the comment list, or null.
+  ///
+  /// Null means "no filtering", which is what every existing caller gets: the
+  /// panel behaves exactly as before and does no extra lookup per row. When a
+  /// projection is supplied it is only read *by index*, never used to change the
+  /// item count, so the fold entry, the footer and the vote card keep the exact
+  /// slot arithmetic they already have.
+  final ReplyGuardProjection? contentGuardProjection;
 
   @override
   State<VideoReplyPanel> createState() => _VideoReplyPanelState();
@@ -161,6 +173,11 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
   }
 
   Widget _buildBody(LoadingState<List<ReplyInfo>?> loadingState) {
+    // Registers the suggestion map as a dependency of the enclosing `Obx`: an
+    // item builder runs during layout, outside that closure, so without this read
+    // a card that appears or disappears would only repaint on the next list
+    // refresh. Reading its length is enough to subscribe to every change.
+    controller.guardSuggestions.length;
     switch (loadingState) {
       case Loading():
         return const SliverPrototypeExtentList(
@@ -224,9 +241,31 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
               final replyItem = response[index];
               final rpid = replyItem.id;
               final translated = controller.translatedReplies[rpid];
+              // The projection is read at `index`, but a slot is accepted only
+              // when its content id and payload revision still describe the reply
+              // being built: a refresh, a removal, a pin, a sort or a pagination
+              // append all leave a stale verdict sitting at an index that now means
+              // another reply. A mismatch degrades to pending for this row instead
+              // of borrowing a neighbour's verdict, and the count above is never
+              // derived from the projection, so hidden rows keep their slots.
               final child = ReplyItemGrpc(
                 replyItem: replyItem,
                 replyLevel: widget.replyLevel,
+                contentGuardPresentation: guardPresentationFor(
+                  // The controller owns the projection; the widget parameter
+                  // stays as an explicit override for a caller that supplies its
+                  // own list. All of them are null when ContentGuard is not
+                  // active, and then every row renders exactly as before.
+                  projection:
+                      widget.contentGuardProjection ??
+                      controller.contentGuardProjection,
+                  // The SAME facts object the controller registered the row
+                  // with; a separate read could straddle a settings change and
+                  // leave the row pending forever.
+                  policyFacts: controller.guardPolicyFacts,
+                  index: index,
+                  reply: replyItem,
+                ),
                 replyReply: controller.replyReply,
                 onReply: controller.onReply,
                 onDelete: (item, subIndex) =>
@@ -247,8 +286,7 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                 isOfficialFolded: controller.foldedIds.contains(
                   rpid.toInt(),
                 ),
-                onTranslate: () =>
-                    controller.translateReply(replyItem),
+                onTranslate: () => controller.translateReply(replyItem),
               );
               if (replyItem.id == controller.targetRootRpId) {
                 return controller.colorAnimWrapper(
@@ -256,7 +294,17 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                   child,
                 );
               }
-              return child;
+              // The suggestion card hangs UNDER its row, so it never becomes a
+              // list item: the fold entry, the footer, the vote card and the
+              // projection slot at every index keep their arithmetic.
+              return GuardSuggestionSlot(
+                child: child,
+                anchor: controller.guardSuggestionAnchorAt(index),
+                suggestion: controller.guardSuggestionAt(index),
+                isBusy: controller.isDecidingSuggestion,
+                onAccept: controller.acceptGuardSuggestion,
+                onReject: controller.rejectGuardSuggestion,
+              );
             },
             itemCount: count,
           );

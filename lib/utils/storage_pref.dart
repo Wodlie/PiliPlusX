@@ -580,6 +580,36 @@ abstract final class Pref {
   static bool get showBlockedReplyBanner =>
       _setting.get(SettingBoxKey.showBlockedReplyBanner, defaultValue: true);
 
+  /// 仅记录已接入的根评论列表的静态过滤结果；关闭不清除本地记录。
+  static bool get contentGuardEnabled =>
+      _setting.get(SettingBoxKey.contentGuardEnabled) == true;
+
+  static bool get contentGuardSuggestionsEnabled =>
+      _setting.get(SettingBoxKey.contentGuardSuggestionsEnabled) == true;
+
+  static int get contentGuardSuggestionThreshold => _contentGuardInt(
+    _setting.get(SettingBoxKey.contentGuardSuggestionThreshold),
+    defaultValue: 3,
+    max: 100,
+  );
+
+  static int get contentGuardSuggestionWindowDays => _contentGuardInt(
+    _setting.get(SettingBoxKey.contentGuardSuggestionWindowDays),
+    defaultValue: 30,
+    max: 365,
+  );
+
+  static int _contentGuardInt(
+    Object? value, {
+    required int defaultValue,
+    required int max,
+  }) {
+    if (value is! num || !value.isFinite || value % 1 != 0) {
+      return defaultValue;
+    }
+    return value.clamp(1, max).toInt();
+  }
+
   /// 自动把 B 站官方折叠的二级评论按当前排序插入列表并标记来源（默认开启）。
   static bool get autoShowFoldedReply =>
       _setting.get(SettingBoxKey.autoShowFoldedReply, defaultValue: true);

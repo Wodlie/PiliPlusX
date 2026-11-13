@@ -139,6 +139,15 @@ packages:
       url: "https://github.com/bggRGjQaUbCoE/audio_session.git"
     source: git
     version: "0.2.4"
+  auto_orientation:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: master
+      resolved-ref: "2370d5a52ded842fe6878b747b1822573304b645"
+      url: "https://github.com/bggRGjQaUbCoE/auto_orientation.git"
+    source: git
+    version: "2.3.1"
   battery_plus:
     dependency: "direct main"
     description:
@@ -223,8 +232,8 @@ packages:
     dependency: "direct main"
     description:
       path: cached_network_image
-      ref: "b1597d6d58ad3bc5bcf2d93022bc893add7ce66b"
-      resolved-ref: "b1597d6d58ad3bc5bcf2d93022bc893add7ce66b"
+      ref: b1597d6d58ad3bc5bcf2d93022bc893add7ce66b
+      resolved-ref: b1597d6d58ad3bc5bcf2d93022bc893add7ce66b
       url: "https://github.com/bggRGjQaUbCoE/flutter_cached_network_image_ce.git"
     source: git
     version: "4.11.1"
@@ -233,7 +242,7 @@ packages:
     description:
       path: cached_network_image_platform_interface
       ref: b1597d6d58ad3bc5bcf2d93022bc893add7ce66b
-      resolved-ref: "b1597d6d58ad3bc5bcf2d93022bc893add7ce66b"
+      resolved-ref: b1597d6d58ad3bc5bcf2d93022bc893add7ce66b
       url: "https://github.com/bggRGjQaUbCoE/flutter_cached_network_image_ce.git"
     source: git
     version: "5.2.0"
@@ -242,8 +251,8 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: "435063d093bdc0dde70616a2c30552411c9e13e0"
-      url: "https://github.com/bggRGjQaUbCoE/canvas_danmaku.git"
+      resolved-ref: "8595bdf74408e342927659977470aa080ee62de8"
+      url: "https://github.com/cnctem/canvas_danmaku.git"
     source: git
     version: "0.2.6"
   catcher_2:
@@ -392,6 +401,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.6"
+  dart_imagehash:
+    dependency: "direct main"
+    description:
+      name: dart_imagehash
+      sha256: "64437d0d39d2e34c75e8db08f9efe9fe5b50a3829fdd78eaaf3267df723bdb6f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.2"
   dart_style:
     dependency: transitive
     description:
@@ -893,7 +910,7 @@ packages:
     source: hosted
     version: "4.1.2"
   image:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: image
       sha256: "89ed75b2f8231fe676808c5564f9590d728024ded7ac782a7ed8474f1c95b72a"
@@ -1260,6 +1277,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
+  mobile_scanner:
+    dependency: "direct main"
+    description:
+      name: mobile_scanner
+      sha256: "175c62fc813c2bd762757359a2088f8cbdb72020cf85d4cd27fc4d3fe59be058"
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.5.0"
   native_device_orientation:
     dependency: "direct main"
     description:
@@ -1892,6 +1917,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.4"
+  visibility_detector:
+    dependency: "direct main"
+    description:
+      name: visibility_detector
+      sha256: dd5cc11e13494f432d15939c3aa8ae76844c42b723398643ce9addb88a5ed420
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.0+2"
   vm_service:
     dependency: transitive
     description:

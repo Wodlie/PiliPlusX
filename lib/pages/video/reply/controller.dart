@@ -6,6 +6,7 @@ import 'package:PiliPlus/grpc/reply.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models_new/dynamic/dyn_mention/item.dart';
 import 'package:PiliPlus/pages/common/reply/reply_controller.dart';
+import 'package:PiliPlus/pages/common/reply/reply_guard_mixin.dart';
 import 'package:PiliPlus/pages/common/reply_fold_mixin.dart';
 import 'package:PiliPlus/pages/common/reply/vote/reply_vote_mixin.dart';
 import 'package:PiliPlus/pages/common/root_reply_controller.dart';
@@ -21,6 +22,11 @@ class VideoReplyController extends RootReplyController
     with
         ReplyVoteMixin,
         ReplyFoldMixin<MainListReply>,
+        // Guard presentation lifecycle. Must sit AFTER ReplyFoldMixin so its
+        // queryData/onRefresh wrap the fold mixin's own overrides: the projection
+        // has to be rebuilt from the list that survived folding, and the list
+        // revision has to advance before the fold mixin re-queries.
+        ReplyGuardListMixin<MainListReply>,
         GetSingleTickerProviderStateMixin,
         ReplyLocateMixin<MainListReply>,
         MainReplyLocateMixin {
@@ -29,6 +35,7 @@ class VideoReplyController extends RootReplyController
     this.videoType,
     required this.heroTag,
   });
+
   /// Optional overrides kept for tests and pre-merge call sites;
   /// the live path reads them from [videoCtr].
   final int? aid;
@@ -77,6 +84,8 @@ class VideoReplyController extends RootReplyController
         type: videoCtr.videoType.replyType,
         oid: rootOid,
         offset: offset,
+        // Same rule as the root fetch: only the guard keeps the hit rows.
+        retainBlockedReplies: retainBlockedReplies,
       );
 
   /// Insert subsequent fold pages after the already inserted folded replies.

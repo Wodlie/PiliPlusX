@@ -8,7 +8,8 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
-mixin BaseReplyFoldMixin<R> on ReplyController<R> implements ReplyFooterController<R> {
+mixin BaseReplyFoldMixin<R> on ReplyController<R>
+    implements ReplyFooterController<R> {
   FoldCard? foldCard;
 
   @override
@@ -28,6 +29,9 @@ mixin BaseReplyFoldMixin<R> on ReplyController<R> implements ReplyFooterControll
         oid: oid,
         type: replyType,
         pagination: foldCard!.foldPagination,
+        // Nested lists carry no guard lease in this slice, so the transport
+        // keeps its default and these rows are removed as before.
+        retainBlockedReplies: false,
       );
       if (isClosed) return;
       if (res case Success(:final response)) {

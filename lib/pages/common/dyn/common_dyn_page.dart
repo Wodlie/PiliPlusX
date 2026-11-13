@@ -15,9 +15,11 @@ import 'package:PiliPlus/pages/article/widgets/sliver_list.dart';
 import 'package:PiliPlus/pages/common/dyn/common_dyn_controller.dart';
 import 'package:PiliPlus/pages/common/fab_mixin.dart';
 import 'package:PiliPlus/pages/common/reply/reply_footer_mixin.dart';
+import 'package:PiliPlus/pages/common/reply/reply_guard_suggestion_card.dart';
 import 'package:PiliPlus/pages/common/reply/vote/reply_vote_item.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
 import 'package:PiliPlus/pages/video/reply_reply/view.dart';
+import 'package:PiliPlus/services/content_guard/presenter/presenter.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
@@ -116,6 +118,17 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
   CommonDynController get controller;
   bool get isArticle => false;
 
+  /// ContentGuard's projection of this comment list, or null.
+  ///
+  /// Resolved from the controller, which is the only owner of the guard list
+  /// revision, so a page cannot end up rendering a projection computed for a
+  /// list revision the controller has already replaced. [CommonDynController]
+  /// mixes in `ReplyGuardListMixin`, so this is null until a pipeline is bound
+  /// and the vote card, the footer and `itemCount` keep their current
+  /// arithmetic either way: the projection never feeds a count.
+  ReplyGuardProjection? get contentGuardProjection =>
+      controller.contentGuardProjection;
+
   bool get horizontalPreview => !isPortrait && controller.horizontalPreview;
 
   dynamic get arguments;
@@ -195,6 +208,10 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
   }
 
   Widget replyList(LoadingState<List<ReplyInfo>?> loadingState) {
+    // Subscribes the enclosing `Obx` to the suggestion map: item builders run
+    // during layout, outside that closure, so a card appearing or disappearing
+    // needs this read to repaint without waiting for a list refresh.
+    controller.guardSuggestions.length;
     switch (loadingState) {
       case Loading():
         return const SliverPrototypeExtentList(
@@ -256,9 +273,19 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
   }
 
   Widget buildReply(BuildContext context, int index, ReplyInfo item) {
-    return ReplyItemGrpc(
+    final child = ReplyItemGrpc(
       replyItem: item,
       replyLevel: 1,
+      // Identity-checked, not positional: a dynamic list re-sorts and paginates
+      // while decisions are still in flight, so the slot at `index` is trusted
+      // only while it still describes `item`. A stale slot becomes pending.
+      contentGuardPresentation: guardPresentationFor(
+        projection: contentGuardProjection,
+        // Same controller-owned facts the row was registered with.
+        policyFacts: controller.guardPolicyFacts,
+        index: index,
+        reply: item,
+      ),
       replyReply: (item, id) => throttleReplyReply(context, item, id),
       onReply: controller.onReply,
       onDelete: (item, subIndex) => controller.onRemove(index, item, subIndex),
@@ -271,6 +298,16 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
         controller.oid,
         controller.replyType,
       ),
+    );
+    // Under the row, never its own item: `count`, the vote card slot and the
+    // footer slot keep the arithmetic they already had.
+    return GuardSuggestionSlot(
+      child: child,
+      anchor: controller.guardSuggestionAnchorAt(index),
+      suggestion: controller.guardSuggestionAt(index),
+      isBusy: controller.isDecidingSuggestion,
+      onAccept: controller.acceptGuardSuggestion,
+      onReject: controller.rejectGuardSuggestion,
     );
   }
 

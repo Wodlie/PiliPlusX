@@ -15,7 +15,14 @@ import 'package:PiliPlus/common/widgets/selection_text.dart';
 import 'package:PiliPlus/common/widgets/text_more/text_more.dart';
 import 'package:PiliPlus/common/widgets/translucent_row.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
-    show ReplyInfo, ReplyControl, Content, Url, ReplyControl_VoteOption, Emote;
+    show
+        ReplyInfo,
+        ReplyControl,
+        Content,
+        Picture,
+        Url,
+        ReplyControl_VoteOption,
+        Emote;
 import 'package:PiliPlus/grpc/reply.dart';
 import 'package:PiliPlus/pages/video/reply_reply/tree.dart' show ReasonType;
 import 'package:PiliPlus/pages/video/reply/widgets/reply_threaded_indent_box.dart';
@@ -26,6 +33,7 @@ import 'package:PiliPlus/pages/common/common_list_controller.dart';
 import 'package:PiliPlus/pages/dynamics/widgets/vote.dart';
 import 'package:PiliPlus/pages/member/widget/medal_widget.dart';
 import 'package:PiliPlus/pages/save_panel/view.dart';
+import 'package:PiliPlus/services/content_guard/presenter/presenter.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/zan_grpc.dart';
 import 'package:PiliPlus/utils/accounts.dart';
@@ -52,7 +60,8 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:PiliPlus/utils/url_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
-import 'package:cached_network_image_ce/cached_network_image.dart' hide CacheManager;
+import 'package:cached_network_image_ce/cached_network_image.dart'
+    hide CacheManager;
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -106,6 +115,354 @@ class BlockedReplyBanner extends StatelessWidget {
   }
 }
 
+/// Placeholder shown instead of a comment body ContentGuard withheld.
+///
+/// It keeps the row's slot: the row is never removed from the list, only replaced,
+/// so the scroll offset and every anchor computed from the list survive. The reason
+/// is a machine code mapped to a short label — never the comment text, which the
+/// decision layer never carries anyway.
+class ContentGuardReplyBanner extends StatelessWidget {
+  const ContentGuardReplyBanner({
+    super.key,
+    required this.presentation,
+    this.onExpand,
+  });
+
+  final ReplyPresentation presentation;
+
+  /// Expands the row into its body. Null when the restriction is not liftable,
+  /// in which case no action is offered rather than a dead one.
+  final VoidCallback? onExpand;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.disabledColor;
+    final canExpand = onExpand != null && presentation.canExpand;
+    final label = presentation.isHidden ? '此评论已被屏蔽' : '此评论已被折叠';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+      child: Row(
+        children: [
+          Icon(
+            presentation.isHidden
+                ? Icons.visibility_off_outlined
+                : Icons.unfold_less,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, color: color),
+            ),
+          ),
+          if (canExpand)
+            GestureDetector(
+              onTap: onExpand,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Text(
+                  '查看评论',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown while ContentGuard has not decided about this row yet.
+///
+/// It is a placeholder, not a pass: the row exists so the list keeps its slots,
+/// and the user sees that nothing has been settled rather than an apparently
+/// unconditional comment. It is deliberately not a spinner in the middle of the
+/// row — a blocked layout shift on every refresh is worse than a quiet line — but
+/// the label and the icon make the undecided state explicit.
+class ContentGuardPendingNotice extends StatelessWidget {
+  const ContentGuardPendingNotice({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).disabledColor;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+      child: Row(
+        children: [
+          Icon(Icons.hourglass_empty, size: 16, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '内容审核中，结果未定',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, color: color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown above the body of a row ContentGuard could not settle.
+///
+/// [PresenterState.uncertain] keeps the body — the comment is not withheld — and
+/// adds this notice so an unsettled verdict never reads as a quiet pass. The
+/// action re-runs nothing itself: it hands control back to the page, which owns
+/// the decision pass.
+class ContentGuardUncertainNotice extends StatelessWidget {
+  const ContentGuardUncertainNotice({super.key, this.onRetry});
+
+  /// Re-runs the decision pass for this row. Null when the page wired no retry,
+  /// in which case no action is offered rather than a dead one.
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.tertiary;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(45, 6, 6, 0),
+      child: Row(
+        children: [
+          Icon(Icons.report_gmailerrorred_outlined, size: 16, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '内容未能确认，已按未判定展示',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, color: color),
+            ),
+          ),
+          if (onRetry != null)
+            GestureDetector(
+              onTap: onRetry,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Text(
+                  '重试',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown in place of comment pictures ContentGuard masked.
+///
+/// A masked row keeps its body — only the named media identities are withheld — so
+/// this stands where the grid would have been instead of replacing the whole row.
+class ContentGuardMediaMask extends StatelessWidget {
+  const ContentGuardMediaMask({
+    super.key,
+    required this.colorScheme,
+    this.label = '图片已被内容过滤隐藏',
+  });
+
+  final ColorScheme colorScheme;
+
+  /// What was withheld. The mask is also used for an avatar, where naming pictures
+  /// would be wrong: the reader must be told which media is gone, not merely that
+  /// something is.
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      decoration: BoxDecoration(
+        color: colorScheme.onInverseSurface,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.image_not_supported_outlined,
+            size: 28,
+            color: colorScheme.outline,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: colorScheme.outline),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Stands in for a comment avatar ContentGuard masked.
+///
+/// Deliberately the size of the avatar it replaces (34 px, the same value
+/// [ReplyItemGrpc] hands [PendantAvatar]) so the header keeps its layout: the
+/// nickname, badges, time and body stay exactly where they were. Only the avatar is
+/// withheld — an avatar decision says nothing about the comment text, which has
+/// its own decision.
+class ContentGuardAvatarMask extends StatelessWidget {
+  const ContentGuardAvatarMask({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: '头像已被内容过滤隐藏',
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: colorScheme.onInverseSurface,
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          Icons.person_off_outlined,
+          size: 18,
+          color: colorScheme.outline,
+        ),
+      ),
+    );
+  }
+}
+
+/// The opaque revision of one reply payload ContentGuard judged.
+///
+/// The reply model carries no server-side version, so the only way to tie a
+/// verdict to the text it actually saw is to derive a value from the facts a
+/// decision depends on: the comment id, its author, its creation time, its
+/// message and the URLs of its pictures. Any edit that changes the message or the
+/// media changes this value, which is what makes a verdict computed for the
+/// previous revision refused instead of relabelled — the bridge compares this
+/// string for equality and never parses it.
+///
+/// Counter fields (likes, reply counts) are deliberately excluded UNLESS a
+/// filter reads them: the @-filter's like exemption does read the like count, and
+/// [replyGuardVersionOfReply] folds it in for exactly that reason.
+///
+/// The derivation itself lives in [replyGuardVersionOfReply], over the SAME
+/// [ReplyGuardPolicyFacts] the controller that registered the row used. Reading
+/// the settings here instead would be a second route into the version: a settings
+/// change landing between the controller's read and the widget's would change one
+/// side only, and every row would read as pending forever.
+String guardContentVersionOf(
+  ReplyInfo reply,
+  ReplyGuardPolicyFacts facts,
+) => replyGuardVersionOfReply(reply, facts);
+
+/// Media identity keys a comment picture may have been named by.
+///
+/// A decision stores [MediaRef.stableKey] values, and a picture reaches the row as
+/// a URL only. The decision layer's platform id for a picture is not recoverable
+/// from the URL in general, so every spelling a page-side adapter can plausibly
+/// have used is offered and membership decides: the raw URL, the URL with the
+/// Bilibili `@...` format suffix and query string stripped, and the bare file name
+/// the CDN serves it under.
+///
+/// The set is intentionally a *candidate* set. Matching on it can only ever
+/// confirm a key the decision already carries; it never invents a mask.
+Set<String> guardMediaKeysOfContent(String? url) {
+  final value = url;
+  if (value == null || value.isEmpty) return const <String>{};
+  final normalized = ImageBlockService.normalizeUrl(value);
+  final keys = <String>{'id:' + value};
+  if (normalized.isNotEmpty) {
+    keys.add('id:' + normalized);
+    final slash = normalized.lastIndexOf('/');
+    final name = slash >= 0 ? normalized.substring(slash + 1) : normalized;
+    if (name.isNotEmpty) keys.add('id:' + name);
+  }
+  return keys;
+}
+
+/// Media identity keys this reply's avatar may have been named by.
+///
+/// An avatar is identified by the author in the decision layer (an avatar seed is
+/// the uid) and by its URL in the page, so both are offered plus the normalised
+/// URL. Kept separate from [guardMediaKeysOfContent] on purpose: an avatar mask
+/// must never be able to match a comment picture, and vice versa.
+Set<String> guardMediaKeysOfAvatar(String? faceUrl, {String? authorUid}) {
+  final keys = <String>{};
+  final uid = authorUid;
+  if (uid != null && uid.isNotEmpty) keys.add('id:' + uid);
+  final value = faceUrl;
+  if (value == null || value.isEmpty) return keys;
+  keys.add('id:' + value);
+  final normalized = ImageBlockService.normalizeUrl(value);
+  if (normalized.isNotEmpty) {
+    keys.add('id:' + normalized);
+    final slash = normalized.lastIndexOf('/');
+    final name = slash >= 0 ? normalized.substring(slash + 1) : normalized;
+    if (name.isNotEmpty) keys.add('id:' + name);
+  }
+  return keys;
+}
+
+/// ContentGuard's verdict for the reply about to be rendered at [index].
+///
+/// A projection is a snapshot of a list; an index is a position, not an
+/// identity. A refresh, a removal, a sort, a pin and a pagination append all
+/// leave a row sitting at an index that used to describe another reply, so a
+/// slot is accepted only when every part of the row identity still agrees with
+/// the reply being rendered:
+///
+/// * the slot's content id comes from the projection, never from the caller;
+/// * the payload revision is [guardContentVersionOf] of the *current* reply, so
+///   a verdict computed for an edited comment cannot land on the edit;
+/// * the list revision is the projection's own generation, carried into the
+///   pending row so a widget can reset the state it bound to the previous one.
+///
+/// A mismatch yields [ReplyPresentation.pending] rather than null: "no decision
+/// for this row" must render as an undecided row, never as a silent pass.
+///
+/// A null [projection] OR a null [policyFacts] is the unwired case and stays
+/// null, so every page that has not opted in renders exactly what it rendered
+/// before. The two arrive together from the same controller, which is the only
+/// owner of both the list revision and the policy revision.
+ReplyPresentation? guardPresentationFor({
+  required ReplyGuardProjection? projection,
+  required ReplyGuardPolicyFacts? policyFacts,
+  required int index,
+  required ReplyInfo reply,
+}) {
+  if (projection == null || policyFacts == null) return null;
+  final contentId = reply.id.toString();
+  final contentVersion = guardContentVersionOf(reply, policyFacts);
+  ReplyPresentation pending() => ReplyPresentation.pending(
+    contentId: contentId,
+    contentVersion: contentVersion,
+    generation: projection.generation,
+  );
+  if (index < 0 || index >= projection.contentIds.length) return pending();
+  if (projection.contentIds[index] != contentId) return pending();
+  final presentation = projection.forContentId(contentId);
+  if (presentation == null) return pending();
+  if (presentation.contentId != contentId ||
+      presentation.contentVersion != contentVersion ||
+      presentation.generation != projection.generation) {
+    return pending();
+  }
+  return presentation;
+}
+
 class ReplyItemGrpc extends StatefulWidget {
   const ReplyItemGrpc({
     super.key,
@@ -134,6 +491,8 @@ class ReplyItemGrpc extends StatefulWidget {
     this.collapsed,
     this.toggleCollapse,
     this.onScrollLeft,
+    this.contentGuardPresentation,
+    this.onContentGuardRetry,
   });
   final ReplyInfo replyItem;
   final int replyLevel;
@@ -185,6 +544,28 @@ class ReplyItemGrpc extends StatefulWidget {
   /// Jumps to the parent reply when the indent line is scrolled left.
   final VoidCallback? onScrollLeft;
 
+  /// ContentGuard's verdict for this row, or null.
+  ///
+  /// Null means "no filtering": every call site that does not wire ContentGuard
+  /// keeps rendering exactly what it rendered before, and the widget performs no
+  /// extra lookup. A non-null value can only withhold content — it replaces the
+  /// body with a placeholder banner for a collapsed/hidden row or masks the media
+  /// identities it names. It never removes the row and never changes the list
+  /// length, so pagination, scroll position and the suggestion anchors computed
+  /// from the same list stay valid.
+  ///
+  /// This is deliberately additive rather than a required parameter: seven call
+  /// sites construct this widget and none of them should have to change for
+  /// ContentGuard to be wired into one of them.
+  final ReplyPresentation? contentGuardPresentation;
+
+  /// Re-runs the ContentGuard decision pass for this row.
+  ///
+  /// Used by the uncertain notice, which is the one guard state where asking again
+  /// can legitimately change the answer. Null when the page wired no retry; the
+  /// notice then explains the state without offering an action that does nothing.
+  final VoidCallback? onContentGuardRetry;
+
   static final _voteRegExp = RegExp(r"^\{vote:\d+?\}$");
   static final _timeRegExp = RegExp(r'^(?:\d+[:：])?\d+[:：]\d+$');
   static bool enableWordRe = Pref.enableWordRe;
@@ -200,9 +581,110 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
   final Set<String> _tempUnblockImageUrls = {};
   int _blockImageVersion = 0;
 
+  /// Identity of the row the guard UI state below belongs to.
+  ///
+  /// A [ReplyItemGrpc] instance outlives the reply it draws: list builders reuse
+  /// element slots, so the same State renders reply A and then reply B at the same
+  /// index after a refresh, a pin, a sort or a pagination append. Every piece of
+  /// guard state that the user can change is therefore stamped with the tuple it
+  /// was created under — the pid, the payload revision and the list generation —
+  /// and dropped the moment that tuple changes. Without the stamp, expanding a
+  /// collapsed row would leak the expanded body into whichever reply later lands
+  /// in the same slot.
+  String? _guardIdentity;
+
+  /// Whether the user expanded this row past its collapsed/hidden banner.
+  bool _guardExpanded = false;
+
+  /// The verdict this row renders, resolved for the *current* reply identity.
+  ///
+  /// [ReplyItemGrpc.contentGuardPresentation] is only trusted while it names this
+  /// reply, this payload revision and this list revision; anything else is a
+  /// leftover from the previous occupant of the slot and is degraded to pending
+  /// by [guardPresentationFor] before it reaches the widget. A null verdict means
+  /// nothing is wired at all and every guard branch is skipped.
+  ReplyPresentation? get _guard {
+    if (widget.forceShowOriginalContent) return null;
+    return widget.contentGuardPresentation;
+  }
+
+  /// Binds the mutable guard state to [guard]'s identity tuple.
+  ///
+  /// Called from [build], so the reset happens before any branch reads the state
+  /// and always in the same frame the new identity is rendered. Returning from a
+  /// reset without a second build is safe: the only field it touches is read
+  /// later in this very build.
+  void _bindGuardIdentity(ReplyPresentation? guard) {
+    final identity = guard == null
+        ? null
+        : [
+            guard.contentId,
+            guard.contentVersion,
+            guard.generation.toString(),
+          ].join('|');
+    if (identity == _guardIdentity) return;
+    _guardIdentity = identity;
+    _guardExpanded = false;
+  }
+
+  /// Drops expansion when the verdict turned non-recoverable.
+  ///
+  /// An expansion is a local read of the row the user already received, so it
+  /// survives a re-decision that keeps it liftable. It must not survive one that
+  /// does not: a row that became hidden, or a verdict whose restriction can no
+  /// longer be lifted, has no body to expand into, and leaving the flag set would
+  /// silently re-expand the row if it ever became recoverable again.
+  void _syncGuardExpansion(ReplyPresentation? guard) {
+    if (!_guardExpanded) return;
+    if (guard == null || !guard.canExpand) _guardExpanded = false;
+  }
+
+  @override
+  void didUpdateWidget(ReplyItemGrpc oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The reply itself changed under a stable index — the row reuse case that a
+    // keyed identity check inside build cannot cover, because build only runs for
+    // the verdict. Manual image loading and temporary unblocks are about the
+    // pictures of one reply, so they must go with it.
+    if (oldWidget.replyItem.id != widget.replyItem.id) {
+      _loadManualImages = false;
+      _tempUnblockImageUrls.clear();
+      _blockImageVersion++;
+    }
+  }
+
   @override
   Widget _buildItem(BuildContext context) {
     final colorScheme = ColorScheme.of(context);
+    final guard = _guard;
+
+    // ContentGuard 占位：先于客户端屏蔽横幅判断，二者语义互不覆盖。
+    // 折叠/隐藏的评论保留槽位（绝不从列表移除），否则下方每一行都会位移，
+    // 分页、滚动位置与推荐锚点都会错位。
+    if (guard != null && guard.isPending) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.isOfficialFolded) _buildOfficialFoldMark(context),
+          const ContentGuardPendingNotice(),
+        ],
+      );
+    }
+
+    if (guard != null && guard.showsPlaceholderBanner && !_guardExpanded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.isOfficialFolded) _buildOfficialFoldMark(context),
+          ContentGuardReplyBanner(
+            presentation: guard,
+            onExpand: guard.canExpand
+                ? () => setState(() => _guardExpanded = true)
+                : null,
+          ),
+        ],
+      );
+    }
 
     // 折叠横幅：独立返回值，不需要 InkWell 包装
     if (!widget.forceShowOriginalContent &&
@@ -266,34 +748,45 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
       ),
     );
     if (!widget.isOfficialFolded) return itemWidget;
-    final markColor = Theme.of(context).disabledColor;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(13, 6, 13, 0),
-          child: Row(
-            children: [
-              Icon(Icons.unfold_less, size: 16, color: markColor),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  '此评论已被 B 站官方折叠',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, color: markColor),
-                ),
-              ),
-            ],
+      children: [_buildOfficialFoldMark(context), itemWidget],
+    );
+  }
+
+  /// The "folded by Bilibili itself" mark.
+  ///
+  /// Extracted so the guard placeholder renders the very same mark instead of a
+  /// second, drifting copy; `isOfficialFolded` keeps meaning exactly what it meant
+  /// — this row is folded by the platform — and is never set by ContentGuard.
+  Widget _buildOfficialFoldMark(BuildContext context) {
+    final markColor = Theme.of(context).disabledColor;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(13, 6, 13, 0),
+      child: Row(
+        children: [
+          Icon(Icons.unfold_less, size: 16, color: markColor),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '此评论已被 B 站官方折叠',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, color: markColor),
+            ),
           ),
-        ),
-        itemWidget,
-      ],
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Resolve the row identity before anything reads the mutable guard state, so
+    // a recycled slot can never render the previous reply's expansion.
+    final guard = _guard;
+    _bindGuardIdentity(guard);
+    _syncGuardExpansion(guard);
     final content = _buildItem(context);
     final depth = widget.depth ?? 0;
     if (depth <= 0) return content;
@@ -327,14 +820,21 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         spacing: 12,
         extraWidth: 46,
         children: [
-          PendantAvatar(
-            member.face,
-            size: 34,
-            badgeSize: 14,
-            vipStatus: member.vipStatus.toInt(),
-            officialType: member.officialVerifyType.toInt(),
-            pendantImage: member.hasGarbPendantImage() ? member.garbPendantImage : null,
-          ),
+          // 头像屏蔽只替换头像本身：正文、昵称与徽章保持原样，
+          // 因为头像命中与正文命中是两条彼此独立的判定。
+          if (_guardMasksAvatar(_guard))
+            const ContentGuardAvatarMask()
+          else
+            PendantAvatar(
+              member.face,
+              size: 34,
+              badgeSize: 14,
+              vipStatus: member.vipStatus.toInt(),
+              officialType: member.officialVerifyType.toInt(),
+              pendantImage: member.hasGarbPendantImage()
+                  ? member.garbPendantImage
+                  : null,
+            ),
           Flexible(
             child: Column(
               mainAxisSize: .min,
@@ -369,7 +869,8 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                         isStack: false,
                         fontSize: 9,
                       )
-                    else if (GlobalData().showMedal && member.hasFansMedalLevel())
+                    else if (GlobalData().showMedal &&
+                        member.hasFansMedalLevel())
                       MedalWidget(
                         medalName: member.fansMedalName,
                         level: member.fansMedalLevel.toInt(),
@@ -379,7 +880,10 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                         nameColor: DmUtils.decimalToColor(
                           member.fansMedalColorName.toInt(),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1.5,
+                        ),
                       ),
                   ],
                 ),
@@ -392,7 +896,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                               widget.replyItem.ctime.toInt(),
                               format: DateFormatUtils.longFormatDs,
                             )
-                          : DateFormatUtils.dateFormat(widget.replyItem.ctime.toInt()),
+                          : DateFormatUtils.dateFormat(
+                              widget.replyItem.ctime.toInt(),
+                            ),
                       style: TextStyle(
                         fontSize: 11,
                         color: colorScheme.outline,
@@ -502,6 +1008,12 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
       crossAxisAlignment: .start,
       children: [
         _buildHeader(context, colorScheme),
+        // uncertain 保留正文（不隐瞒已收到的内容），但必须显式标注"未判定"，
+        // 否则一次未完成的判定会读起来像一次通过。
+        if (_guard?.isUncertain ?? false) ...[
+          ContentGuardUncertainNotice(onRetry: widget.onContentGuardRetry),
+          const SizedBox(height: 6),
+        ],
         const SizedBox(height: 10),
         if (replyControl.hasVoteOption())
           Padding(
@@ -587,7 +1099,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               TextMore.rich(
                 primary: colorScheme.primary,
                 style: const TextStyle(height: 1.75, fontSize: 14),
-                maxLines: widget.replyLevel == 1 ? ReplyItemGrpc.replyLengthLimit : null,
+                maxLines: widget.replyLevel == 1
+                    ? ReplyItemGrpc.replyLengthLimit
+                    : null,
                 TextSpan(
                   children: [
                     if (widget.replyItem.replyControl.isUpTop) ...[
@@ -616,7 +1130,8 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             ],
           ),
         ),
-        if (widget.replyItem.content.pictures.isNotEmpty) ...[
+        if (widget.replyItem.content.pictures.isNotEmpty ||
+            _guard?.isMasked == true) ...[
           Padding(
             padding: padding,
             child: _buildCommentImages(context, colorScheme),
@@ -654,12 +1169,101 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     );
   }
 
+  /// Comment pictures with the ContentGuard-masked ones removed.
+  ///
+  /// A decision names media by [MediaRef.stableKey] — `fp:<fingerprint>` once the
+  /// image pipeline has hashed the picture, `id:<url>` before that — and never by
+  /// position, so a mask cannot be resolved by comparing the key against a URL.
+  /// The association is resolved here, in order of reliability:
+  ///
+  /// 1. this row's own picture/video references, recomputed from the current grid,
+  ///    which is the exact spelling the decision layer used;
+  /// 2. the reply's avatar reference, so an avatar mask never withdraws a picture;
+  /// 3. the pHash cache of the picture URL, when the image pipeline has already
+  ///    hashed it — that is the only way a fingerprinted key can name a picture
+  ///    the row does not carry a fingerprint for.
+  ///
+  /// Nothing is planned here: a mask that resolves to nothing still yields the
+  /// explicit placeholder below, because a silently missing picture is exactly the
+  /// outcome the mask exists to prevent.
+  List<Picture> _guardVisiblePictures(
+    ReplyPresentation? guard,
+    List<Picture> pictures,
+  ) {
+    if (guard == null || !guard.isMasked) return pictures;
+    final masked = guard.maskedMediaIds;
+    if (masked.isEmpty) return pictures;
+    final avatarKeys = guardMediaKeysOfAvatar(
+      widget.replyItem.member.face,
+      authorUid: widget.replyItem.mid.toString(),
+    );
+    return pictures
+        .where((item) {
+          for (final key in guardMediaKeysOfContent(item.imgSrc)) {
+            if (masked.contains(key) && !avatarKeys.contains(key)) return false;
+          }
+          for (final fingerprint
+              in ImageBlockService.getCachedHashes(
+                    item.imgSrc ?? '',
+                  ) ??
+                  const <String>[]) {
+            if (masked.contains('fp:$fingerprint')) return false;
+          }
+          return true;
+        })
+        .toList(growable: false);
+  }
+
+  /// Whether ContentGuard masked this row's avatar.
+  ///
+  /// Avatar masking has to hide the avatar and nothing else: the body of a reply
+  /// is judged separately, so an avatar match must not turn the row into a body
+  /// placeholder. [guardMediaKeysOfAvatar] answers for a key derived from either
+  /// the avatar URL or the author uid, because a platform avatar carries no
+  /// fingerprint the decision layer could have named.
+  bool _guardMasksAvatar(ReplyPresentation? guard) {
+    if (guard == null || !guard.isMasked) return false;
+    final masked = guard.maskedMediaIds;
+    if (masked.isEmpty) return false;
+    for (final key in guardMediaKeysOfAvatar(
+      widget.replyItem.member.face,
+      authorUid: widget.replyItem.mid.toString(),
+    )) {
+      if (masked.contains(key)) return true;
+    }
+    final avatarUrl = widget.replyItem.member.face;
+    for (final fingerprint
+        in ImageBlockService.getCachedHashes(avatarUrl) ?? const <String>[]) {
+      if (masked.contains('fp:$fingerprint')) return true;
+    }
+    return false;
+  }
+
   Widget _buildCommentImages(BuildContext context, ColorScheme colorScheme) {
+    final guard = _guard;
+    // Only the media identities the decision names are dropped from the grid: a
+    // rule that masks one role must not empty the row. A row with nothing left
+    // shows a placeholder instead of an empty gap, so the layout does not collapse
+    // and the masked picture is visibly withheld rather than silently missing.
+    final pictures = _guardVisiblePictures(
+      guard,
+      widget.replyItem.content.pictures,
+    );
+    if (guard != null && guard.isMasked && pictures.isEmpty) {
+      // Nothing left to draw: say which media was withheld rather than leaving an
+      // empty gap, so a masked picture never reads as a comment that had none.
+      final avatarOnly =
+          widget.replyItem.content.pictures.isEmpty && _guardMasksAvatar(guard);
+      return ContentGuardMediaMask(
+        colorScheme: colorScheme,
+        label: avatarOnly ? '头像已被内容过滤隐藏' : '图片已被内容过滤隐藏',
+      );
+    }
     final manualLoad = Pref.manualLoadCommentImage;
     if (!manualLoad || _loadManualImages) {
       return ImageGridView(
         key: ValueKey('img_$_blockImageVersion'),
-        picArr: widget.replyItem.content.pictures
+        picArr: pictures
             .map(
               (item) => ImageModel(
                 width: item.imgWidth,
@@ -672,7 +1276,7 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
         tempUnblockedUrls: _tempUnblockImageUrls,
       );
     }
-    final count = widget.replyItem.content.pictures.length;
+    final count = pictures.length;
     return GestureDetector(
       onTap: () => setState(() => _loadManualImages = true),
       child: Container(
@@ -850,7 +1454,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
     ColorScheme colorScheme,
     List<ReplyInfo> replies,
   ) {
-    final visibleReplies = replies.where((r) => !ReplyGrpc.isClientBlocked(r)).toList();
+    final visibleReplies = replies
+        .where((r) => !ReplyGrpc.isClientBlocked(r))
+        .toList();
     final extraRow = visibleReplies.length < widget.replyItem.count.toInt();
     late final length = visibleReplies.length + (extraRow ? 1 : 0);
     return Padding(
@@ -1065,7 +1671,8 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                     r'^cv(\d+)$|/read/cv(\d+)|note-app/view\?cvid=(\d+)',
                     caseSensitive: false,
                   ).firstMatch(matchStr);
-                  String? cvid = match?.group(1) ?? match?.group(2) ?? match?.group(3);
+                  String? cvid =
+                      match?.group(1) ?? match?.group(2) ?? match?.group(3);
                   if (cvid != null) {
                     Get.toNamed(
                       '/articlePage',
@@ -1131,14 +1738,16 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               ),
             ),
           );
-        } else if (matchStr.startsWith("@") && content.atNameToMid.containsKey(name)) {
+        } else if (matchStr.startsWith("@") &&
+            content.atNameToMid.containsKey(name)) {
           // 处理@用户
           spanChildren.add(
             TextSpan(
               text: matchStr,
               style: TextStyle(color: colorScheme.primary),
               recognizer: NoDeadlineTapGestureRecognizer()
-                ..onTap = () => Get.toNamed('/member?mid=${content.atNameToMid[name]}'),
+                ..onTap = () =>
+                    Get.toNamed('/member?mid=${content.atNameToMid[name]}'),
             ),
           );
         } else if (ReplyItemGrpc._voteRegExp.hasMatch(matchStr)) {
@@ -1147,7 +1756,8 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               text: '投票: ${content.vote.title}',
               style: TextStyle(color: colorScheme.primary),
               recognizer: NoDeadlineTapGestureRecognizer()
-                ..onTap = () => showVoteDialog(context, content.vote.id.toInt()),
+                ..onTap = () =>
+                    showVoteDialog(context, content.vote.id.toInt()),
             ),
           );
         } else if (ReplyItemGrpc._timeRegExp.hasMatch(matchStr)) {
@@ -1157,7 +1767,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
             final ctr = Get.find<VideoDetailController>(
               tag: widget.getTag?.call() ?? Get.arguments['heroTag'],
             );
-            isValid = DurationUtils.parseDuration(matchStr) * 1000 <= ctr.data.timeLength!;
+            isValid =
+                DurationUtils.parseDuration(matchStr) * 1000 <=
+                ctr.data.timeLength!;
           } catch (e) {
             if (kDebugMode) debugPrint('failed to validate: $e');
           }
@@ -1499,7 +2111,9 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                   },
                   ban: ownerMid != Int64.ZERO,
                   showImageBlock: item.content.pictures.isNotEmpty,
-                  imageUrls: item.content.pictures.map((p) => p.imgSrc).toList(),
+                  imageUrls: item.content.pictures
+                      .map((p) => p.imgSrc)
+                      .toList(),
                   onBlockImages: (urls) async {
                     for (final url in urls) {
                       await ImageBlockService.addBlockedImage(
@@ -1608,8 +2222,10 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
               final String url = switch (type) {
                 1 =>
                   'https://www.bilibili.com/video/${IdUtils.av2bv(item.oid.toInt())}/#reply${item.id}',
-                12 => 'https://www.bilibili.com/read/cv${item.oid.toInt()}/#reply${item.id}',
-                11 || 17 => 'https://www.bilibili.com/opus/${item.oid.toInt()}/#reply${item.id}',
+                12 =>
+                  'https://www.bilibili.com/read/cv${item.oid.toInt()}/#reply${item.id}',
+                11 || 17 =>
+                  'https://www.bilibili.com/opus/${item.oid.toInt()}/#reply${item.id}',
                 _ => '${item.oid.toInt()}#reply${item.id}',
               };
               ShareUtils.shareText(url);
@@ -1625,7 +2241,10 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                 context: context,
                 builder: (context) => Dialog(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
                     child: SelectableText(
                       message,
                       style: const TextStyle(fontSize: 15, height: 1.7),
@@ -1680,7 +2299,11 @@ class _ReplyItemGrpcState extends State<ReplyItemGrpc> {
                                   onChanged: (v) {
                                     setDialogState(() {
                                       if (v == true) {
-                                        for (int i = 0; i < pictures.length; i++) {
+                                        for (
+                                          int i = 0;
+                                          i < pictures.length;
+                                          i++
+                                        ) {
                                           selected.add(i);
                                         }
                                       } else {

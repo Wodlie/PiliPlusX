@@ -110,8 +110,10 @@ abstract final class ReplyRestAdapter {
       like: _int64(raw['like']),
       ctime: _int64(raw['ctime']),
       count: _int64(raw['count']),
-      // 自查判定依赖它：gRPC 侧同名字段（field 16）由服务端直接给出。
-      invisible: _bool(raw['invisible']),
+      // 自查判定读的是 [ReplyInfo.replyControl] 的 [ReplyControl.invisible]：
+      // gRPC 的回复模型只在 ReplyControl 上有该字段（v1.pb.dart 8693），
+      // ReplyInfo 本身没有。REST 的两个来源都先并入同一个 control map，
+      // 由 _replyControl 统一构造，这里不再往 ReplyInfo 上塞同名字段。
       trackInfo: raw['track_info'] is String
           ? raw['track_info'] as String
           : null,
@@ -332,7 +334,9 @@ abstract final class ReplyRestAdapter {
       upLike: _bool(upAction?['like']),
       upReply: _bool(upAction?['reply']),
       isAssist: _int(raw['assist']) == 1 || _int(control?['is_assist']) == 1,
-      invisible: _bool(raw['invisible']),
+      // 与其它 control 字段一致地读两级：REST 既有把标记直接放在回复上、
+      // 也有放在 reply_control 子对象里的两种来源。
+      invisible: _bool(raw['invisible']) ?? _bool(control?['invisible']),
       hasFoldedReply: _bool(folder?['has_folded_reply']),
       isFoldedReply: _bool(folder?['is_folded_reply']),
       maxLine: _int64(control?['max_line']),

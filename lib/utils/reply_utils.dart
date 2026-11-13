@@ -443,11 +443,11 @@ abstract final class ReplyUtils {
     final seat = _anchorOf(page, expectedRoot);
     if (seat == null) return ReplySeat.seatMiss;
     if (isRoot) {
-      return seat.invisible ? ReplySeat.invisible : ReplySeat.present;
+      return _isInvisible(seat) ? ReplySeat.invisible : ReplySeat.present;
     }
     for (final child in seat.replies) {
       if (child.id.toInt() == targetId) {
-        return child.invisible ? ReplySeat.invisible : ReplySeat.present;
+        return _isInvisible(child) ? ReplySeat.invisible : ReplySeat.present;
       }
     }
     return ReplySeat.absent;
@@ -457,6 +457,15 @@ abstract final class ReplyUtils {
   ///
   /// REST 适配器会把 UP 置顶项从 `replies` 移到 `upTop`（避免列表重复），
   /// 只认 `replies.first` 会把置顶的锚点误判成「未定位到」。
+  /// 这条评论是否被服务端标记为 invisible（前端不可见）。
+  ///
+  /// 字段在 [ReplyControl] 上而不是 [ReplyInfo] 上：gRPC 的回复模型只有
+  /// `ReplyControl.invisible`（`v1.pb.dart` field 16），REST 适配器也把
+  /// 同名键并进同一个 control 对象。没有 control 就是"没有这个标记"，
+  /// 不能凭空判成不可见——自查宁可回落到 present/absent 由其它判据决定。
+  static bool _isInvisible(ReplyInfo reply) =>
+      reply.hasReplyControl() && reply.replyControl.invisible;
+
   static ReplyInfo? _anchorOf(MainListReply page, int expectedRoot) {
     final replies = page.replies;
     if (replies.isNotEmpty && replies.first.id.toInt() == expectedRoot) {
@@ -485,6 +494,9 @@ abstract final class ReplyUtils {
       account: account,
     );
     switch (res) {
+      case Loading():
+        // 探活请求不展示加载态，这里只关心「活着 / 没了 / 没探成」。
+        return ReplyRootProbe.failed;
       case Success():
         return ReplyRootProbe.alive;
       case Error(:final errMsg):

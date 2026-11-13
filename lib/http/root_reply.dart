@@ -64,6 +64,37 @@ final class RootReplySession {
 
   Account? get account => _account;
 
+  /// Binds the account/health/identity/backend this session will fetch with,
+  /// synchronously and without any network or health probe.
+  ///
+  /// Exists because a caller must be able to ask "which account will the next
+  /// fetch use?" BEFORE that fetch starts - the ContentGuard retention decision
+  /// and owner binding both depend on it, and reading it after the fact would let
+  /// one account's context be applied to another account's rows.
+  ///
+  /// Idempotent and side-effect free beyond the binding itself: a session that is
+  /// already bound keeps its binding, so this cannot disturb reset/epoch/restart
+  /// or advance any cursor.
+  ///
+  /// Returns null when the live account no longer matches the binding; the caller
+  /// must then treat the request as unbound rather than reusing a stale scope.
+  Account? prepare() {
+    final main = Accounts.main;
+    if (_account == null || _identity == null || _backend == null) {
+      final health = healthOf(main);
+      _account = main;
+      _identity = AccountHealthIdentity.capture(main);
+      _backend = (_forceRest || !health.canUseReplyGrpc)
+          ? RootReplyBackend.rest
+          : RootReplyBackend.grpc;
+      return main;
+    }
+    // Already bound: only usable while it still IS the live account.
+    if (!identical(_account, main)) return null;
+    if (!_identity!.matches(_account!)) return null;
+    return _account;
+  }
+
   AccountHealthIdentity? get identity => _identity;
 
   /// 当前链已确定走 REST（控制器据此调整结束判定）。
@@ -116,6 +147,7 @@ final class RootReplySession {
     required int oid,
     required int type,
     required Mode mode,
+    bool retainBlockedReplies = false,
   }) async {
     // reset(forceRest) 会只设置 backend 而清掉账号，所以初始化条件是
     // 「三件套缺任一」，否则重启后的首屏会拿到空账号。
@@ -146,6 +178,7 @@ final class RootReplySession {
         oid: oid,
         type: type,
         mode: mode,
+        retainBlockedReplies: retainBlockedReplies,
       ),
       RootReplyBackend.rest => _fetchRest(
         epoch: epoch,
@@ -154,6 +187,7 @@ final class RootReplySession {
         oid: oid,
         type: type,
         mode: mode,
+        retainBlockedReplies: retainBlockedReplies,
       ),
       null => const Error(null),
     };
@@ -184,6 +218,7 @@ final class RootReplySession {
     required int oid,
     required int type,
     required Mode mode,
+    required bool retainBlockedReplies,
   }) async {
     MainListReply? collected;
     var requestedCursor = _grpcNext;
@@ -209,6 +244,7 @@ final class RootReplySession {
         expectedIdentity: identity,
         filter: false,
         autoPaginate: false,
+        retainBlockedReplies: retainBlockedReplies,
       );
       // await 之后、产生任何副作用之前核对代际：过时结果既不标记凭证失效，
       // 也不过滤、不推进游标。
@@ -242,7 +278,10 @@ final class RootReplySession {
 
       final response = (res as Success<MainListReply>).response;
       // 共用过滤：UP 置顶 / 主列表 / 嵌套子回复 / 横幅原因表。
-      ReplyGrpc.filterMainList(response);
+      ReplyGrpc.filterMainList(
+        response,
+        retainBlockedReplies: retainBlockedReplies,
+      );
 
       // 首屏请求实际发出的是 cursor 0（protobuf 默认值），所以比较必须把
       // null 归一成 0，不能因为「没有游标」就无条件当成已推进。
@@ -311,6 +350,7 @@ final class RootReplySession {
     required int oid,
     required int type,
     required Mode mode,
+    required bool retainBlockedReplies,
   }) async {
     // 本地游标：只有服务端确认接受过这一页，才提交到 `_restNextOffset`。
     var offset = _restNextOffset;
@@ -371,7 +411,10 @@ final class RootReplySession {
         return _restFailure(epoch, e.toString(), null);
       }
       // REST 与 gRPC 共用同一套屏蔽规则（关键词/等级/带货/@/黑名单/横幅）。
-      ReplyGrpc.filterMainList(page);
+      ReplyGrpc.filterMainList(
+        page,
+        retainBlockedReplies: retainBlockedReplies,
+      );
 
       final next = page.paginationReply.nextOffset;
       if (next.isNotEmpty && next == offset) {

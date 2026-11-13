@@ -304,7 +304,7 @@ void main() {
       'invisible': true,
     };
     final reply = ReplyRestAdapter.reply(raw, oid: 555, type: 1);
-    expect(reply.invisible, isTrue);
+    expect(reply.replyControl.invisible, isTrue);
     expect(reply.replies.map((r) => r.id.toInt()), [2001]);
 
     final visible = ReplyRestAdapter.reply(
@@ -312,7 +312,7 @@ void main() {
       oid: 555,
       type: 1,
     );
-    expect(visible.invisible, isFalse);
+    expect(visible.replyControl.invisible, isFalse);
   });
 
   test('不修改传入的 JSON（适配必须是纯转换）', () {

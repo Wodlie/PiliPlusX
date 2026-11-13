@@ -2,6 +2,7 @@ import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart';
 import 'package:PiliPlus/models_new/dynamic/dyn_mention/item.dart';
 import 'package:PiliPlus/pages/common/reply/fold/reply_fold_mixin.dart';
 import 'package:PiliPlus/pages/common/reply/reply_controller.dart';
+import 'package:PiliPlus/pages/common/reply/reply_guard_mixin.dart';
 import 'package:PiliPlus/pages/common/reply/vote/reply_vote_mixin.dart';
 import 'package:PiliPlus/pages/common/root_reply_controller.dart';
 import 'package:PiliPlus/utils/reply_scheme_helper.dart';
@@ -24,7 +25,12 @@ mixin DynReplyLocateMixin on MainReplyLocateMixin {
 }
 
 abstract class CommonDynController extends RootReplyController
-    with ReplyVoteMixin, BaseReplyFoldMixin<MainListReply>, ReplyFoldMixin {
+    with
+        ReplyVoteMixin,
+        BaseReplyFoldMixin<MainListReply>,
+        ReplyFoldMixin,
+        // Same ordering rule as the video and main reply controllers.
+        ReplyGuardListMixin<MainListReply> {
   CommonDynController({super.count});
 
   @override

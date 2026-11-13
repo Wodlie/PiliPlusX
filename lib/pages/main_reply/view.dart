@@ -11,9 +11,11 @@ import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/pages/common/fab_mixin.dart';
 import 'package:PiliPlus/pages/common/reply/reply_footer_mixin.dart';
+import 'package:PiliPlus/pages/common/reply/reply_guard_suggestion_card.dart';
 import 'package:PiliPlus/pages/main_reply/controller.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
 import 'package:PiliPlus/pages/video/reply_reply/view.dart';
+import 'package:PiliPlus/services/content_guard/presenter/presenter.dart';
 import 'package:PiliPlus/utils/extension/widget_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
@@ -23,7 +25,14 @@ import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
 class MainReplyPage extends StatefulWidget {
-  const MainReplyPage({super.key});
+  const MainReplyPage({super.key, this.contentGuardProjection});
+
+  /// ContentGuard's projection of the comment list, or null.
+  ///
+  /// Null is the existing behaviour: no filtering, no per-row lookup. A supplied
+  /// projection is read by index only, so `itemCount: response.length + 1` and the
+  /// footer slot keep their current arithmetic.
+  final ReplyGuardProjection? contentGuardProjection;
 
   @override
   State<MainReplyPage> createState() => _MainReplyPageState();
@@ -113,6 +122,10 @@ class _MainReplyPageState extends State<MainReplyPage>
   }
 
   Widget _buildBody(LoadingState<List<ReplyInfo>?> loadingState) {
+    // Subscribes the enclosing `Obx` to the suggestion map: item builders run
+    // during layout, outside that closure, so a card appearing or disappearing
+    // needs this read to repaint without waiting for a list refresh.
+    controller.guardSuggestions.length;
     return switch (loadingState) {
       Loading() => const SliverPrototypeExtentList(
         prototypeItem: VideoReplySkeleton(),
@@ -130,9 +143,26 @@ class _MainReplyPageState extends State<MainReplyPage>
                     return buildFooter();
                   }
 
-                  return ReplyItemGrpc(
-                    replyItem: response[index],
+                  final replyItem = response[index];
+                  final child = ReplyItemGrpc(
+                    replyItem: replyItem,
                     replyLevel: 1,
+                    // The footer slot at index == response.length is decided above
+                    // and is untouched. For a row, the projection slot is accepted
+                    // only while it still names this reply and this payload
+                    // revision; otherwise the row renders as pending, never as a
+                    // pass and never with another reply's verdict.
+                    contentGuardPresentation: guardPresentationFor(
+                      // Controller-owned projection and policy facts, with the
+                      // widget parameter kept as an explicit override. All null
+                      // when inactive.
+                      projection:
+                          widget.contentGuardProjection ??
+                          controller.contentGuardProjection,
+                      policyFacts: controller.guardPolicyFacts,
+                      index: index,
+                      reply: replyItem,
+                    ),
                     replyReply: throttleReplyReply,
                     onReply: controller.onReply,
                     onDelete: (item, subIndex) =>
@@ -145,6 +175,16 @@ class _MainReplyPageState extends State<MainReplyPage>
                       controller.oid,
                       controller.replyType,
                     ),
+                  );
+                  // Under the row, never its own item: itemCount and the footer
+                  // slot keep their arithmetic.
+                  return GuardSuggestionSlot(
+                    child: child,
+                    anchor: controller.guardSuggestionAnchorAt(index),
+                    suggestion: controller.guardSuggestionAt(index),
+                    isBusy: controller.isDecidingSuggestion,
+                    onAccept: controller.acceptGuardSuggestion,
+                    onReject: controller.rejectGuardSuggestion,
                   );
                 },
               )

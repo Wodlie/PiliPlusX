@@ -104,3 +104,11 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // MediaHelper.java extends nothing but does reference AudioService's inherited
+    // MediaBrowserServiceCompat members (#60/#61: NOTIFICATION_CUSTOM_ACTION*).
+    // audio_service declares androidx.media as `implementation`, so it is not on
+    // the app's compile classpath and javac cannot resolve the supertype.
+    implementation("androidx.media:media:1.7.0")
+}
