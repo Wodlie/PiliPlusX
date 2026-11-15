@@ -319,7 +319,7 @@ class VideoReplyReplyController extends ReplyController<DetailListReply>
 
   Future<void> _fetchNextReply() async {
     try {
-      if (isEnd && foldCard != null) {
+      if (isEnd && foldPending) {
         await loadFoldList(toast: false);
       } else {
         await queryData(false);
@@ -328,7 +328,7 @@ class VideoReplyReplyController extends ReplyController<DetailListReply>
       _inflightReply = null;
     }
     if (!isClosed) {
-      if (isEnd && foldCard == null) {
+      if (isEnd && !foldPending) {
         buildTree();
       } else {
         _createReplyTimer();
@@ -379,10 +379,15 @@ class VideoReplyReplyController extends ReplyController<DetailListReply>
     super.onClose();
   }
 
+  /// 线程化视图开关：树建好之后可以在「树 / 平铺」之间来回切。
+  bool showReplyTree = false;
+
   final replyTree = Rxn<ReplyTree>();
 
   void buildTree() {
-    final data = loadingState.rawValue.data!;
+    final data = loadingState.rawValue.dataOrNull;
+    if (data == null || data.isEmpty) return;
+    showReplyTree = true;
     final seen = HashSet<Int64>();
     data.retainWhere((i) => seen.add(i.id));
     replyTree.value = ReplyTree.build(

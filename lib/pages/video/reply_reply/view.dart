@@ -276,36 +276,54 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
                     : const SizedBox.shrink();
               },
             ),
-            Obx(
-              () => controller.replyTree.value != null
-                  ? const SizedBox.shrink()
-                  : IconButton(
-                      visualDensity: .compact,
-                      onPressed: () {
-                        if (controller.isEnd && controller.foldCard == null) {
-                          controller.buildTree();
-                        } else if (controller.inFetchReply) {
-                          SmartDialog.showToast('正在拉取评论，请稍后');
-                        } else {
-                          showConfirmDialog(
-                            context: context,
-                            title: const Text(
-                              '是否加载全部评论以显示线程化评论？',
-                            ),
-                            content: const Text(
-                              '这将消耗一定流量\n且可能导致IP或账号风控',
-                            ),
-                            onConfirm: controller.nextReplyRound,
-                          );
-                        }
-                      },
-                      icon: const Icon(
-                        Icons.view_comfortable_outlined,
-                        size: 22,
-                      ),
-                      color: colorScheme.outline,
-                      tooltip: '线程化展示',
+            IconButton(
+              visualDensity: .compact,
+              onPressed: () {
+                // 树已建好：按钮退化成「树 / 平铺」开关。
+                if (controller.replyTree.rawValue != null) {
+                  controller
+                    ..showReplyTree = !controller.showReplyTree
+                    ..replyTree.refresh();
+                  return;
+                }
+                if (controller.isEnd && !controller.foldPending) {
+                  controller.buildTree();
+                } else if (controller.inFetchReply) {
+                  SmartDialog.showToast('正在拉取评论，请稍后');
+                } else {
+                  // 折叠回复没拉完就直接续拉：这一轮结束时 _fetchNextReply 才会建树。
+                  if (controller.foldPending) {
+                    controller.nextReplyRound();
+                    return;
+                  }
+                  // 只剩不到 5 页就不必再问一次了。
+                  final count = controller.count.rawValue;
+                  if (count != -1) {
+                    final total = (count / 20).ceil();
+                    final remain = total - (controller.page - 1);
+                    if (remain < 5) {
+                      controller.nextReplyRound();
+                      return;
+                    }
+                  }
+                  showConfirmDialog(
+                    context: context,
+                    title: const Text(
+                      '是否加载全部评论以显示线程化评论？',
                     ),
+                    content: const Text(
+                      '这将消耗一定流量\n且可能导致IP或账号风控',
+                    ),
+                    onConfirm: controller.nextReplyRound,
+                  );
+                }
+              },
+              icon: const Icon(
+                Icons.view_comfortable_outlined,
+                size: 22,
+              ),
+              color: colorScheme.outline,
+              tooltip: '线程化展示',
             ),
             Expanded(
               child: Obx(
@@ -364,28 +382,29 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
         ),
       ),
       Success(:final response!) => switch (controller.replyTree.value) {
-        final tree? => SuperSliverList.builder(
-          listController: controller.listController,
-          itemCount: tree.length + 1,
-          itemBuilder: (context, index) {
-            if (index == tree.length) {
-              controller.onLoadMore();
-              return buildEndItem();
-            }
-            final node = tree[index];
-            final child = _replyItem(
-              context,
-              node.reply,
-              index,
-              node: node,
-              treeIndex: index,
-            );
-            return jumpIndex == index
-                ? controller.colorAnimWrapper(colorScheme, child)
-                : child;
-          },
-        ),
-        null => SuperSliverList.builder(
+        final tree? when controller.showReplyTree =>
+          SuperSliverList.builder(
+            listController: controller.listController,
+            itemCount: tree.length + 1,
+            itemBuilder: (context, index) {
+              if (index == tree.length) {
+                controller.onLoadMore();
+                return buildEndItem();
+              }
+              final node = tree[index];
+              final child = _replyItem(
+                context,
+                node.reply,
+                index,
+                node: node,
+                treeIndex: index,
+              );
+              return jumpIndex == index
+                  ? controller.colorAnimWrapper(colorScheme, child)
+                  : child;
+            },
+          ),
+        _ => SuperSliverList.builder(
           listController: controller.listController,
           itemBuilder: (context, index) {
             if (index == response.length && controller.canShowFoldEntry) {

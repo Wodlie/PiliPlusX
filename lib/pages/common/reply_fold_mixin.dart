@@ -20,6 +20,15 @@ mixin ReplyFoldMixin<R> on ReplyController<R> implements ReplyFooterController<R
   bool get canShowFoldEntry =>
       !Pref.autoShowFoldedReply && foldCard.value != null && !foldedLoaded;
 
+  /// 折叠回复是否还有没拉完的页。
+  ///
+  /// 上游的 `loadFoldList` 成功后会把 `foldCard` 置空，拿它当「折叠已拉完」的哨兵；
+  /// 本 fork 的 [loadFoldedReplies] 必须保留卡片（footer 文案与 foldedIds 标记都要用），
+  /// 只能靠 [foldedLoaded] 判断。线程化树是「列表拉完 → 折叠拉完 → buildTree」的三步收尾，
+  /// 直接比 `foldCard` 会让第二步永远判不完：300ms 定时器空转，树永远不建
+  /// （表现为点线程化按钮后进度条走满、界面没有任何变化）。
+  bool get foldPending => foldCard.value != null && !foldedLoaded;
+
   @override
   String get foldText {
     final text = foldCard.value?.bottomText;
